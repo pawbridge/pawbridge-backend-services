@@ -9,6 +9,7 @@ from app.settings import VisionSettings
 
 MODEL_NAME = "vit_large_patch16_dinov3.lvd1689m"
 MODEL_VERSION = "dinov3-large-30c1109-avg-256-center-fp16-l2-v1"
+MODEL_VERSION_CLS = "dinov3-large-30c1109-cls-256-center-fp16-l2-v1"
 WEIGHTS_SHA256 = "45172f209c9583c40538afc26b60a07033e6fcc2e8c30228338e6b2e932e7941"
 DIMENSIONS = 1024
 _encoder = None
@@ -55,7 +56,10 @@ class DinoV3Encoder:
             raise RuntimeError("The legacy animal-focus profile requires CUDA; select sam3-animal-focus for MPS")
         import torch
         import timm
-        checkpoint = VisionSettings.load().dinov3_checkpoint
+        settings = VisionSettings.load()
+        checkpoint, pooling = settings.dinov3_checkpoint, settings.pooling
+        if pooling == "token" and visual_profile() == "animal-focus":
+            raise RuntimeError("CLS pooling is only validated with the original and SAM 3 profiles")
         if not checkpoint:
             raise RuntimeError("DINOV3_CHECKPOINT is required")
         checkpoint = Path(checkpoint)
@@ -75,19 +79,19 @@ class DinoV3Encoder:
             recommended = torch.mps.recommended_max_memory()
             torch.mps.set_per_process_memory_fraction(min(1.0, 16 * 1024**3 / recommended))
         self.focus = None
-        self.model_version = MODEL_VERSION
+        self.model_version = MODEL_VERSION_CLS if pooling == "token" else MODEL_VERSION
         # SAM first avoids retaining DINO's CPU allocation during SAM construction.
         if visual_profile() == "sam3-animal-focus":
-            from app.vision.sam3_focus import Sam3Focus, FOCUS_VERSION
+            from app.vision.sam3_focus import Sam3Focus, focus_version
             self.focus = Sam3Focus()
-            self.model_version = FOCUS_VERSION
-        self.model = timm.create_model(MODEL_NAME, pretrained=False, num_classes=0,
+            self.model_version = focus_version()
+        self.model = timm.create_model(MODEL_NAME, pretrained=False, num_classes=0, global_pool=pooling,
                                       checkpoint_path=str(checkpoint)).eval().to(self.device)
         config = timm.data.resolve_model_data_config(self.model)
         expected = {"input_size": (3, 256, 256), "interpolation": "bicubic",
                     "mean": (0.485, 0.456, 0.406), "std": (0.229, 0.224, 0.225),
                     "crop_pct": 1.0, "crop_mode": "center"}
-        if config != expected or self.model.global_pool != "avg":
+        if config != expected or self.model.global_pool != pooling:
             raise RuntimeError("DINOv3 preprocessing or pooling changed")
         self.transform = timm.data.create_transform(**config, is_training=False)
         if visual_profile() == "animal-focus":

@@ -74,6 +74,19 @@ class RecommendationTest(unittest.TestCase):
         with patch.dict(os.environ, env), patch('app.recommendation.service.get_postgresql_store', return_value=store):
             self.assertEqual(recommend_animals(1, 'DOG'), [30])
 
+    def test_cls_galleries_use_their_own_visual_floor_and_version(self):
+        from app.vision.sam3_focus import FOCUS_VERSION_CLS
+        store = Mock()
+        hits = [{'_source': {'id': i}, '_score': 1.45} for i in range(2, 9)] + [{'_source': {'id': 30}, '_score': 1.35}]
+        store.recommendation_candidates.return_value = ({}, hits)
+        env = {'LOST_STORAGE_BACKEND': 'postgresql', 'LOST_SEARCH_COAT_COLOR_WEIGHT': '0',
+               'LOST_SEARCH_VISUAL_PROFILE': 'sam3-animal-focus', 'LOST_SEARCH_INDEX': 'animals-lost-dinov3-sam3-test'}
+        with patch.dict(os.environ, env), patch('app.recommendation.service.get_postgresql_store', return_value=store):
+            self.assertEqual(recommend_animals(1, 'DOG'), [], 'avg floor 0.6 rejects 0.45')
+            with patch.dict(os.environ, {'LOST_SEARCH_POOLING': 'token'}):
+                self.assertEqual(recommend_animals(1, 'DOG'), [2, 3, 4, 5, 6, 7])
+                self.assertEqual(store.recommendation_candidates.call_args.args[3], FOCUS_VERSION_CLS)
+
     def test_chatbot_entry_point_does_not_load_heavy_models_or_expose_legacy_similarity_routes(self):
         script = """import sys
 from app.entrypoints.chatbot_api import app

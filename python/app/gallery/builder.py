@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from app.vision.dinov3 import DIMENSIONS, validate_vector
-from app.vision.sam3_focus import FOCUS_VERSION
+from app.vision.sam3_focus import focus_version
 from app.vision.coat_color import VERSION as COLOR_VERSION, valid as valid_color
 from app.gallery.inputs import GalleryInputPrefetch
 
@@ -45,8 +45,8 @@ def read_manifest(path):
     return records, hashlib.sha256(canonical).hexdigest()
 
 
-def reusable_document(document, row):
-    if (document.get("model_version") != FOCUS_VERSION
+def reusable_document(document, row, version=None):
+    if (document.get("model_version") != (version or focus_version())
             or document.get("species") != row["species"]
             or document.get("source_sha256") != row["source_sha256"]):
         return False
@@ -74,14 +74,14 @@ def gallery_mapping(snapshot_hash):
                   "animal_vector": {"type": "dense_vector", "dims": DIMENSIONS, "index": False}}
     properties["status"] = {"type": "keyword"}
     properties.update({key: {"type": "keyword", "index": False} for key in METADATA if key != "status"})
-    return {"dynamic": "strict", "_meta": {"contract": CONTRACT, "model_version": FOCUS_VERSION,
+    return {"dynamic": "strict", "_meta": {"contract": CONTRACT, "model_version": focus_version(),
                                              "snapshot_sha256": snapshot_hash, "coat_color_version": COLOR_VERSION,
                                              "metadata_version": METADATA_VERSION}, "properties": properties}
 
 
 def gallery_target(snapshot_hash):
     return PREFIX + "build-" + hashlib.sha256(
-        (FOCUS_VERSION + COLOR_VERSION + METADATA_VERSION + snapshot_hash).encode()).hexdigest()[:24]
+        (focus_version() + COLOR_VERSION + METADATA_VERSION + snapshot_hash).encode()).hexdigest()[:24]
 
 
 class GalleryBuildCancelled(RuntimeError):
@@ -104,7 +104,7 @@ def _build_gallery(store, encoder, manifest_path, photo_root, alias, progress=No
             raise GalleryBuildCancelled("Gallery build stopped before publication")
     check_cancelled()
     if (not re.fullmatch(PREFIX + r"[a-z0-9][a-z0-9-]{0,60}", alias)
-            or "-build-" in alias or encoder.model_version != FOCUS_VERSION):
+            or "-build-" in alias or encoder.model_version != focus_version()):
         raise ValueError("SAM 3 gallery alias/model is required")
     if stream is None:
         records, snapshot_hash = read_manifest(manifest_path)
@@ -155,7 +155,7 @@ def _build_gallery(store, encoder, manifest_path, photo_root, alias, progress=No
         planned = []
         for row in batch:
             cached = cache.get(row["id"], {})
-            reuse_vector = reusable_document(cached, row)
+            reuse_vector = reusable_document(cached, row, encoder.model_version)
             # v2 reruns only paths that can produce color with the unchanged
             # segmenter. Multi-detection photos gain primary-mask evidence;
             # prior no/small/suspect-mask outcomes remain deterministically null.
@@ -186,7 +186,7 @@ def _build_gallery(store, encoder, manifest_path, photo_root, alias, progress=No
                         else:
                             embedding = encoder.encode_with_metadata(prepared.original, row["species"],
                                                                      prepared_focus_image=prepared.focus)
-                            if embedding.model_version != FOCUS_VERSION:
+                            if embedding.model_version != encoder.model_version:
                                 raise RuntimeError("Encoder changed model during the build")
                             vector, animal, status = embedding.vector, embedding.animal_vector, embedding.focus_status
                             color = embedding.coat_color
@@ -200,7 +200,7 @@ def _build_gallery(store, encoder, manifest_path, photo_root, alias, progress=No
                         raise RuntimeError("Invalid foreground color descriptor")
                     color_available += 1
                 document = {"id": row["id"], "species": row["species"], "source_sha256": row["source_sha256"],
-                            "model_version": FOCUS_VERSION, "focus_status": status, "image_vector": vector,
+                            "model_version": encoder.model_version, "focus_status": status, "image_vector": vector,
                             "coat_color_version": COLOR_VERSION, "coat_color": color,
                             **{field: row.get(field) for field in METADATA}}
                 if animal is not None:

@@ -1,8 +1,9 @@
+import os
 from contextlib import contextmanager
 import hashlib
 import io
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from PIL import Image
 import json
 import tempfile
@@ -162,6 +163,23 @@ class LostGalleryTest(unittest.TestCase):
                         self.assertEqual(document["coat_color_version"], VERSION)
                 encoder.encode_with_metadata.assert_not_called()
                 encoder.describe_coat_color.assert_called_once()
+
+    def test_cls_pooling_has_its_own_gallery_version_target_and_never_reuses_avg_vectors(self):
+        from app.gallery.builder import gallery_target
+        from app.vision.sam3_focus import FOCUS_VERSION_CLS, focus_version
+        digest = "c" * 64
+        row = {"id": 1, "species": "DOG", "source_sha256": "a" * 64}
+        avg_document = dict(row, model_version=FOCUS_VERSION, image_vector=[1.] + [0.] * 1023, focus_status="animal_mask")
+        avg_target, avg_meta = gallery_target(digest), gallery_mapping(digest)["_meta"]
+        with patch.dict(os.environ, {"LOST_SEARCH_POOLING": "token"}):
+            self.assertEqual(focus_version(), FOCUS_VERSION_CLS)
+            self.assertNotEqual(gallery_target(digest), avg_target)
+            self.assertEqual(gallery_mapping(digest)["_meta"]["model_version"], FOCUS_VERSION_CLS)
+            self.assertNotEqual(gallery_mapping(digest)["_meta"], avg_meta)
+            self.assertFalse(reusable_document(avg_document, row))
+            self.assertTrue(reusable_document(dict(avg_document, model_version=FOCUS_VERSION_CLS), row))
+        self.assertEqual(focus_version(), FOCUS_VERSION)
+        self.assertTrue(reusable_document(avg_document, row))
 
     def test_color_contract_creates_a_new_target_even_for_identical_source_snapshot(self):
         from app.gallery.builder import gallery_target
