@@ -90,10 +90,6 @@ object SecurityRoutes {
     private val catalog = listOf(flag("store-catalog", lenient = true))
     private val myPage = listOf(flag("user-store-mypage", lenient = true))
     private val reports = listOf(flag("animal-reports", lenient = true))
-    private val emailVerification = listOf(flag("email-verification"))
-    private val localSignup = listOf(flag("local-signup"))
-    private val passwordReset = listOf(flag("password-reset"))
-    private val userPassword = listOf(flag("user-password"))
     private val sessions = listOf(Requirement("pawbridge.auth.sessions-enabled", lenient = true))
     private val visitCollection = listOf(
         Requirement("pawbridge.visits.enabled", lenient = true),
@@ -271,12 +267,6 @@ object SecurityRoutes {
         add("PUT", "/api/v1/reports/{reportId}", Access.MEMBER, reports)
         add("DELETE", "/api/v1/reports/{reportId}", Access.MEMBER, reports)
         // Flag: local account flows.
-        add("POST", "/api/v1/email/send", Access.PUBLIC, emailVerification)
-        add("POST", "/api/v1/email/verify", Access.PUBLIC, emailVerification)
-        add("POST", "/api/v1/users/signup", Access.PUBLIC, localSignup)
-        add("POST", "/api/v1/auth/password/reset-request", Access.PUBLIC, passwordReset)
-        add("POST", "/api/v1/auth/password/reset", Access.PUBLIC, passwordReset)
-        add("PUT", "/api/v1/users/me/password", Access.MEMBER, userPassword)
         // Flag: sessions and visits.
         add("POST", "/api/v1/auth/refresh", Access.PUBLIC, sessions)
         add("POST", "/api/v1/auth/logout", Access.PUBLIC, sessions)

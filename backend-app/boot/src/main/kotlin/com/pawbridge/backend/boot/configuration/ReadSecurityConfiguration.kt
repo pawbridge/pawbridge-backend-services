@@ -61,13 +61,9 @@ class ReadSecurityConfiguration {
         @Value("\${pawbridge.animal-chatbot.enabled:false}") chatbotFlag: String,
         @Value("\${pawbridge.store-catalog-management.enabled:false}") catalogManagementFlag: String,
         @Value("\${pawbridge.payments.enabled:false}") paymentsEnabledFlag: String,
-        @Value("\${pawbridge.user-password.enabled:false}") userPasswordFlag: String,
         @Value("\${pawbridge.store-mock-payment.enabled:false}") storeMockPaymentFlag: String,
         @Value("\${pawbridge.animal-images.enabled:false}") animalImagesFlag: String,
         @Value("\${pawbridge.apms-manual.enabled:false}") apmsManualFlag: String,
-        @Value("\${pawbridge.email-verification.enabled:false}") emailVerificationFlag: String,
-        @Value("\${pawbridge.local-signup.enabled:false}") localSignupFlag: String,
-        @Value("\${pawbridge.password-reset.enabled:false}") passwordResetFlag: String,
         @Value(GatewayCors.ORIGIN_PATTERNS_VALUE) corsOriginPatterns: String,
     ): SecurityFilterChain {
         val animalImagesEnabled = RequestMatcher { "true".equals(animalImagesFlag, ignoreCase = true) }
@@ -220,30 +216,6 @@ class ReadSecurityConfiguration {
         val commentUpdate = AntPathRequestMatcher("/api/v1/comments/{commentId}", "PUT")
         val userProfile = AntPathRequestMatcher("/api/v1/users/me", "GET")
         val userNickname = AntPathRequestMatcher("/api/v1/users/me/nickname", "PUT")
-        // Original Gateway whitelist: these POST routes (and all of /api/v1/email/**) need no token; each is
-        // public only while its own flag is exactly true.
-        val emailVerificationPublic = AndRequestMatcher(
-            RequestMatcher { "true".equals(emailVerificationFlag, ignoreCase = true) },
-            OrRequestMatcher(
-                AntPathRequestMatcher("/api/v1/email/send", "POST"),
-                AntPathRequestMatcher("/api/v1/email/verify", "POST"),
-            ),
-        )
-        val localSignupPublic = AndRequestMatcher(
-            RequestMatcher { "true".equals(localSignupFlag, ignoreCase = true) },
-            AntPathRequestMatcher("/api/v1/users/signup", "POST"),
-        )
-        val passwordResetPublic = AndRequestMatcher(
-            RequestMatcher { "true".equals(passwordResetFlag, ignoreCase = true) },
-            OrRequestMatcher(
-                AntPathRequestMatcher("/api/v1/auth/password/reset-request", "POST"),
-                AntPathRequestMatcher("/api/v1/auth/password/reset", "POST"),
-            ),
-        )
-        val userPassword = AndRequestMatcher(
-            RequestMatcher { "true".equals(userPasswordFlag, ignoreCase = true) },
-            AntPathRequestMatcher("/api/v1/users/me/password", "PUT"),
-        )
         val favoriteStatus = AntPathRequestMatcher("/api/v1/favorites/{animalId}/check", "GET")
         val noteRecipient = AntPathRequestMatcher("/api/v1/notes/recipients/{member}", "GET")
         val noteBlockStatus = AntPathRequestMatcher("/api/v1/notes/blocks/status", "GET")
@@ -383,7 +355,6 @@ class ReadSecurityConfiguration {
             commentUpdate,
             userProfile,
             userNickname,
-            userPassword,
             favoriteStatus,
             noteRecipient,
             noteBlockStatus,
@@ -446,7 +417,6 @@ class ReadSecurityConfiguration {
                     .requestMatchers(visitIdentity, visitCount).permitAll()
                     // Cookie-only: the controller requires an allowed Origin and a JSON body type instead of a bearer token.
                     .requestMatchers(sessionRefresh, sessionLogout).permitAll()
-                    .requestMatchers(emailVerificationPublic, localSignupPublic, passwordResetPublic).permitAll()
                     .requestMatchers(chatSocket).permitAll()
                     .requestMatchers(adminRoutes).hasAuthority("ROLE_ADMIN")
                     .requestMatchers(postWriting).authenticated()

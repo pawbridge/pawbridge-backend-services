@@ -55,7 +55,7 @@ class JdbcSocialLogin(
 
     private fun createAccount(profile: SocialProfile): SocialUser {
         if (findUser(profile.email, "LOCAL").isNotEmpty()) {
-            throw SocialLoginRejectedException("이미 해당 이메일로 가입된 계정이 있습니다. 일반 로그인을 이용해주세요.")
+            throw SocialLoginRejectedException("이미 해당 이메일로 가입된 계정이 있습니다. 관리자에게 문의해주세요.")
         }
         if (profile.identifiedByProviderId() && findUser(profile.email, profile.provider).isNotEmpty()) {
             // Same provider and email but another provider ID: never relink an account by email alone.

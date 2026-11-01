@@ -43,7 +43,7 @@ class SocialOAuth2FailureHandler(private val redirectUri: String) : SimpleUrlAut
 
         private val SAFE: Set<String> = java.util.Set.of(
             "이메일 정보를 가져올 수 없습니다",
-            "이미 해당 이메일로 가입된 계정이 있습니다. 일반 로그인을 이용해주세요.",
+            "이미 해당 이메일로 가입된 계정이 있습니다. 관리자에게 문의해주세요.",
             "이미 다른 소셜 계정에 연결된 이메일입니다. 관리자에게 문의해주세요.",
             "로그인 처리 중 오류가 발생했습니다",
         )

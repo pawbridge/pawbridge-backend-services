@@ -182,6 +182,28 @@ class SecurityChainHttpTest {
         assertThat(list.reached).isEqualTo(1)
     }
 
+    @Test
+    fun `지운 이메일 인증 경로가 주어졌을 때__예전 플래그를 켜고 요청해도__가장 강한 토큰이어도 403으로 거부한다`() {
+        // given
+        val oldFlags = listOf("email-verification", "local-signup", "password-reset", "user-password")
+            .associate { "pawbridge.$it.enabled" to "true" }
+        val admin = bearer(7, "ROLE_ADMIN")
+
+        // when
+        val outcomes = SecurityChainFixture.open(SecurityRoutes.everythingOn + oldFlags).use { retired ->
+            retiredEmailRoutes.flatMap { request ->
+                val (method, path) = request.split(" ", limit = 2)
+                listOf(request to retired.call(send(method, path, admin)), request to retired.call(send(method, path, null)))
+            }
+        }
+
+        // then
+        outcomes.forEach { (request, outcome) ->
+            assertThat(outcome.status).describedAs(request).isEqualTo(403)
+            assertThat(outcome.reached).describedAs(request).isZero()
+        }
+    }
+
     companion object {
         private val methods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
 
@@ -201,6 +223,17 @@ class SecurityChainHttpTest {
 
         @JvmStatic
         fun publicRoutes(): List<Route> = SecurityRoutes.routes.filter { it.access == Access.PUBLIC }
+
+        // Email login, signup, verification codes and password reset/change were removed (members sign in with Google
+        // or Naver only); their old addresses must stay closed.
+        private val retiredEmailRoutes = listOf(
+            "POST /api/v1/email/send",
+            "POST /api/v1/email/verify",
+            "POST /api/v1/users/signup",
+            "POST /api/v1/auth/password/reset-request",
+            "POST /api/v1/auth/password/reset",
+            "PUT /api/v1/users/me/password",
+        )
 
         @JvmStatic
         fun extraDeniedRoutes(): List<String> = listOf(
