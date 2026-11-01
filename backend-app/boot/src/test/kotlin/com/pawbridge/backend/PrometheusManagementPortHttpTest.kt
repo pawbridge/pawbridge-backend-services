@@ -30,6 +30,7 @@ import java.time.Duration
     properties = [
         "management.server.port=0",
         "pawbridge.auth.sessions-enabled=true",
+        "pawbridge.auth.local-enabled=true",
         "jwt.access-token-expiration=3600000",
         "jwt.refresh-token-expiration=86400000",
     ],
@@ -170,6 +171,20 @@ class PrometheusManagementPortHttpTest {
         assertThat(response.statusCode()).isIn(200, 503)
         assertThat(response.body()).contains("\"status\"")
         assertThat(response.body()).doesNotContain("components")
+    }
+
+    @Test
+    fun `로컬 로그인이 켜져 있을 때__자격 증명을 보내면__메인 포트만 로그인 체인에 닿는다`() {
+        // given
+        // when
+        val main = send(mainPort, "POST", "/api/v1/auth/login")
+        val management = send(managementPort, "POST", "/api/v1/auth/login")
+
+        // then
+        // The login chain permits everyone and runs its own filter, so on the main port it answers with something
+        // other than the security denial; on the management port the dedicated chain must win.
+        assertThat(main.statusCode()).isNotEqualTo(403)
+        assertThat(management.statusCode()).isEqualTo(403)
     }
 
     @ParameterizedTest

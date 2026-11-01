@@ -496,6 +496,12 @@ ADMIN GET `/api/v1/admin/posts`, GET/PUT/DELETE `/api/v1/admin/posts/{postId}`�
 
 종료 시 로컬 세션을 먼저 분리해 동기·지연 close callback의 중복 Redis/User I/O를 막고 기존 lease 만료를 사용한다. 이는 모의 callback 검증이며 실제 JVM·소켓 종료 시간의 증거는 아니다. 신규·관련 단위/HTTP·인가·프로토콜·조립과 계층 검사는 수행했으나 실제 Redis Lua/리스너·WebSocket·채팅 DB 통합은 아직 미실행이다.
 
+## 이메일 로그인(기존 계정만)
+
+회원은 Google·Naver로 가입하고 로그인한다. 이메일 로그인 `POST /api/v1/auth/login`은 이미 있는 LOCAL 계정(운영 시험 계정)만 쓰도록 남겨 두었다. 가입·인증 코드·비밀번호 재설정·변경은 없다.
+
+`pawbridge.auth.local-enabled`(환경변수 `PAWBRIDGE_AUTH_LOCAL_ENABLED`)는 기본 false다. true면 `pawbridge.auth.sessions-enabled=true`를 요구하고, 이 정확한 경로에만 별도 보안 체인을 만든다. 요청은 JSON `email`·`password`이며 이메일은 대소문자를 무시하고 BCrypt로 확인한다. 200 본문은 userId·email·name·role·careRegNo·accessToken이고 refresh token은 refresh 쿠키로만 준다. 실패는 401이다. 실패 횟수 제한은 없다.
+
 ## Naver 로그인 추가
 
 `pawbridge.auth.naver-enabled`(환경변수 `PAWBRIDGE_AUTH_NAVER_ENABLED`)는 기본 false다. true면 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NAVER_REDIRECT_URI`(경로 `/login/oauth2/code/naver`)를 요구하고, 없거나 경로가 다르면 시작할 때 실패한다. Google과 Naver는 각자 켜고 끌 수 있으며, 보안 체인은 켜진 공급자의 authorization·callback 경로만 받는다.

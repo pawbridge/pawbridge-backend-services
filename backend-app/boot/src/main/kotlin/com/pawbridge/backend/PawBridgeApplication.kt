@@ -26,6 +26,7 @@ import com.pawbridge.backend.boot.configuration.FavoriteStatusConfiguration
 import com.pawbridge.backend.boot.configuration.GatewayFeaturesConfiguration
 import com.pawbridge.backend.boot.configuration.HomeVideoManagementConfiguration
 import com.pawbridge.backend.boot.configuration.HomeVideoReadConfiguration
+import com.pawbridge.backend.boot.configuration.LocalLoginConfiguration
 import com.pawbridge.backend.boot.configuration.ManagementSecurityConfiguration
 import com.pawbridge.backend.boot.configuration.MemberChatConfiguration
 import com.pawbridge.backend.boot.configuration.MemberCleanupConfiguration
@@ -113,6 +114,7 @@ import org.springframework.context.annotation.Import
     StoreMockPaymentConfiguration::class,
     ShelterDirectoryConfiguration::class,
     AnimalImageConfiguration::class,
+    LocalLoginConfiguration::class,
     PaymentConfirmationConfiguration::class,
     StorePaymentEventsConfiguration::class,
     StoreCatalogManagementConfiguration::class,
