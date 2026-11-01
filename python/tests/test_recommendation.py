@@ -77,11 +77,12 @@ class RecommendationTest(unittest.TestCase):
     def test_chatbot_entry_point_does_not_load_heavy_models_or_expose_legacy_similarity_routes(self):
         script = """import sys
 from app.entrypoints.chatbot_api import app
-for name in ('app.vision.dinov3', 'app.vision.sam3_focus', 'torch', 'transformers'):
+for name in ('app.lost_search', 'app.vision.dinov3', 'app.vision.sam3_focus', 'torch', 'transformers'):
     assert name not in sys.modules, name
 paths = {r.path for r in app.routes}
 assert '/api/v1/animals/similar' not in paths
 assert '/api/v1/animals/batch/embeddings' not in paths
+assert '/internal/animals/lost-candidates' not in paths
 assert '/internal/chatbot/messages' in paths
 """
         result = subprocess.run([sys.executable, '-c', script], env={**os.environ, 'LOST_STORAGE_BACKEND': 'postgresql'},
