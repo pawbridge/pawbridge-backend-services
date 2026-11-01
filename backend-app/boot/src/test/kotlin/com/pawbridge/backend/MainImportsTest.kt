@@ -6,12 +6,8 @@ import com.pawbridge.backend.boot.configuration.AnimalImageConfiguration
 import com.pawbridge.backend.boot.configuration.AnimalPhotoArchiveConfiguration
 import com.pawbridge.backend.boot.configuration.AnimalSearchProjectionConfiguration
 import com.pawbridge.backend.boot.configuration.AnimalTravelCollectionConfiguration
-import com.pawbridge.backend.boot.configuration.EmailVerificationConfiguration
-import com.pawbridge.backend.boot.configuration.LocalSignupConfiguration
-import com.pawbridge.backend.boot.configuration.PasswordResetConfiguration
 import com.pawbridge.backend.boot.configuration.ShelterCommandConfiguration
 import com.pawbridge.backend.boot.configuration.ShelterDirectoryConfiguration
-import com.pawbridge.backend.boot.configuration.UserPasswordConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -45,12 +41,8 @@ class MainImportsTest {
             AnimalPhotoArchiveConfiguration::class.java,
             AnimalSearchProjectionConfiguration::class.java,
             AnimalTravelCollectionConfiguration::class.java,
-            EmailVerificationConfiguration::class.java,
-            LocalSignupConfiguration::class.java,
-            PasswordResetConfiguration::class.java,
             ShelterCommandConfiguration::class.java,
             ShelterDirectoryConfiguration::class.java,
-            UserPasswordConfiguration::class.java,
         )
     }
 }

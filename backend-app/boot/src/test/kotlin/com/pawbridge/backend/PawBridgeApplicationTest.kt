@@ -29,13 +29,9 @@ import com.pawbridge.backend.store.internal.catalog.web.StoreCatalogExceptionHan
 import com.pawbridge.backend.store.internal.directorder.infrastructure.JdbcProductSearchRebuild
 import com.pawbridge.backend.store.internal.payment.web.MockOrderPaymentController
 import com.pawbridge.backend.user.internal.animalactivity.application.UserAnimalActivities
-import com.pawbridge.backend.user.internal.emailverification.application.EmailVerifications
-import com.pawbridge.backend.user.internal.password.application.ChangeUserPassword
-import com.pawbridge.backend.user.internal.passwordreset.application.PasswordReset
 import com.pawbridge.backend.user.internal.session.application.AuthSessions
 import com.pawbridge.backend.user.internal.session.infrastructure.JwtSessionTokens
 import com.pawbridge.backend.user.internal.shelter.application.ShelterMembership
-import com.pawbridge.backend.user.internal.signup.application.LocalSignup
 import com.pawbridge.backend.user.internal.storemypage.application.StoreMyPage
 import com.zaxxer.hikari.HikariDataSource
 import io.mockk.confirmVerified
@@ -175,10 +171,6 @@ class PawBridgeApplicationTest {
                 assertThat(context.getBeansOfType(JdbcProductSearchRebuild::class.java)).isEmpty()
                 assertThat(context.getBeansOfType(MockOrderPaymentController::class.java)).isEmpty()
                 assertThat(context.getBeansOfType(ShelterDirectoryCollector::class.java)).isEmpty()
-                assertThat(context.getBeansOfType(ChangeUserPassword::class.java)).isEmpty()
-                assertThat(context.getBeansOfType(EmailVerifications::class.java)).isEmpty()
-                assertThat(context.getBeansOfType(LocalSignup::class.java)).isEmpty()
-                assertThat(context.getBeansOfType(PasswordReset::class.java)).isEmpty()
                 assertThat(context.getBeansOfType(StoreMyPage::class.java)).isEmpty()
                 assertThat(context.getBeansOfType(EntityManagerFactory::class.java)).isEmpty()
                 assertThat(context.getBeansOfType(JpaRepository::class.java)).isEmpty()

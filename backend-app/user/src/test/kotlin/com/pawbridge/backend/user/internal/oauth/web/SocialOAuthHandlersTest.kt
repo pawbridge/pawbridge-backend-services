@@ -175,7 +175,7 @@ class SocialOAuthHandlersTest {
     fun `알려진 정적 로컬 계정 충돌일 때__OAuth가 실패하면__그 허용된 사유만 유지한다`() {
         // given
         val response = mockk<HttpServletResponse>()
-        val message = "이미 해당 이메일로 가입된 계정이 있습니다. 일반 로그인을 이용해주세요."
+        val message = "이미 해당 이메일로 가입된 계정이 있습니다. 관리자에게 문의해주세요."
 
         every { response.encodeRedirectURL(any()) } answers { firstArg() }
         justRun { response.sendRedirect(any()) }
