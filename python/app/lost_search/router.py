@@ -1,16 +1,15 @@
 import asyncio
-import hmac
 from datetime import date
 from typing import Literal
 
 import anyio
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.internal_auth import require_internal_key
 from app.lost_search.service import MAX_IMAGE_BYTES, InvalidPhoto, search_photo
-from app.settings import InternalApiSettings
 
 router = APIRouter()
 _gate = asyncio.Lock()
@@ -30,15 +29,7 @@ class SearchConditions(BaseModel):
         return (value.strip() or None) if isinstance(value, str) else value
 
 
-def authenticate(x_internal_api_key: str | None = Header(None)):
-    expected = InternalApiSettings.load().key
-    if not expected:
-        raise HTTPException(503, "내부 검색 설정을 확인해 주세요")
-    if not x_internal_api_key or not hmac.compare_digest(x_internal_api_key.encode(), expected.encode()):
-        raise HTTPException(401, "인증이 필요합니다")
-
-
-@router.post("/lost-candidates", dependencies=[Depends(authenticate)])
+@router.post("/lost-candidates", dependencies=[Depends(require_internal_key)])
 async def lost_candidates(request: Request):
     refresh = getattr(request.app.state, "gallery_refresh", None)
     if refresh is not None and not refresh.ready:

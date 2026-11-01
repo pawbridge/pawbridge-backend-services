@@ -6,7 +6,6 @@ from app.chatbot.provider import (
     ChatbotProviderUpstreamError,
     get_chatbot_provider,
 )
-from app.settings import InternalApiSettings
 
 SAFETY_NOTICE = (
     "이 답변은 일반적인 참고 정보이며, 정확한 건강 상태나 치료 판단은 "
@@ -15,20 +14,6 @@ SAFETY_NOTICE = (
 
 
 class ChatbotService:
-    @staticmethod
-    def verify_internal_api_key(api_key: str | None) -> None:
-        configured_key = InternalApiSettings.load().key
-        if not configured_key.strip():
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="INTERNAL_API_KEY is not configured",
-            )
-        if api_key != configured_key:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid internal API key",
-            )
-
     async def create_message(self, req):
         try:
             provider = get_chatbot_provider()

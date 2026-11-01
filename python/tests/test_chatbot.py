@@ -58,11 +58,11 @@ class ChatbotApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_chatbot_message_returns_500_when_internal_api_key_is_not_configured(self):
+    def test_chatbot_message_returns_503_when_internal_api_key_is_not_configured(self):
         with patch.dict(os.environ, {"LLM_PROVIDER": "stub"}, clear=True):
             response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
 
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 503)
 
     def test_chatbot_message_returns_422_for_blank_question(self):
         payload = {**self.payload, "question": "   "}
