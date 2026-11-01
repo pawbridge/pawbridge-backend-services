@@ -135,6 +135,20 @@ class NativeLauncherTest(unittest.TestCase):
             file.write_text('changed')
             with self.assertRaises(ValueError):source_check(source,receipt)
 
+    def test_receipt_covers_the_sam3_manifest_and_ignores_bytecode(self):
+        from mac_native_service import source_check
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);source=root/'source';(source/'deploy/macos').mkdir(parents=True);(source/'app.py').write_text('code')
+            manifest=source/'deploy/macos/sam3-manifest.json';manifest.write_text('{"patched_files": {}}')
+            script=Path(__file__).with_name('mac_native_service.py')
+            written=subprocess.run([sys.executable,'-B',str(script),'--receipt',str(source)],capture_output=True,text=True,check=True).stdout
+            receipt=root/'receipt.json';receipt.write_text(written)
+            self.assertEqual(set(json.loads(written)['files']),{'app.py','deploy/macos/sam3-manifest.json'})
+            (source/'__pycache__').mkdir();(source/'__pycache__/app.cpython-312.pyc').write_bytes(b'cache')
+            source_check(source,receipt)
+            manifest.write_text('{"patched_files": {"changed": "0"}}')
+            with self.assertRaises(ValueError):source_check(source,receipt)
+
 class MonitorTest(unittest.TestCase):
     def test_monitor_reports_missing_job_and_persists_its_own_heartbeat(self):
         with tempfile.TemporaryDirectory() as d:
