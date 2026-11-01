@@ -36,6 +36,8 @@ class VisionSettings(_Settings):
         "original", alias="LOST_SEARCH_VISUAL_PROFILE")
     index: str = Field("animals-lost-dinov3-large-v1", pattern=r"^animals-lost-dinov3-[a-z0-9][a-z0-9-]{0,80}$",
                        alias="LOST_SEARCH_INDEX")
+    # "token" uses the CLS token instead of the patch average; its vectors need their own gallery.
+    pooling: Literal["avg", "token"] = Field("avg", alias="LOST_SEARCH_POOLING")
     dinov3_checkpoint: str = Field("", alias="DINOV3_CHECKPOINT")
     sam3_checkpoint: str = Field("", alias="SAM3_CHECKPOINT")
     animal_focus_checkpoint: str = Field("", alias="ANIMAL_FOCUS_CHECKPOINT")
