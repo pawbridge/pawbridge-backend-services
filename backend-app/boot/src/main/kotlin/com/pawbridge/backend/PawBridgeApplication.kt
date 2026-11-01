@@ -22,13 +22,10 @@ import com.pawbridge.backend.boot.configuration.AnimalTravelConfiguration
 import com.pawbridge.backend.boot.configuration.AuthSessionConfiguration
 import com.pawbridge.backend.boot.configuration.CommentWriteConfiguration
 import com.pawbridge.backend.boot.configuration.CommunityMaintenanceConfiguration
-import com.pawbridge.backend.boot.configuration.EmailVerificationConfiguration
 import com.pawbridge.backend.boot.configuration.FavoriteStatusConfiguration
 import com.pawbridge.backend.boot.configuration.GatewayFeaturesConfiguration
 import com.pawbridge.backend.boot.configuration.HomeVideoManagementConfiguration
 import com.pawbridge.backend.boot.configuration.HomeVideoReadConfiguration
-import com.pawbridge.backend.boot.configuration.LocalLoginConfiguration
-import com.pawbridge.backend.boot.configuration.LocalSignupConfiguration
 import com.pawbridge.backend.boot.configuration.ManagementSecurityConfiguration
 import com.pawbridge.backend.boot.configuration.MemberChatConfiguration
 import com.pawbridge.backend.boot.configuration.MemberCleanupConfiguration
@@ -43,7 +40,6 @@ import com.pawbridge.backend.boot.configuration.NoteNotificationsReadConfigurati
 import com.pawbridge.backend.boot.configuration.NoteReadStreamConfiguration
 import com.pawbridge.backend.boot.configuration.NoteRecipientReadConfiguration
 import com.pawbridge.backend.boot.configuration.NoteSendConfiguration
-import com.pawbridge.backend.boot.configuration.PasswordResetConfiguration
 import com.pawbridge.backend.boot.configuration.PaymentCompensationMetricsConfiguration
 import com.pawbridge.backend.boot.configuration.PaymentConfirmationConfiguration
 import com.pawbridge.backend.boot.configuration.PostWriteConfiguration
@@ -69,7 +65,6 @@ import com.pawbridge.backend.boot.configuration.StoreWishlistConfiguration
 import com.pawbridge.backend.boot.configuration.TotalUserCountReadConfiguration
 import com.pawbridge.backend.boot.configuration.UserAnimalActivitiesConfiguration
 import com.pawbridge.backend.boot.configuration.UserNicknameConfiguration
-import com.pawbridge.backend.boot.configuration.UserPasswordConfiguration
 import com.pawbridge.backend.boot.configuration.UserProfileConfiguration
 import com.pawbridge.backend.boot.configuration.UserStoreMyPageConfiguration
 import com.pawbridge.backend.boot.configuration.VisitCollectionConfiguration
@@ -115,14 +110,9 @@ import org.springframework.context.annotation.Import
     PaymentCompensationMetricsConfiguration::class,
     GatewayFeaturesConfiguration::class,
     ShutdownDiagnosticsConfiguration::class,
-    EmailVerificationConfiguration::class,
-    LocalSignupConfiguration::class,
-    PasswordResetConfiguration::class,
     StoreMockPaymentConfiguration::class,
     ShelterDirectoryConfiguration::class,
-    UserPasswordConfiguration::class,
     AnimalImageConfiguration::class,
-    LocalLoginConfiguration::class,
     PaymentConfirmationConfiguration::class,
     StorePaymentEventsConfiguration::class,
     StoreCatalogManagementConfiguration::class,
