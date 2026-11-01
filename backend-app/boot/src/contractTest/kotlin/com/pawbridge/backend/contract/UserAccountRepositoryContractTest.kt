@@ -1,8 +1,11 @@
 package com.pawbridge.backend.contract
 
+import com.pawbridge.backend.user.internal.login.application.LocalLogin.Account
+import com.pawbridge.backend.user.internal.login.infrastructure.JdbcLocalLogin
 import com.pawbridge.backend.user.internal.oauth.application.SocialLoginRejectedException
 import com.pawbridge.backend.user.internal.oauth.infrastructure.JdbcSocialLogin
 import com.pawbridge.backend.user.internal.session.infrastructure.JdbcAuthSessionStore
+import com.pawbridge.backend.user.internal.session.infrastructure.JwtSessionTokens
 import com.pawbridge.backend.user.internal.session.infrastructure.RefreshTokens
 import java.time.LocalDateTime
 import java.util.function.Supplier
@@ -12,15 +15,71 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.dao.IncorrectResultSizeDataAccessException
 
 /**
- * Account repositories called directly: the social login account lookup and creation, and the session it starts.
+ * Account repositories called directly: the local login lookup, and the social login account lookup and creation, and
+ * the session each starts.
  */
 class UserAccountRepositoryContractTest : UserRepositoryContractBase() {
     @Autowired
     private lateinit var store: JdbcAuthSessionStore
 
+    @Autowired
+    private lateinit var tokens: JwtSessionTokens
+
     private val created: LocalDateTime = LocalDateTime.of(2026, 3, 5, 10, 11, 12, 345_678_000)
+
+    // ---- Local login ------------------------------------------------------------------------------------------
+
+    @Test
+    fun `비밀번호가 있는 계정일 때__대소문자 무시 이메일로 찾으면__저장된 계정을 주고 없으면 빈 값이다`() {
+        // given
+        insertUser(9_932_001, email = "Login@Fixture.invalid", password = "ENCODED_LOGIN", role = "ROLE_SHELTER", careRegNo = "CARE-9")
+        val login = JdbcLocalLogin(write, writeTransaction(), tokens, store)
+
+        // when
+        val found = login.findByEmail("login@FIXTURE.invalid")
+        val missing = login.findByEmail("nobody@fixture.invalid")
+
+        // then
+        assertThat(found.get())
+            .isEqualTo(Account(9_932_001, "Login@Fixture.invalid", "이름9932001", "ENCODED_LOGIN", "ROLE_SHELTER", "CARE-9"))
+        assertThat(missing).isEmpty()
+    }
+
+    @Test
+    fun `같은 이메일의 계정이 제공자별로 둘 있을 때__찾으면__하나를 고르지 않고 결과 수 오류를 던진다`() {
+        // given
+        insertUser(9_932_002, email = "both@fixture.invalid", provider = "LOCAL")
+        insertUser(9_932_003, email = "both@fixture.invalid", provider = "GOOGLE", providerId = "g-both", nickname = "소셜닉")
+        val login = JdbcLocalLogin(write, writeTransaction(), tokens, store)
+
+        // when
+        // then
+        assertThatThrownBy { login.findByEmail("both@fixture.invalid") }
+            .isInstanceOf(IncorrectResultSizeDataAccessException::class.java)
+    }
+
+    @Test
+    fun `인증된 계정일 때__로그인을 마무리하면__액세스 토큰을 주고 해시만 저장된 새 세션을 만든다`() {
+        // given
+        insertUser(9_932_004, email = "session@fixture.invalid")
+        val login = JdbcLocalLogin(write, writeTransaction(), tokens, store)
+        val account = login.findByEmail("session@fixture.invalid").get()
+
+        // when
+        val completed = login.complete(account)
+
+        // then
+        assertThat(completed.accessToken).isNotBlank()
+        val refresh = completed.refreshToken!!
+        assertThat(RefreshTokens.wellFormed(refresh.value)).isTrue()
+        assertThat(sessionCount(9_932_004, active = true)).isOne()
+        assertThat(count("SELECT count(*) FROM pawbridge_user.auth_sessions WHERE token_hash = ?", RefreshTokens.hash(refresh.value!!)))
+            .isOne()
+        assertThat(count("SELECT count(*) FROM pawbridge_user.auth_sessions WHERE token_hash = ?", refresh.value)).isZero()
+    }
 
     // ---- Social login -----------------------------------------------------------------------------------------
 
