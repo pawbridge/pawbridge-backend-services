@@ -224,8 +224,8 @@ class SecurityChainHttpTest {
         @JvmStatic
         fun publicRoutes(): List<Route> = SecurityRoutes.routes.filter { it.access == Access.PUBLIC }
 
-        // Email login, signup, verification codes and password reset/change were removed (members sign in with Google
-        // or Naver only); their old addresses must stay closed.
+        // Email signup, verification codes and password reset/change were removed (members sign in with Google or Naver;
+        // email login stays only for existing accounts); their old addresses must stay closed.
         private val retiredEmailRoutes = listOf(
             "POST /api/v1/email/send",
             "POST /api/v1/email/verify",
