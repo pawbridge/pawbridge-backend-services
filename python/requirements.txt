@@ -1,6 +1,8 @@
 fastapi==0.115.0
 uvicorn==0.32.0
 httpx==0.27.0
+# Pillow, numpy, python-multipart: the chatbot does not use them; README "로컬 시험" runs
+# the vision and photo tests in this image.
 Pillow==10.4.0
 numpy==1.26.4
 python-multipart==0.0.12

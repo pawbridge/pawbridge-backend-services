@@ -3,7 +3,7 @@ import os
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from app.settings import CoatColorSettings, GallerySyncSettings, PostgresSettings
+from app.settings import CoatColorSettings, GallerySyncSettings, PostgresSettings, _Settings
 
 INDEX = "animals-lost-dinov3-sam3-eval-v1"
 
@@ -19,6 +19,23 @@ class SettingsTest(unittest.TestCase):
         # The pydantic error holds the input values; it must not be chained into tracebacks.
         self.assertIsNone(raised.exception.__cause__)
         self.assertTrue(raised.exception.__suppress_context__)
+
+    def test_a_model_receives_only_its_own_variables(self):
+        environment = {"GEMINI_API_KEY": "unrelated-secret", "LOST_GALLERY_SYNC_ENABLED": "true",
+                       "LOST_GALLERY_SOURCE_KEY": "feed-secret"}
+        with patch.dict(os.environ, environment, clear=True):
+            with self.assertRaises(RuntimeError) as raised:
+                GallerySyncSettings.load()
+        # Suppressed, but still reachable as __context__ from a debugger or a careless handler.
+        validation_error = raised.exception.__context__
+        self.assertNotIn("unrelated-secret", repr(validation_error.errors()))
+        self.assertNotIn("feed-secret", str(validation_error))
+
+    def test_every_setting_names_its_environment_variable(self):
+        # load() reads only aliases, so a field without one would silently keep its default.
+        for model in _Settings.__subclasses__():
+            for name, field in model.model_fields.items():
+                self.assertTrue(field.alias, f"{model.__name__}.{name}")
 
     def test_leftover_elasticsearch_backend_fails_instead_of_being_ignored(self):
         with patch.dict(os.environ, {"LOST_STORAGE_BACKEND": "elasticsearch"}, clear=True):

@@ -1,7 +1,8 @@
 """Environment settings for every entrypoint, declared in one place.
 
 Each model reads os.environ when loaded, so tests and restarts see the current environment.
-Errors name variables only: values can be DSNs or keys.
+Errors name variables only: values can be DSNs or keys. A model receives only its own variables,
+so a validation error never holds another model's secrets.
 """
 import os
 from typing import Literal
@@ -10,12 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 
 class _Settings(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, hide_input_in_errors=True)
 
     @classmethod
     def load(cls):
+        names = [field.alias or name for name, field in cls.model_fields.items()]
         try:
-            return cls.model_validate(dict(os.environ))
+            return cls.model_validate({name: os.environ[name] for name in names if name in os.environ})
         except ValidationError as error:
             problems = sorted({str(e["loc"][0]) if e["loc"] else e["msg"].removeprefix("Value error, ")
                                for e in error.errors()})

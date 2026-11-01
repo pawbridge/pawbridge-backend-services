@@ -6,6 +6,10 @@ from contextlib import contextmanager
 from app.vision.dinov3 import validate_vector
 from app.gallery.builder import PREFIX, CONTRACT, gallery_mapping
 
+# Animal-region share of the score when both photos have one.
+# Provisional evaluation weight, not a calibrated identity probability.
+ANIMAL_REGION_WEIGHT = 0.7
+
 
 class GalleryUnavailable(RuntimeError):
     pass
@@ -209,7 +213,6 @@ class PostgresqlGalleryStore:
             validate_vector(embedding.animal_vector)
         if limit != 200 or species not in {'DOG', 'CAT'}:
             raise ValueError('Invalid candidate contract')
-        from app.lost_search.service import ANIMAL_REGION_WEIGHT
         # Exact cosine on the eligible snapshot. No ANN truncation or score/feature change.
         with self.connection(read_only=True) as conn:
             head = conn.execute('SELECT b.metadata,b.completed FROM lost_gallery_heads h '
@@ -232,7 +235,6 @@ class PostgresqlGalleryStore:
         """Reuse one published 1024-dim snapshot; filter live availability before top-200."""
         if type(animal_id) is not int or animal_id <= 0 or species not in {'DOG', 'CAT'}:
             raise ValueError('Invalid recommendation source')
-        from app.lost_search.service import ANIMAL_REGION_WEIGHT
         with self.connection(read_only=True) as conn:
             head = conn.execute('SELECT h.build_key,b.metadata,b.completed FROM lost_gallery_heads h '
                 'JOIN lost_gallery_builds b ON b.build_key=h.build_key WHERE h.alias=%s', (alias,)).fetchone()

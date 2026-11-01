@@ -7,8 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 LABEL org.opencontainers.image.source="https://github.com/pawbridge/pawbridge-backend-services" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       com.pawbridge.purpose="photo-service"
-COPY requirements-photo.txt /app/requirements-photo.txt
-RUN pip install --no-cache-dir -r requirements-photo.txt && pip check
+# constraints-photo.txt: every installed package, pinned to the image running on 2026-11-01 (pip freeze).
+# packaging comes from the digest-pinned base image.
+COPY requirements-photo.txt constraints-photo.txt /app/
+RUN pip install --no-cache-dir -c constraints-photo.txt -r requirements-photo.txt && pip check
 COPY app /app/app
 USER 65532:65532
 EXPOSE 8000

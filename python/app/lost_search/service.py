@@ -13,8 +13,6 @@ MAX_PIXELS = 16_000_000
 CANDIDATE_POOL = 200
 MAX_RESULTS = 20
 AUXILIARY_BOOST = 0.01
-# Provisional evaluation weight, not a calibrated identity probability.
-ANIMAL_REGION_WEIGHT = 0.7
 ACTIVE_STATUSES = ("NOTICE", "PROTECT")
 RESOLVED_STATUSES = ("ADOPTED", "RETURNED")
 
