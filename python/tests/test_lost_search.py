@@ -209,8 +209,7 @@ class RetrievalContractTest(unittest.TestCase):
     def test_animal_channel_is_only_combined_when_the_gallery_document_has_it(self):
         from unittest.mock import MagicMock
         from types import SimpleNamespace
-        from app.lost_search.service import ANIMAL_REGION_WEIGHT
-        from app.gallery.pg_store import PostgresqlGalleryStore
+        from app.gallery.pg_store import ANIMAL_REGION_WEIGHT, PostgresqlGalleryStore
         connection = MagicMock()
         connection.execute.return_value.fetchone.return_value = ({"model_version": "dual-v2"}, True)
         connection.execute.return_value.fetchall.return_value = []

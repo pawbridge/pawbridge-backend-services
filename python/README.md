@@ -13,7 +13,7 @@ PawBridge 백엔드(`backend-app`)가 내부 API로 부르는 Python 서비스 �
 | `app.entrypoints.photo_api:app` | APMS 사진 압축(`POST /internal/photos/optimize`), [계약](PHOTO_SERVICE.md) | 컨테이너 `pawbridge-prod-photo` |
 | `app.entrypoints.gallery_cli` | 스냅샷과 로컬 사진으로 갤러리를 수동 생성하는 명령줄 도구 | 필요할 때만 수동 실행 |
 
-`app.entrypoints.chatbot_api`에도 실종동물 검색 경로가 등록돼 있지만, 운영에서는 백엔드가 이 요청을 네이티브 프로세스로 보낸다. 모든 내부 API는 `X-Internal-Api-Key`를 확인한다.
+모든 내부 API는 `X-Internal-Api-Key`를 확인한다.
 
 ```
 app/
