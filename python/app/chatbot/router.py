@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from app.chatbot.service import ChatbotService
+from app.internal_auth import require_internal_key
 
 router = APIRouter()
 
@@ -56,16 +57,10 @@ class ChatbotMessageResponse(BaseModel):
     provider: str
 
 
-def verify_internal_api_key(
-    x_internal_api_key: str | None = Header(default=None, alias="X-Internal-Api-Key"),
-) -> None:
-    ChatbotService.verify_internal_api_key(x_internal_api_key)
-
-
 @router.post(
     "/messages",
     response_model=ChatbotMessageResponse,
-    dependencies=[Depends(verify_internal_api_key)],
+    dependencies=[Depends(require_internal_key)],
 )
 async def create_chatbot_message(req: ChatbotMessageRequest):
     try:

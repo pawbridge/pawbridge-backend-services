@@ -1,36 +1,26 @@
 """Separate CPU process: uvicorn app.entrypoints.photo_api:app --workers 1."""
 
 import asyncio
-import hmac
 
 import anyio
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
+from app.internal_auth import require_internal_key, require_key_at_startup
 from app.photo.optimizer import InvalidPhoto, MAX_INPUT_BYTES, PhotoTooLarge, optimize_photo
-from app.settings import InternalApiSettings
 
 BODY_TIMEOUT_SECONDS = 15
 
 
-def authenticate(x_internal_api_key: str | None = Header(None)):
-    expected = InternalApiSettings.load().key
-    if not expected:
-        raise HTTPException(503, "Photo service is not configured")
-    if not x_internal_api_key or not hmac.compare_digest(
-        x_internal_api_key.encode(), expected.encode()
-    ):
-        raise HTTPException(401, "Authentication required")
-
-
 def create_app() -> FastAPI:
-    app = FastAPI(title="PawBridge Photo Optimizer", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="PawBridge Photo Optimizer", lifespan=require_key_at_startup,
+                  docs_url=None, redoc_url=None, openapi_url=None)
     gate = anyio.Semaphore(1)
 
     @app.get("/health")
     async def health():
         return {"status": "ok"}
 
-    @app.post("/internal/photos/optimize", dependencies=[Depends(authenticate)])
+    @app.post("/internal/photos/optimize", dependencies=[Depends(require_internal_key)])
     async def optimize(request: Request):
         try:
             gate.acquire_nowait()
