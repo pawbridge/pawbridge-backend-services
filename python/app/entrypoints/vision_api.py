@@ -3,9 +3,10 @@ from contextlib import asynccontextmanager, nullcontext
 import anyio
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from app.internal_auth import require_configured_key
 from app.lost_search.router import router
 from app.recommendation.router import router as recommendation_router
-from app.settings import GallerySyncSettings, InternalApiSettings, PostgresSettings
+from app.settings import GallerySyncSettings, PostgresSettings
 from app.vision.dinov3 import get_encoder, gallery_index, visual_profile
 
 
@@ -19,8 +20,7 @@ def validate_focus_gallery(encoder):
 @asynccontextmanager
 async def lifespan(app):
     # Validate every setting before loading weights, so a missing value stops startup.
-    if not InternalApiSettings.load().key:
-        raise RuntimeError("Internal authentication must be configured")
+    require_configured_key()
     gallery_index()
     PostgresSettings.load()
     sync = GallerySyncSettings.load()

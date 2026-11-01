@@ -3,6 +3,7 @@ package com.pawbridge.backend.store.internal.orderadministration.web
 import com.pawbridge.backend.store.internal.directorder.infrastructure.PostgresqlRollbackCharsetViolation
 import com.pawbridge.backend.store.internal.orderadministration.application.AdminOrderNotFoundException
 import com.pawbridge.backend.store.internal.orderadministration.application.AdministratorRejectedException
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticationException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -25,21 +26,21 @@ class AdminOrderExceptionHandler {
 
     @ExceptionHandler(AdministratorRejectedException::class)
     fun role(failure: AdministratorRejectedException): ResponseEntity<Error> =
-        ResponseEntity.status(403).body(Error("Access is Denied", "C006", listOf()))
+        ResponseEntity.status(403).body(Error(StoreErrorMessages.ACCESS_DENIED, "C006", listOf()))
 
     @ExceptionHandler(AdminOrderNotFoundException::class)
     fun missing(failure: AdminOrderNotFoundException): ResponseEntity<Error> =
-        ResponseEntity.status(404).body(Error("Order not found", "O001", listOf()))
+        ResponseEntity.status(404).body(Error(StoreErrorMessages.ORDER_NOT_FOUND, "O001", listOf()))
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun invalid(failure: IllegalArgumentException): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun type(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -57,6 +58,6 @@ class AdminOrderExceptionHandler {
             return ResponseEntity.badRequest()
                 .body(Error(PostgresqlRollbackCharsetViolation.MESSAGE, "C007", listOf()))
         }
-        return ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        return ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
     }
 }

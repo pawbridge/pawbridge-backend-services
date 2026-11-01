@@ -219,7 +219,7 @@ class StorePathVariableRegressionTest {
             assertThat(result.response.status).isEqualTo(400)
             assertThat(result.response.getContentAsString(StandardCharsets.UTF_8))
                 .isEqualTo(
-                    "{\"message\":\"Invalid Type Value\",\"code\":\"C005\"," +
+                    "{\"message\":\"요청 값의 형식이 올바르지 않습니다.\",\"code\":\"C005\"," +
                         "\"errors\":[{\"field\":\"$variable\",\"value\":\"\",\"reason\":\"typeMismatch\"}]}",
                 )
             assertThat(result.resolvedException).isInstanceOf(MissingPathVariableException::class.java)

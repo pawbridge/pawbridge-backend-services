@@ -193,6 +193,7 @@ class CartControllerTest {
         failure: RuntimeException,
         statusCode: Int,
         code: String,
+        message: String,
     ) {
         // given
         current(7L)
@@ -202,6 +203,7 @@ class CartControllerTest {
         // when
         val body = mvc.perform(request("add")).andExpect(status().`is`(statusCode))
             .andExpect(jsonPath("\$.code").value(code))
+            .andExpect(jsonPath("\$.message").value(message))
             .andExpect(jsonPath("\$.errors").isEmpty()).andReturn().response.contentAsString
 
         // then
@@ -241,10 +243,10 @@ class CartControllerTest {
 
         @JvmStatic
         fun failures(): Stream<Arguments> = Stream.of(
-            Arguments.of(CartActorRejectedException(), 403, "C006"),
-            Arguments.of(IllegalArgumentException("private overflow"), 400, "C001"),
-            Arguments.of(DataAccessResourceFailureException("private SQL"), 500, "C004"),
-            Arguments.of(TransactionSystemException("private commit"), 500, "C004"),
+            Arguments.of(CartActorRejectedException(), 403, "C006", "접근 권한이 없습니다."),
+            Arguments.of(IllegalArgumentException("private overflow"), 400, "C001", "입력값이 올바르지 않습니다."),
+            Arguments.of(DataAccessResourceFailureException("private SQL"), 500, "C004", "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."),
+            Arguments.of(TransactionSystemException("private commit"), 500, "C004", "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."),
         )
     }
 }

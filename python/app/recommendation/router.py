@@ -1,7 +1,7 @@
 import logging
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
-from app.lost_search.router import authenticate
+from app.internal_auth import require_internal_key
 from app.recommendation.service import recommend_animals
 from app.gallery.pg_store import RecommendationGalleryUnavailable, RecommendationSourceUnavailable
 
@@ -9,7 +9,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get('/{animal_id}/similar', response_model=list[int], dependencies=[Depends(authenticate)])
+@router.get('/{animal_id}/similar', response_model=list[int], dependencies=[Depends(require_internal_key)])
 def similar_animals(request: Request, species: Literal['DOG', 'CAT'], animal_id: int = Path(gt=0)):
     refresh = getattr(request.app.state, 'gallery_refresh', None)
     if refresh is not None and not refresh.ready:

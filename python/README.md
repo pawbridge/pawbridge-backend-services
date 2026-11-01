@@ -13,7 +13,7 @@ PawBridge 백엔드(`backend-app`)가 내부 API로 부르는 Python 서비스 �
 | `app.entrypoints.photo_api:app` | APMS 사진 압축(`POST /internal/photos/optimize`), [계약](PHOTO_SERVICE.md) | 컨테이너 `pawbridge-prod-photo` |
 | `app.entrypoints.gallery_cli` | 스냅샷과 로컬 사진으로 갤러리를 수동 생성하는 명령줄 도구 | 필요할 때만 수동 실행 |
 
-`app.entrypoints.chatbot_api`에도 실종동물 검색 경로가 등록돼 있지만, 운영에서는 백엔드가 이 요청을 네이티브 프로세스로 보낸다. 모든 내부 API는 `X-Internal-Api-Key`를 확인한다.
+모든 내부 API는 `X-Internal-Api-Key`를 확인한다.
 
 ```
 app/
@@ -99,7 +99,7 @@ docker run --rm --network none --read-only --tmpfs /tmp -e PYTHONDONTWRITEBYTECO
    docker build --pull=false --build-arg GIT_SHA=$(git rev-parse HEAD) -f python/Dockerfile -t pawbridge-mac-python:$(git rev-parse --short=7 HEAD) python
    docker build --pull=false --build-arg GIT_SHA=$(git rev-parse HEAD) -f python/Dockerfile.photo -t pawbridge-mac-photo:$(git rev-parse --short=7 HEAD) python
    ```
-   두 Dockerfile은 운영 중인 이미지와 같은 레시피다(기반 Python 이미지 digest 고정, `pip check`, 컨테이너 사용자 고정). 2026-10-27까지는 인프라 저장소의 `environments/mac/images/`에 있었다. 바뀐 서비스만 빌드한다. 빌드는 Python 패키지를 내려받는다. Docker Desktop 자격 증명 도우미를 못 찾으면 `PATH`에 `$HOME/.docker/bin`을 더한다.
+   두 Dockerfile은 운영 중인 이미지와 같은 레시피다(기반 Python 이미지 digest 고정, 설치 패키지 전체를 `constraints.txt`·`constraints-photo.txt`로 고정, `pip check`, 컨테이너 사용자 고정). 의존성을 바꾸면 새 이미지의 `pip freeze`로 해당 constraints 파일도 갱신한다. 2026-10-27까지는 인프라 저장소의 `environments/mac/images/`에 있었다. 바뀐 서비스만 빌드한다. 빌드는 Python 패키지를 내려받는다. Docker Desktop 자격 증명 도우미를 못 찾으면 `PATH`에 `$HOME/.docker/bin`을 더한다.
 3. **새 이미지로 시험한다.** 위 "로컬 시험" 명령의 이미지 자리에 새 `pawbridge-mac-python` 태그를 넣어 실행한다.
 4. **교체한다.** 운영 compose 폴더([`deploy/compose`](../deploy/compose/README.md))에서 `compose.env`를 날짜 붙은 이름으로 백업하고, `PYTHON_API_IMAGE` 또는 `PHOTO_IMAGE` 한 줄만 새 이미지 ID(`docker image inspect <태그> --format '{{.Id}}'`)로 바꾼 뒤 그 서비스만 다시 만든다. 실행 명령은 이미지 CMD를 따른다.
    ```bash

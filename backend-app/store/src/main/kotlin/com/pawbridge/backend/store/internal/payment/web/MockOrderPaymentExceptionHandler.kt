@@ -1,5 +1,6 @@
 package com.pawbridge.backend.store.internal.payment.web
 
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MissingPathVariableException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -18,13 +19,13 @@ class MockOrderPaymentExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun invalid(failure: IllegalArgumentException): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun typeMismatch(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -40,7 +41,7 @@ class MockOrderPaymentExceptionHandler {
     fun missingPathVariable(failure: MissingPathVariableException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 // A blank segment is converted to null, so the value is empty like the type-mismatch body.
                 listOf(FieldError(failure.variableName, "", "typeMismatch")),
@@ -49,5 +50,5 @@ class MockOrderPaymentExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun unexpected(failure: Exception): ResponseEntity<Error> =
-        ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
 }

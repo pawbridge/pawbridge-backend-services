@@ -68,7 +68,7 @@ class PathVariableHttpTest {
         // then
         val json = ObjectMapper().readTree(result.contentAsByteArray)
         assertThat(result.status).isEqualTo(400)
-        assertThat(json.path("message").asText()).isEqualTo("Invalid Type Value")
+        assertThat(json.path("message").asText()).isEqualTo("요청 값의 형식이 올바르지 않습니다.")
         assertThat(json.path("code").asText()).isEqualTo("C005")
         assertThat(json.path("errors").get(0).path("field").asText()).isEqualTo("orderId")
         assertThat(json.path("errors").get(0).path("value").asText()).isEqualTo("abc")

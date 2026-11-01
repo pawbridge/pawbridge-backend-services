@@ -252,6 +252,7 @@ class CatalogManagementControllerTest {
             .andExpect(jsonPath("\$.code").value("C004"))
         mistyped.andExpect(status().isBadRequest())
             .andExpect(jsonPath("\$.code").value("C005"))
+            .andExpect(jsonPath("\$.message").value("요청 값의 형식이 올바르지 않습니다."))
     }
 
     @Test
@@ -269,8 +270,10 @@ class CatalogManagementControllerTest {
         // then
         created.andExpect(status().isBadRequest())
             .andExpect(jsonPath("\$.code").value("C001"))
+            .andExpect(jsonPath("\$.message").value("입력값이 올바르지 않습니다."))
             .andExpect(jsonPath("\$.errors").isEmpty())
         deleted.andExpect(status().isInternalServerError())
             .andExpect(jsonPath("\$.code").value("C004"))
+            .andExpect(jsonPath("\$.message").value("서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."))
     }
 }

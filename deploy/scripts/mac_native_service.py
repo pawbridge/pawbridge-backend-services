@@ -38,15 +38,31 @@ def validate(env):
             raise ValueError('Local model checkpoint missing')
 
 
+def source_digests(source):
+    # Every file, not only .py: the SAM3 patch check below trusts deploy/macos/sam3-manifest.json.
+    files = sorted(p for p in Path(source).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+    return {str(p.relative_to(source)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+
+
 def source_check(source, receipt):
     manifest = json.loads(Path(receipt).read_text())
-    files = sorted(p for p in Path(source).rglob('*') if p.is_file() and p.suffix == '.py' and '__pycache__' not in p.parts)
-    actual = {str(p.relative_to(source)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
-    if actual != manifest['python_files']:
+    actual = source_digests(source)
+    if 'files' in manifest:
+        expected = manifest['files']
+    else:
+        # Receipts written before 2026-11 list only .py files; accepted so older sources still roll back.
+        print('Legacy native source receipt: only .py files verified', file=sys.stderr)
+        actual = {name: digest for name, digest in actual.items() if name.endswith('.py')}
+        expected = manifest['python_files']
+    if actual != expected:
         raise ValueError('Native source differs from approved receipt')
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == '--receipt':
+        # Write the receipt with the same rule the check uses: --receipt <extracted source> > receipt.json
+        print(json.dumps({'files': source_digests(Path(sys.argv[2]).resolve())}, indent=2, sort_keys=True))
+        return
     if len(sys.argv) != 2:
         raise ValueError('Private native environment JSON path required')
     config = Path(sys.argv[1])

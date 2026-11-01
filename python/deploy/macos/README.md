@@ -64,6 +64,16 @@ PG·내부 API 인증과 모델·갤러리 경로는 저장소 밖의 제한된 
 루프백·단일 모델 프로세스로 시작한다. 실제 기동·중지·갤러리 게시와 별칭 전환은
 별도의 운영 배포 절차를 따른다.
 
+실행기는 시작할 때 소스 폴더의 모든 파일(`__pycache__` 제외)을 승인된 receipt와 대조한다.
+receipt는 `main` 커밋을 `git archive`로 새 소스 폴더에 푼 뒤 같은 규칙으로 만든다.
+
+```sh
+python deploy/scripts/mac_native_service.py --receipt /absolute/path/to/new-source > native-source-receipt-<sha>.json
+```
+
+`.py` 파일만 담긴 이전 receipt(`python_files`)도 롤백을 위해 받아들이지만, 이때는
+`sam3-manifest.json` 같은 비 Python 파일을 검사하지 않는다.
+
 빠른 회귀 검증 예시:
 
 ```sh

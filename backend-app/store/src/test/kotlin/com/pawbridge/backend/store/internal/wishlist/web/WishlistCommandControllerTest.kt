@@ -207,7 +207,7 @@ class WishlistCommandControllerTest {
         // when
         val body = mvc.perform(delete("/api/v1/wishlists/33")).andExpect(status().isInternalServerError())
             .andExpect(jsonPath("\$.code").value("C004"))
-            .andExpect(jsonPath("\$.message").value("Server Error"))
+            .andExpect(jsonPath("\$.message").value("서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."))
             .andReturn().response.contentAsString
 
         // then
@@ -234,7 +234,7 @@ class WishlistCommandControllerTest {
             .andExpect(status().`is`(statusCode))
             .andExpect(jsonPath("\$.code").value(code))
             .andExpect(jsonPath("\$.errors").isEmpty())
-            .andExpect(jsonPath("\$.message").value(if (statusCode == 400) "Invalid Input Value" else "Server Error"))
+            .andExpect(jsonPath("\$.message").value(if (statusCode == 400) "입력값이 올바르지 않습니다." else "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."))
     }
 
     @Test

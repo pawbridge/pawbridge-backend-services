@@ -221,23 +221,23 @@ class StoreCatalogControllerTest {
     companion object {
         @JvmStatic
         fun errors(): Stream<Arguments> = Stream.of(
-            Arguments.of("/api/v1/products", IllegalArgumentException("private validation"), 400, "C001", "Invalid Input Value"),
-            Arguments.of("/api/v1/products/9", IllegalArgumentException("Product not found: 9"), 400, "C001", "Invalid Input Value"),
+            Arguments.of("/api/v1/products", IllegalArgumentException("private validation"), 400, "C001", "입력값이 올바르지 않습니다."),
+            Arguments.of("/api/v1/products/9", IllegalArgumentException("Product not found: 9"), 400, "C001", "입력값이 올바르지 않습니다."),
             Arguments.of(
                 "/api/v1/option-groups/9",
                 IllegalArgumentException("옵션 그룹을 찾을 수 없습니다: 9"),
                 400,
                 "C001",
-                "Invalid Input Value",
+                "입력값이 올바르지 않습니다.",
             ),
             Arguments.of(
                 "/api/v1/products",
                 CatalogSearchUnavailableException(RuntimeException("private SQL")),
                 503,
                 "P006",
-                "Search temporarily unavailable",
+                "검색 서비스를 준비 중입니다. 잠시 후 다시 시도해 주세요.",
             ),
-            Arguments.of("/api/v1/products/9", DataAccessResourceFailureException("private SQL"), 500, "C004", "Server Error"),
+            Arguments.of("/api/v1/products/9", DataAccessResourceFailureException("private SQL"), 500, "C004", "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."),
         )
 
         @JvmStatic

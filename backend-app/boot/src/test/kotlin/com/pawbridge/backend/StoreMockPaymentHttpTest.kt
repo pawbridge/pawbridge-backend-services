@@ -84,7 +84,7 @@ class StoreMockPaymentHttpTest {
                 .andReturn().response.contentAsByteArray,
         )
         verify(exactly = 1) { payments.processPayment(41L) }
-        assertThat(json.path("message").asText()).isEqualTo("Invalid Input Value")
+        assertThat(json.path("message").asText()).isEqualTo("입력값이 올바르지 않습니다.")
         assertThat(json.path("code").asText()).isEqualTo("C001")
         assertThat(json.path("errors").isArray).isTrue()
         assertThat(json.path("errors")).isEmpty()
@@ -114,7 +114,7 @@ class StoreMockPaymentHttpTest {
                 .andReturn().response.contentAsByteArray,
         )
         verify(exactly = 1) { payments.processPayment(41L) }
-        assertThat(json.path("message").asText()).isEqualTo("Server Error")
+        assertThat(json.path("message").asText()).isEqualTo("서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         assertThat(json.path("code").asText()).isEqualTo("C004")
         assertThat(json.toString()).doesNotContain("PENDING").doesNotContain("publish")
     }

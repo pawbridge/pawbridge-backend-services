@@ -223,9 +223,9 @@ class OrderReadControllerTest {
     companion object {
         @JvmStatic
         fun failures(): Stream<Arguments> = Stream.of(
-            Arguments.of(OrderActorRejectedException(), 403, "C006", "Access is Denied"),
-            Arguments.of(IllegalArgumentException("private query and account"), 400, "C001", "Invalid Input Value"),
-            Arguments.of(DataAccessResourceFailureException("private query and account"), 500, "C004", "Server Error"),
+            Arguments.of(OrderActorRejectedException(), 403, "C006", "접근 권한이 없습니다."),
+            Arguments.of(IllegalArgumentException("private query and account"), 400, "C001", "입력값이 올바르지 않습니다."),
+            Arguments.of(DataAccessResourceFailureException("private query and account"), 500, "C004", "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."),
         )
     }
 }

@@ -2,6 +2,7 @@ package com.pawbridge.backend.store.internal.directorder.web
 
 import com.pawbridge.backend.store.internal.directorder.application.OrderActorRejectedException
 import com.pawbridge.backend.store.internal.directorder.infrastructure.PostgresqlRollbackCharsetViolation
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticationException
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -31,17 +32,17 @@ class DirectOrderExceptionHandler {
 
     @ExceptionHandler(OrderActorRejectedException::class)
     fun actorRejected(failure: OrderActorRejectedException): ResponseEntity<Error> =
-        ResponseEntity.status(403).body(Error("Access is Denied", "C006", listOf()))
+        ResponseEntity.status(403).body(Error(StoreErrorMessages.ACCESS_DENIED, "C006", listOf()))
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun invalid(failure: IllegalArgumentException): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun validation(failure: MethodArgumentNotValidException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Input Value",
+                StoreErrorMessages.INVALID_INPUT,
                 "C001",
                 failure.bindingResult.fieldErrors.map { error ->
                     FieldError(
@@ -57,7 +58,7 @@ class DirectOrderExceptionHandler {
     fun typeMismatch(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -75,6 +76,6 @@ class DirectOrderExceptionHandler {
             return ResponseEntity.badRequest()
                 .body(Error(PostgresqlRollbackCharsetViolation.MESSAGE, "C007", listOf()))
         }
-        return ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        return ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
     }
 }

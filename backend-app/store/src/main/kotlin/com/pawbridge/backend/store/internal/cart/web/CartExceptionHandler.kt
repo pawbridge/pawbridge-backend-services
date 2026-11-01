@@ -2,6 +2,7 @@ package com.pawbridge.backend.store.internal.cart.web
 
 import com.pawbridge.backend.store.internal.cart.application.CartActorRejectedException
 import com.pawbridge.backend.store.internal.directorder.infrastructure.PostgresqlRollbackCharsetViolation
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.core.AuthenticationException
@@ -26,7 +27,7 @@ class CartExceptionHandler {
 
     @ExceptionHandler(CartActorRejectedException::class)
     fun actor(failure: CartActorRejectedException): ResponseEntity<Error> =
-        ResponseEntity.status(403).body(Error("Access is Denied", "C006", listOf()))
+        ResponseEntity.status(403).body(Error(StoreErrorMessages.ACCESS_DENIED, "C006", listOf()))
 
     @ExceptionHandler(
         IllegalArgumentException::class,
@@ -34,13 +35,13 @@ class CartExceptionHandler {
         MissingServletRequestParameterException::class,
     )
     fun invalid(failure: Exception): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun type(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -58,6 +59,6 @@ class CartExceptionHandler {
             return ResponseEntity.badRequest()
                 .body(Error(PostgresqlRollbackCharsetViolation.MESSAGE, "C007", listOf()))
         }
-        return ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        return ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
     }
 }

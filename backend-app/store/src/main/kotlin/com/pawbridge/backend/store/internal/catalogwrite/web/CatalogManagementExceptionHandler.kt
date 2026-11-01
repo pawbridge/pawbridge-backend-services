@@ -1,6 +1,7 @@
 package com.pawbridge.backend.store.internal.catalogwrite.web
 
 import com.pawbridge.backend.store.internal.directorder.infrastructure.PostgresqlRollbackCharsetViolation
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MissingPathVariableException
@@ -27,13 +28,13 @@ class CatalogManagementExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun invalid(failure: IllegalArgumentException): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun typeMismatch(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -49,7 +50,7 @@ class CatalogManagementExceptionHandler {
     fun missingPathVariable(failure: MissingPathVariableException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 // A blank segment is converted to null, so the value is empty like the type-mismatch body.
                 listOf(FieldError(failure.variableName, "", "typeMismatch")),
@@ -58,7 +59,7 @@ class CatalogManagementExceptionHandler {
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
     fun method(failure: HttpRequestMethodNotSupportedException): ResponseEntity<Error> =
-        ResponseEntity.status(405).body(Error("Method Not Allowed", "C002", listOf()))
+        ResponseEntity.status(405).body(Error(StoreErrorMessages.METHOD_NOT_ALLOWED, "C002", listOf()))
 
     @ExceptionHandler(Exception::class)
     fun unexpected(failure: Exception): ResponseEntity<Error> {
@@ -66,6 +67,6 @@ class CatalogManagementExceptionHandler {
             return ResponseEntity.badRequest()
                 .body(Error(PostgresqlRollbackCharsetViolation.MESSAGE, "C007", listOf()))
         }
-        return ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        return ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
     }
 }

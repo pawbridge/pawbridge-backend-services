@@ -226,7 +226,7 @@ class AdminOrderControllerTest {
         // then
         readResult.andExpect(status().isNotFound())
             .andExpect(jsonPath("\$.code").value("O001"))
-            .andExpect(jsonPath("\$.message").value("Order not found"))
+            .andExpect(jsonPath("\$.message").value("주문을 찾을 수 없습니다."))
         writeResult.andExpect(status().isBadRequest()).andExpect(jsonPath("\$.code").value("C001"))
         statusResult.andExpect(status().isBadRequest()).andExpect(jsonPath("\$.code").value("C001"))
     }

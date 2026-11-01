@@ -1,5 +1,6 @@
 package com.pawbridge.backend.store.internal.wishlist.web
 
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticationException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -21,13 +22,13 @@ class WishlistCommandExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun invalid(failure: IllegalArgumentException): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun typeMismatch(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -41,5 +42,5 @@ class WishlistCommandExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun serverError(failure: Exception): ResponseEntity<Error> =
-        ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
 }

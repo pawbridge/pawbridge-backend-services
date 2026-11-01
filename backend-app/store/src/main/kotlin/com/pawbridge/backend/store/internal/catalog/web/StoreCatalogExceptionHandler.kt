@@ -1,6 +1,7 @@
 package com.pawbridge.backend.store.internal.catalog.web
 
 import com.pawbridge.backend.store.internal.catalog.application.CatalogSearchUnavailableException
+import com.pawbridge.backend.store.internal.web.StoreErrorMessages
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -17,13 +18,13 @@ class StoreCatalogExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun invalid(failure: IllegalArgumentException): ResponseEntity<Error> =
-        ResponseEntity.badRequest().body(Error("Invalid Input Value", "C001", listOf()))
+        ResponseEntity.badRequest().body(Error(StoreErrorMessages.INVALID_INPUT, "C001", listOf()))
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun wrongType(failure: MethodArgumentTypeMismatchException): ResponseEntity<Error> =
         ResponseEntity.badRequest().body(
             Error(
-                "Invalid Type Value",
+                StoreErrorMessages.INVALID_TYPE,
                 "C005",
                 listOf(
                     FieldError(
@@ -37,9 +38,9 @@ class StoreCatalogExceptionHandler {
 
     @ExceptionHandler(CatalogSearchUnavailableException::class)
     fun searchUnavailable(failure: CatalogSearchUnavailableException): ResponseEntity<Error> =
-        ResponseEntity.status(503).body(Error("Search temporarily unavailable", "P006", listOf()))
+        ResponseEntity.status(503).body(Error(failure.message, "P006", listOf()))
 
     @ExceptionHandler(Exception::class)
     fun serverError(failure: Exception): ResponseEntity<Error> =
-        ResponseEntity.internalServerError().body(Error("Server Error", "C004", listOf()))
+        ResponseEntity.internalServerError().body(Error(StoreErrorMessages.SERVER_ERROR, "C004", listOf()))
 }
