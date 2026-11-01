@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from app.chatbot import router as chatbot
 from app.internal_auth import require_key_at_startup
-from app.lost_search import router as lost_search
 
 app = FastAPI(
     title="Pawbridge AI Service",
@@ -10,8 +9,7 @@ app = FastAPI(
     lifespan=require_key_at_startup,
 )
 
-# The authenticated recommendation route lives in app.entrypoints.vision_api, beside DINOv3.
-app.include_router(lost_search.router, prefix="/internal/animals", tags=["lost-search"])
+# Lost search and recommendations live in app.entrypoints.vision_api, beside DINOv3.
 app.include_router(chatbot.router, prefix="/internal/chatbot", tags=["chatbot"])
 
 
