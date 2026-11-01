@@ -8,6 +8,12 @@ from app.vision.animal_focus import FocusResult, prepare_focus, square_image
 
 CHECKPOINT_SHA256 = "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e"
 FOCUS_VERSION = "dinov3-large-sam39999e234-dual-pad256-v1"
+# CLS-token vectors are not comparable with patch-average ones, so their galleries carry another version.
+FOCUS_VERSION_CLS = "dinov3-large-sam39999e234-dual-pad256-cls-v1"
+
+
+def focus_version():
+    return FOCUS_VERSION_CLS if VisionSettings.load().pooling == "token" else FOCUS_VERSION
 
 
 def load_mapped_checkpoint(model, checkpoint_path):

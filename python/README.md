@@ -36,6 +36,7 @@ tests/                  # unittest. tests/integration은 PostgreSQL이 필요한
 | --- | --- | --- |
 | `LOST_SEARCH_VISUAL_PROFILE` | `sam3-animal-focus` | SAM 3로 동물 영역을 찾고 DINOv3로 벡터를 만든다. PostgreSQL 갤러리는 이 프로필만 지원한다 |
 | `LOST_SEARCH_DEVICE` | `mps` | `cuda` 또는 `mps`. CPU로 자동 대체하지 않는다 |
+| `LOST_SEARCH_POOLING` | `avg` | DINOv3 벡터 방식. `avg`(패치 평균) 또는 `token`(CLS). `token`은 갤러리 버전이 달라 전용 갤러리(`LOST_SEARCH_INDEX`)를 따로 만들어야 한다 |
 | `LOST_STORAGE_BACKEND` | `postgresql` | 생략하면 `postgresql`. 다른 값이면 시작하지 않는다(Elasticsearch 저장소는 제거됨) |
 | `LOST_PG_DSN`, `LOST_PG_POOL_MAX_SIZE` | 비밀 저장소 | 갤러리 표에 접속한다. 연결 수는 1~4 |
 | `LOST_GALLERY_SYNC_ENABLED`, `LOST_GALLERY_PROTOCOL` | `true`, `v2` | 프로세스 안에서 갤러리를 주기적으로 갱신한다 |

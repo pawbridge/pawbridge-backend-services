@@ -274,8 +274,8 @@ class PostgresqlGalleryStore:
                 row = conn.execute('SELECT metadata FROM lost_gallery_builds WHERE build_key=%s FOR UPDATE', (target,)).fetchone()
                 if not row:
                     return True
-                from app.vision.sam3_focus import FOCUS_VERSION
-                if row[0].get('contract') != CONTRACT or row[0].get('model_version') != FOCUS_VERSION:
+                from app.vision.sam3_focus import focus_version
+                if row[0].get('contract') != CONTRACT or row[0].get('model_version') != focus_version():
                     raise RuntimeError('Refusing to delete an unowned gallery')
                 # Recheck all aliases while publication is excluded for this page.
                 if conn.execute('SELECT 1 FROM lost_gallery_heads WHERE build_key=%s', (target,)).fetchone():
