@@ -98,6 +98,43 @@ class Sam3Focus:
         self.processor = Sam3Processor(self.model, device=self.device, confidence_threshold=0.5)
         self._species_text = {}
 
+    # MPS는 dtype 변환과 비교 연산을 텐서 모양마다 그래프로 컴파일해 프로세스가
+    # 끝날 때까지 보관한다. 사진 크기가 수천 가지라 프로세서의 set_image/
+    # _forward_grounding을 그대로 쓰면 갤러리 빌드 동안 수 GB가 쌓인다. 리사이즈·
+    # 보간·복사는 그래프 없이 Metal 커널로 돌므로 변환과 임계값 비교만 CPU로 옮긴다.
+    # 결과 값은 고정된 프로세서 경로와 비트 단위로 같다.
+
+    def _set_image(self, image):
+        import torch
+        from torchvision.transforms import v2
+        if self.model.inst_interactive_predictor is not None:
+            raise RuntimeError("SAM 3 focus expects the image-only model")
+        width, height = image.size
+        pixels = v2.functional.to_image(image).to(torch.float32).to(self.device)
+        pixels = v2.functional.resize(pixels, [self.processor.resolution] * 2, antialias=True)
+        pixels = pixels.round_().to(torch.uint8)  # torchvision이 uint8 입력에 하는 마무리와 같음
+        pixels = self.processor.transform(pixels).unsqueeze(0)
+        return {"original_height": height, "original_width": width,
+                "backbone_out": self.model.backbone.forward_image(pixels)}
+
+    def _forward_grounding(self, state):
+        import torch
+        from sam3.model import box_ops
+        from sam3.model.data_misc import interpolate
+        outputs = self.model.forward_grounding(backbone_out=state["backbone_out"],
+                                               find_input=self.processor.find_stage,
+                                               geometric_prompt=state["geometric_prompt"],
+                                               find_target=None)
+        presence = outputs["presence_logit_dec"].sigmoid().unsqueeze(1)
+        scores = (outputs["pred_logits"].sigmoid() * presence).squeeze(-1)
+        keep = scores > self.processor.confidence_threshold
+        height, width = state["original_height"], state["original_width"]
+        scale = torch.tensor([width, height, width, height]).to(self.processor.device)
+        boxes = box_ops.box_cxcywh_to_xyxy(outputs["pred_boxes"][keep]) * scale[None, :]
+        masks = interpolate(outputs["pred_masks"][keep].unsqueeze(1), (height, width),
+                            mode="bilinear", align_corners=False).sigmoid()
+        return {"boxes": boxes, "scores": scores[keep], "masks": masks.cpu() > 0.5}
+
     def _set_species_prompt(self, state, species):
         # Same pinned processor path as set_text_prompt, except for the two fixed
         # text-only outputs. The encoder gate serializes use of this model.
@@ -113,7 +150,7 @@ class Sam3Focus:
         state["backbone_out"].update({key: value.clone() for key, value in self._species_text[species].items()})
         if "geometric_prompt" not in state:
             state["geometric_prompt"] = self.model._get_dummy_prompt()
-        return self.processor._forward_grounding(state)
+        return self._forward_grounding(state)
 
     def prepare(self, image, species, *, prepared_image=None):
         import torch
@@ -127,7 +164,7 @@ class Sam3Focus:
             elif working.mode != "RGB" or max(working.size) > 1024:
                 raise ValueError("Prepared SAM 3 image must be bounded RGB")
             with torch.inference_mode(), torch.autocast(self.device, dtype=torch.bfloat16):
-                state = self.processor.set_image(working)
+                state = self._set_image(working)
                 prediction = self._set_species_prompt(state, species)
             boxes = prediction["boxes"].detach().float().cpu().numpy()
             masks = prediction["masks"].detach().cpu().numpy()
