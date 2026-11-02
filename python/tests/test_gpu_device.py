@@ -10,7 +10,7 @@ except ModuleNotFoundError as error:
     torch = None
 
 from app.vision.dinov3 import DinoV3Encoder
-from app.vision.gpu_device import inference_device
+from app.vision.gpu_device import autorelease_pool, inference_device
 from app.vision.inference_gate import InferenceGate
 
 
@@ -85,3 +85,21 @@ class GpuDeviceTest(unittest.TestCase):
             self.assertIs(raised.exception, error)
             self.assertFalse(encoder.gate.active)
             clear.assert_not_called()
+
+
+class AutoreleasePoolTest(unittest.TestCase):
+    def test_mps_work_drains_one_pool_per_request_even_on_error(self):
+        objc = Mock()
+        objc.objc_autoreleasePoolPush.return_value = 42
+        with patch("app.vision.gpu_device._objc", return_value=objc):
+            with autorelease_pool("mps"):
+                objc.objc_autoreleasePoolPop.assert_not_called()
+            with self.assertRaises(ValueError), autorelease_pool("mps"):
+                raise ValueError("model failed")
+        self.assertEqual(objc.objc_autoreleasePoolPush.call_count, 2)
+        self.assertEqual([c.args for c in objc.objc_autoreleasePoolPop.call_args_list], [(42,), (42,)])
+
+    def test_cuda_never_loads_the_objective_c_runtime(self):
+        with patch("app.vision.gpu_device._objc", side_effect=AssertionError("loaded")):
+            with autorelease_pool("cuda"):
+                pass
