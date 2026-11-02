@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.orm.jpa.JpaTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.Clock
 
 /** Selected original JSON commands; Root supplies one Animal JPA writer and current-account lookup. */
 class AnimalCommandService(
@@ -30,6 +31,8 @@ class AnimalCommandService(
     writerTransactions: JpaTransactionManager,
     /** Uploaded photo storage; null while photo uploads are disabled. */
     private val photos: AnimalPhotoStore? = null,
+    /** Stamps status changes for favorite notifications. */
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     private val writes: TransactionTemplate
 
@@ -150,7 +153,7 @@ class AnimalCommandService(
     }
 
     private fun updateStatus(animal: Animal, request: UpdateAnimalStatusRequest): AnimalDetailResponse {
-        animal.updateStatus(request.newStatus)
+        animal.updateStatus(request.newStatus, clock.instant())
 
         animalRepository.flush()
         return mapper.toDetailResponse(animal)

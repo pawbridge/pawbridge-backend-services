@@ -19,6 +19,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.Year
@@ -256,6 +257,17 @@ class Animal private constructor(
     var status: AnimalStatus? = status
         protected set
 
+    /** 마지막 상태 변경 직전의 상태(관심 동물 알림용). 변경 기록이 없으면 null이다. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    var previousStatus: AnimalStatus? = null
+        protected set
+
+    /** 마지막으로 상태가 바뀐 시각(관심 동물 알림용). 변경 기록이 없으면 null이다. */
+    @Column
+    var statusChangedAt: Instant? = null
+        protected set
+
     /**
      * API 출처 (ApiSource)
      * - APMS_ANIMAL, GYEONGGI, MANUAL 등
@@ -314,7 +326,11 @@ class Animal private constructor(
      * 상태 변경
      * @param newStatus 새로운 상태
      */
-    fun updateStatus(newStatus: AnimalStatus?) {
+    fun updateStatus(newStatus: AnimalStatus?, at: Instant) {
+        AnimalStatusChange.between(status, newStatus, at)?.let { change ->
+            previousStatus = change.previousStatus
+            statusChangedAt = change.changedAt
+        }
         this.status = newStatus
     }
 
@@ -399,67 +415,6 @@ class Animal private constructor(
     fun isNoticeExpiringSoon(): Boolean {
         val noticeEndDate = this.noticeEndDate ?: return false
         return LocalDate.now().plusDays(3).isAfter(noticeEndDate)
-    }
-
-    /**
-     * APMS 배치 데이터로 업데이트
-     * - APMS에서 변경될 수 있는 필드만 업데이트
-     * - ID, desertionNo, noticeNo, apiSource, favoriteCount, description 등은 유지
-     *
-     * @param breed 품종
-     * @param birthYear 출생 연도
-     * @param weight 체중
-     * @param color 색상
-     * @param gender 성별
-     * @param neuterStatus 중성화 여부
-     * @param specialMark 특징
-     * @param apmsProcessState APMS 진행상태
-     * @param noticeStartDate 공고 시작일
-     * @param noticeEndDate 공고 종료일
-     * @param apmsUpdatedAt APMS 마지막 수정 시각
-     * @param happenDate 접수일
-     * @param happenPlace 발견 장소
-     * @param imageUrl 대표 이미지
-     * @param imageUrl2 추가 이미지
-     * @param shelter 보호소
-     * @param status 자체 관리 상태
-     */
-    fun updateFromApms(
-        breed: String?,
-        birthYear: Int?,
-        weight: String?,
-        color: String?,
-        gender: Gender?,
-        neuterStatus: NeuterStatus?,
-        specialMark: String?,
-        apmsProcessState: String?,
-        noticeStartDate: LocalDate?,
-        noticeEndDate: LocalDate?,
-        apmsUpdatedAt: LocalDateTime?,
-        happenDate: LocalDate?,
-        happenPlace: String?,
-        imageUrl: String?,
-        imageUrl2: String?,
-        shelter: Shelter?,
-        status: AnimalStatus?,
-    ) {
-        this.breed = breed
-        this.birthYear = birthYear
-        this.weight = weight
-        this.color = color
-        this.gender = gender
-        this.neuterStatus = neuterStatus
-        this.specialMark = specialMark
-        this.apmsProcessState = apmsProcessState
-        this.noticeStartDate = noticeStartDate
-        this.noticeEndDate = noticeEndDate
-        this.apmsUpdatedAt = apmsUpdatedAt
-        this.happenDate = happenDate
-        this.happenPlace = happenPlace
-        this.imageUrl = imageUrl
-        this.imageUrl2 = imageUrl2
-        this.shelter = shelter
-        this.status = status
     }
 
     // 연관관계 메서드

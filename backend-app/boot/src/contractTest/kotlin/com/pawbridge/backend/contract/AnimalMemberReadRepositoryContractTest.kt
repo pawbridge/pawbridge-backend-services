@@ -126,53 +126,6 @@ class AnimalMemberReadRepositoryContractTest : AnimalRepositoryContractBase() {
     }
 
     @Test
-    fun `상태가 바뀌거나 같은 값이거나 미상이거나 다른 열만 바뀔 때__갱신하면__실제 상태 변화만 이전 상태와 시각을 남긴다`() {
-        // given
-        // MANUAL_B is PROTECT, MANUAL_A ADOPTED, APMS_NOTICE_A NOTICE, APMS_ADOPTED_A ADOPTED.
-
-        // when
-        execute("UPDATE pawbridge_animal.animals SET status='ADOPTED' WHERE id=?", MANUAL_B)
-        execute("UPDATE pawbridge_animal.animals SET status='ADOPTED' WHERE id=?", MANUAL_A)
-        execute("UPDATE pawbridge_animal.animals SET status='UNKNOWN' WHERE id=?", APMS_NOTICE_A)
-        execute("UPDATE pawbridge_animal.animals SET favorite_count=favorite_count+1 WHERE id=?", APMS_ADOPTED_A)
-
-        // then
-        assertThat(
-            count(
-                "SELECT count(*) FROM pawbridge_animal.animals WHERE id=? AND previous_status='PROTECT'" +
-                    " AND status_changed_at BETWEEN now() - interval '1 minute' AND now()",
-                MANUAL_B,
-            ),
-        ).isOne()
-        assertThat(
-            count(
-                "SELECT count(*) FROM pawbridge_animal.animals WHERE id IN (?,?,?)" +
-                    " AND (previous_status IS NOT NULL OR status_changed_at IS NOT NULL)",
-                MANUAL_A, APMS_NOTICE_A, APMS_ADOPTED_A,
-            ),
-        ).isZero()
-    }
-
-    @Test
-    fun `미상이었다가 알려진 상태로 돌아올 때__갱신하면__미상을 이전 상태로 남긴다`() {
-        // given
-        execute("UPDATE pawbridge_animal.animals SET status='UNKNOWN' WHERE id=?", MANUAL_B)
-
-        // when
-        execute("UPDATE pawbridge_animal.animals SET status='PROTECT' WHERE id=?", MANUAL_B)
-
-        // then
-        // Only the latest change is kept, so the trigger cannot know PROTECT was the status before UNKNOWN.
-        assertThat(
-            count(
-                "SELECT count(*) FROM pawbridge_animal.animals WHERE id=? AND status='PROTECT'" +
-                    " AND previous_status='UNKNOWN' AND status_changed_at IS NOT NULL",
-                MANUAL_B,
-            ),
-        ).isOne()
-    }
-
-    @Test
     @Tag("timezone-sensitive")
     fun `변경 시각이 기준 앞뒤로 있을 때__최근 변경을 읽으면__기준 시각 이후의 요청한 동물만 준다`() {
         // given
@@ -195,7 +148,6 @@ class AnimalMemberReadRepositoryContractTest : AnimalRepositoryContractBase() {
         assertThat(empty).isEmpty()
     }
 
-    // Writes the change columns directly; the trigger fires only on status updates.
     private fun changedAt(id: Long, previous: String, at: String) {
         execute(
             "UPDATE pawbridge_animal.animals SET previous_status=?, status_changed_at=?::timestamptz WHERE id=?",

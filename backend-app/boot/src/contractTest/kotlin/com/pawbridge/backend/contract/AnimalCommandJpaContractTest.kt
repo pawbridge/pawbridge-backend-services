@@ -198,6 +198,15 @@ class AnimalCommandJpaContractTest : JpaContractBase() {
         assertThatThrownBy { animals.updateDescription(RIVAL, ANIMAL_A, descriptionChange("x")) }.isInstanceOf(AnimalCommandForbiddenException::class.java)
         assertThatThrownBy { animals.updateStatus(ADMIN, 99_999_999L, statusChange("ADOPTED")) }.isInstanceOf(EntityNotFoundException::class.java)
         assertThat(scalar("SELECT status FROM pawbridge_animal.animals WHERE id = ?", ANIMAL_B)).isEqualTo("PROTECT")
+        // The status change is stamped for favorite notifications; the refused change leaves no stamp.
+        assertThat(
+            count(
+                "SELECT count(*) FROM pawbridge_animal.animals WHERE id = ? AND previous_status = 'PROTECT'" +
+                    " AND status_changed_at BETWEEN now() - interval '1 minute' AND now() + interval '1 minute'",
+                ANIMAL_A,
+            ),
+        ).isOne()
+        assertThat(count("SELECT count(*) FROM pawbridge_animal.animals WHERE id = ? AND status_changed_at IS NULL", ANIMAL_B)).isOne()
     }
 
     @Test
