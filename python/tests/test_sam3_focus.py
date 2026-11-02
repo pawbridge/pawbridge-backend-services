@@ -150,6 +150,7 @@ class Sam3ContractTest(unittest.TestCase):
         from app.gallery.runtime import BackgroundEncoder
         encoder = object.__new__(DinoV3Encoder)
         encoder.model_version = "test"
+        encoder.device = "mps"  # Real autorelease pool on macOS, no-op elsewhere.
         encoder.gate = InferenceGate()
         encoder._vector_for = lambda image: [1.] + [0.] * 1023
         color = {"test": "descriptor"}
