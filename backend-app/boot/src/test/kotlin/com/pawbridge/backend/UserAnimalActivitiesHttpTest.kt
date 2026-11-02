@@ -7,8 +7,10 @@ import com.pawbridge.backend.community.internal.post.application.PostPageReader
 import com.pawbridge.backend.community.internal.post.application.ReadAdminPosts
 import com.pawbridge.backend.community.internal.post.application.ReadPost
 import com.pawbridge.backend.user.internal.animalactivity.application.FavoriteActivityRejectedException
+import com.pawbridge.backend.user.internal.animalactivity.application.FavoriteNotifications
 import com.pawbridge.backend.user.internal.animalactivity.application.ShelterMembershipRequiredException
 import com.pawbridge.backend.user.internal.animalactivity.application.UserAnimalActivities
+import com.pawbridge.backend.user.internal.animalactivity.web.FavoriteNotificationsController
 import com.pawbridge.backend.user.internal.animalactivity.web.UserAnimalActivitiesController
 import com.pawbridge.backend.user.internal.animalactivity.web.UserAnimalActivitiesExceptionHandler
 import com.pawbridge.backend.user.internal.favorite.application.FavoriteStatusQuery
@@ -36,6 +38,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.TransactionSystemException
+import java.time.Instant
 import java.time.LocalDateTime
 
 @WebMvcTest(
@@ -45,6 +48,7 @@ import java.time.LocalDateTime
 @ContextConfiguration(
     classes = [
         UserAnimalActivitiesController::class,
+        FavoriteNotificationsController::class,
         UserAnimalActivitiesExceptionHandler::class,
         FavoriteStatusController::class,
         AdminPostReadConfiguration::class,
@@ -58,6 +62,9 @@ class UserAnimalActivitiesHttpTest {
 
     @MockkBean
     lateinit var activities: UserAnimalActivities
+
+    @MockkBean
+    lateinit var notifications: FavoriteNotifications
 
     @MockkBean
     lateinit var statusQuery: FavoriteStatusQuery
@@ -128,6 +135,36 @@ class UserAnimalActivitiesHttpTest {
         verify(exactly = 1) { activities.favorites(7) }
         verify(exactly = 1) { activities.registered(7, UserAnimalActivities.PageRequest(0, 20, "createdAt,desc")) }
         verify(exactly = 1) { activities.registered(7, UserAnimalActivities.PageRequest(3, 20, "name,desc,createdAt,asc")) }
+        cleared()
+    }
+
+    @Test
+    fun `관심 동물 상태가 바뀌었을 때__알림을 조회하면__본인 기준으로 변화와 요약을 주고 저장하지 않게 한다`() {
+        // given
+        every { notifications.recent(any()) } returns FavoriteNotifications.Notifications(
+            listOf(
+                FavoriteNotifications.Notification(
+                    8L, "ADOPTED", "PROTECT", Instant.parse("2026-11-02T03:00:00.123456Z"),
+                    "개", "믹스", "https://image.invalid/8", "N-8", "행복 보호소",
+                ),
+            ),
+        )
+
+        // when
+        val result = mvc.perform(get("/api/v1/users/me/favorite-animal-notifications").header("Authorization", token()))
+
+        // then
+        result
+            .andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(
+                content().json(
+                    "{\"code\":200,\"data\":{\"content\":[{\"animalId\":8,\"status\":\"ADOPTED\",\"previousStatus\":\"PROTECT\"," +
+                        "\"changedAt\":\"2026-11-02T03:00:00.123456Z\",\"breed\":\"믹스\",\"shelterName\":\"행복 보호소\"}]}}",
+                ),
+            )
+        verify(exactly = 1) { notifications.recent(7) }
+        confirmVerified(notifications)
         cleared()
     }
 

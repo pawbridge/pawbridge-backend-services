@@ -16,6 +16,7 @@ import org.springframework.data.repository.query.Param
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Optional
+import java.time.Instant
 
 interface AnimalRepository : JpaRepository<Animal, Long> {
     @EntityGraph(attributePaths = ["shelter"])
@@ -69,7 +70,9 @@ interface AnimalRepository : JpaRepository<Animal, Long> {
             "a.noticeStartDate = :noticeStartDate, a.noticeEndDate = :noticeEndDate, " +
             "a.apmsUpdatedAt = :apmsUpdatedAt, a.happenDate = :happenDate, " +
             "a.happenPlace = :happenPlace, a.imageUrl = :imageUrl, a.imageUrl2 = :imageUrl2, " +
-            "a.shelter = :shelter, a.status = :status WHERE a.id = :id",
+            "a.shelter = :shelter, a.status = :status, " +
+            "a.previousStatus = COALESCE(:previousStatus, a.previousStatus), " +
+            "a.statusChangedAt = COALESCE(:statusChangedAt, a.statusChangedAt) WHERE a.id = :id",
     )
     fun updateAnimalFromApms(
         @Param("id") id: Long?,
@@ -90,5 +93,11 @@ interface AnimalRepository : JpaRepository<Animal, Long> {
         @Param("imageUrl") imageUrl: String?,
         @Param("imageUrl2") imageUrl2: String?,
         @Param("status") status: AnimalStatus?,
+        @Param("previousStatus") previousStatus: AnimalStatus?,
+        @Param("statusChangedAt") statusChangedAt: Instant?,
     ): Int
+
+    /** 동기화 묶음의 현재 상태. 갱신 전에 읽어 상태 변경 여부를 판단한다. */
+    @Query("SELECT a.id, a.status FROM Animal a WHERE a.id IN :ids")
+    fun findStatuses(@Param("ids") ids: Collection<Long>): List<Array<Any?>>
 }

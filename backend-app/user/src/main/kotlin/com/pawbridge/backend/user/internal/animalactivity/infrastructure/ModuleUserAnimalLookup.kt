@@ -2,6 +2,7 @@ package com.pawbridge.backend.user.internal.animalactivity.infrastructure
 
 import com.pawbridge.backend.animal.api.AnimalMemberReads
 import com.pawbridge.backend.user.internal.animalactivity.application.UserAnimalActivities
+import java.time.Instant
 
 /** Replaces all three activity HTTP calls only when Root explicitly selects the module contract. */
 class ModuleUserAnimalLookup(private val animals: AnimalMemberReads) : UserAnimalActivities.AnimalLookup {
@@ -35,6 +36,11 @@ class ModuleUserAnimalLookup(private val animals: AnimalMemberReads) : UserAnima
             page.last,
         )
     }
+
+    override fun statusChanges(ids: List<Long>, since: Instant): List<UserAnimalActivities.StatusChange> =
+        animals.statusChanges(ids, since).map { change ->
+            UserAnimalActivities.StatusChange(change.animalId, change.status, change.previousStatus, change.changedAt)
+        }
 
     // A null source element stays a null element, as with the Java stream. Stream.toList() also keeps the
     // result unmodifiable like before; the unchecked cast only widens the element type for Kotlin.

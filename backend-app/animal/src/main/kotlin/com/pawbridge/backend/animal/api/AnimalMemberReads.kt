@@ -1,9 +1,10 @@
 package com.pawbridge.backend.animal.api
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-/** Three Animal reads used by already-authorized User activities and shelter membership. */
+/** Animal reads used by already-authorized User activities and shelter membership. */
 interface AnimalMemberReads : AnimalShelterReads {
     @JvmRecord
     data class Animal(
@@ -42,7 +43,19 @@ interface AnimalMemberReads : AnimalShelterReads {
         val last: Boolean,
     )
 
+    /** The latest status change of an animal, recorded by the animals trigger (V10); older changes are not kept. */
+    @JvmRecord
+    data class StatusChange(
+        val animalId: Long,
+        val status: String,
+        val previousStatus: String,
+        val changedAt: Instant,
+    )
+
     fun batch(ids: List<Long?>?): List<Animal>?
+
+    /** Animals among [ids] whose latest status change is at or after [since]; any other animal is absent. */
+    fun statusChanges(ids: List<Long>, since: Instant): List<StatusChange>
 
     fun byShelter(shelterId: Long?, request: PageRequest?): Page?
 }

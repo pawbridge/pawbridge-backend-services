@@ -3,9 +3,12 @@ package com.pawbridge.backend.boot.configuration
 import com.pawbridge.backend.animal.api.AnimalFavoriteCounts
 import com.pawbridge.backend.animal.api.AnimalMemberReads
 import com.pawbridge.backend.animal.internal.favorite.infrastructure.JdbcAnimalFavoriteCounts
+import com.pawbridge.backend.user.internal.animalactivity.application.FavoriteNotifications
 import com.pawbridge.backend.user.internal.animalactivity.application.UserAnimalActivities
+import com.pawbridge.backend.user.internal.animalactivity.infrastructure.JdbcFavoriteNotifications
 import com.pawbridge.backend.user.internal.animalactivity.infrastructure.JdbcUserAnimalActivities
 import com.pawbridge.backend.user.internal.animalactivity.infrastructure.ModuleUserAnimalLookup
+import com.pawbridge.backend.user.internal.animalactivity.web.FavoriteNotificationsController
 import com.pawbridge.backend.user.internal.animalactivity.web.UserAnimalActivitiesController
 import com.pawbridge.backend.user.internal.animalactivity.web.UserAnimalActivitiesExceptionHandler
 import org.springframework.beans.factory.annotation.Qualifier
@@ -17,6 +20,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.Clock
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(
@@ -44,6 +48,23 @@ class UserAnimalActivitiesConfiguration {
         val read = TransactionTemplate(manager)
         read.isReadOnly = true
         return JdbcUserAnimalActivities(jdbc, write, read, animals, counts)
+    }
+
+    // A private UTC clock: the window is computed from the instant, and other Clock beans keep their own zones.
+    @Bean
+    fun favoriteNotifications(
+        @Qualifier("writeJdbc") jdbc: JdbcTemplate,
+        @Qualifier("writeTransactionManager") manager: PlatformTransactionManager,
+        animals: UserAnimalActivities.AnimalLookup,
+    ): FavoriteNotifications {
+        val read = TransactionTemplate(manager)
+        read.isReadOnly = true
+        return JdbcFavoriteNotifications(jdbc, read, animals, Clock.systemUTC())
+    }
+
+    @Bean
+    fun favoriteNotificationsController(notifications: FavoriteNotifications): FavoriteNotificationsController {
+        return FavoriteNotificationsController(notifications)
     }
 
     @Bean

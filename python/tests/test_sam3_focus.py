@@ -222,7 +222,7 @@ class Sam3ThroughputTest(unittest.TestCase):
 
 @unittest.skipIf(torch is None, "Requires the dedicated PyTorch runtime")
 class Sam3GraphCacheTest(unittest.TestCase):
-    """The focus reimplements set_image/_forward_grounding so shape-keyed casts and comparisons leave the GPU."""
+    """모양별 그래프를 만드는 변환·비교를 GPU 밖으로 옮긴 set_image/_forward_grounding 재구현을 검증한다."""
 
     def _focus(self, detections, size=(1, 1)):
         from types import SimpleNamespace
