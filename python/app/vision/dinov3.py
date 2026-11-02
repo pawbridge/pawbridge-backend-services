@@ -115,8 +115,8 @@ class DinoV3Encoder:
     def encode_with_metadata(self, image, species=None, *, background=False, prepared_focus_image=None):
         # Hold one lock across detection and both embeddings; no concurrent GPU jobs.
         import torch
-        from app.vision.gpu_device import is_gpu_oom
-        with self.gate.acquire(background=background):
+        from app.vision.gpu_device import autorelease_pool, is_gpu_oom
+        with self.gate.acquire(background=background), autorelease_pool(self.device):
             try:
                 if prepared_focus_image is None:
                     return self._encode_image(image, species)
@@ -131,8 +131,8 @@ class DinoV3Encoder:
     def describe_coat_color(self, image, species, *, background=False, prepared_focus_image=None):
         # Reuse the loaded segmenter without recomputing either DINO vector.
         import torch
-        from app.vision.gpu_device import is_gpu_oom
-        with self.gate.acquire(background=background):
+        from app.vision.gpu_device import autorelease_pool, is_gpu_oom
+        with self.gate.acquire(background=background), autorelease_pool(self.device):
             try:
                 if self.focus is None:
                     raise RuntimeError("Color backfill requires an animal-focus encoder")
