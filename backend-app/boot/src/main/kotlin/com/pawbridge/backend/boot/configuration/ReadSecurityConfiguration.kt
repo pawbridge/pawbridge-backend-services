@@ -284,6 +284,7 @@ class ReadSecurityConfiguration {
                 AntPathRequestMatcher("/api/v1/favorites/{animalId}", "POST"),
                 AntPathRequestMatcher("/api/v1/favorites/{animalId}", "DELETE"),
                 AntPathRequestMatcher("/api/v1/users/me/favorite-animals", "GET"),
+                AntPathRequestMatcher("/api/v1/users/me/favorite-animal-notifications", "GET"),
                 AntPathRequestMatcher("/api/v1/users/me/registered-animals", "GET")))
         val shelterEnabled = RequestMatcher { shelterMembershipEnabled }
         val shelterOwn = AndRequestMatcher(shelterEnabled, OrRequestMatcher(

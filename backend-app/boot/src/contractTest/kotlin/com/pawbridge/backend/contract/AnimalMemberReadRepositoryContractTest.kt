@@ -4,13 +4,16 @@ import com.pawbridge.backend.animal.api.AnimalMemberReadUnavailableException
 import com.pawbridge.backend.animal.api.AnimalMemberReads
 import com.pawbridge.backend.animal.api.AnimalMemberReads.Animal
 import com.pawbridge.backend.animal.api.AnimalMemberReads.PageRequest
+import com.pawbridge.backend.animal.api.AnimalMemberReads.StatusChange
 import com.pawbridge.backend.animal.api.AnimalShelterReads
 import com.pawbridge.backend.animal.internal.memberread.infrastructure.JdbcAnimalMemberReads
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -120,6 +123,36 @@ class AnimalMemberReadRepositoryContractTest : AnimalRepositoryContractBase() {
         for (request in listOf(PageRequest(-1, 2, null), PageRequest(0, 0, null), PageRequest(0, 2, "password,asc"))) {
             assertThatThrownBy { reads.byShelter(SHELTER_A, request) }.isInstanceOf(AnimalMemberReadUnavailableException::class.java)
         }
+    }
+
+    @Test
+    @Tag("timezone-sensitive")
+    fun `변경 시각이 기준 앞뒤로 있을 때__최근 변경을 읽으면__기준 시각 이후의 요청한 동물만 준다`() {
+        // given
+        changedAt(MANUAL_A, "PROTECT", "2026-11-02 03:00:00.123456+00")
+        changedAt(MANUAL_B, "NOTICE", "2026-10-18 14:59:59.999999+00")
+        changedAt(APMS_ADOPTED_A, "PROTECT", "2026-10-18 15:00:00+00")
+        val since = Instant.parse("2026-10-18T15:00:00Z")
+
+        // when
+        val changes = reads.statusChanges(listOf(MANUAL_A, MANUAL_B, APMS_ADOPTED_A, MANUAL_ADOPTED_B, MISSING), since)
+        val other = reads.statusChanges(listOf(MANUAL_B), since)
+        val empty = reads.statusChanges(listOf(), since)
+
+        // then
+        assertThat(changes.sortedBy { it.animalId }).containsExactly(
+            StatusChange(MANUAL_A, "ADOPTED", "PROTECT", Instant.parse("2026-11-02T03:00:00.123456Z")),
+            StatusChange(APMS_ADOPTED_A, "ADOPTED", "PROTECT", since),
+        )
+        assertThat(other).isEmpty()
+        assertThat(empty).isEmpty()
+    }
+
+    private fun changedAt(id: Long, previous: String, at: String) {
+        execute(
+            "UPDATE pawbridge_animal.animals SET previous_status=?, status_changed_at=?::timestamptz WHERE id=?",
+            previous, at, id,
+        )
     }
 
     private fun assertPage(page: AnimalMemberReads.Page, number: Int, size: Int, total: Long, pages: Int, last: Boolean) {

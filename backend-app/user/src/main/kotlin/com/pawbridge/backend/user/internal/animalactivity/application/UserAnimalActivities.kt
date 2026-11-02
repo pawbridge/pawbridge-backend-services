@@ -1,5 +1,6 @@
 package com.pawbridge.backend.user.internal.animalactivity.application
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -79,6 +80,14 @@ interface UserAnimalActivities {
         val name: String?,
     )
 
+    @JvmRecord
+    data class StatusChange(
+        val animalId: Long,
+        val status: String,
+        val previousStatus: String,
+        val changedAt: Instant,
+    )
+
     // The lists may contain null elements, as the Java signatures allowed (the module lookup test passes them).
     interface AnimalLookup {
         fun batch(ids: List<Long?>): List<Animal>?
@@ -86,6 +95,9 @@ interface UserAnimalActivities {
         fun shelter(careRegNo: String?): Shelter?
 
         fun byShelter(shelterId: Long?, request: PageRequest): AnimalPage?
+
+        /** Latest status change at or after [since] of each listed animal that has one. */
+        fun statusChanges(ids: List<Long>, since: Instant): List<StatusChange>
     }
 
     fun add(currentUserId: Long, animalId: Long): Favorite

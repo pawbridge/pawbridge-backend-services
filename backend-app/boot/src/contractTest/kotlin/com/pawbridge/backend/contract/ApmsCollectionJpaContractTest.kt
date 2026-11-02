@@ -18,8 +18,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 import org.assertj.core.api.Assertions.assertThat
@@ -106,13 +108,13 @@ class ApmsCollectionJpaContractTest : JpaContractBase() {
     private fun executionStatus(id: Long) =
         scalar("SELECT status FROM pawbridge_animal.batch_job_execution WHERE job_execution_id = ?", id)
 
-    private fun animalFrom(id: Long?, notice: String, desertion: String, breed: String): Animal =
+    private fun animalFrom(id: Long?, notice: String, desertion: String, breed: String, status: AnimalStatus = AnimalStatus.PROTECT): Animal =
         Animal.builder()
             .id(id).apmsDesertionNo(desertion).apmsNoticeNo(notice).species(Species.DOG).breed(breed).birthYear(2021).color("흰색")
             .gender(Gender.FEMALE).neuterStatus(NeuterStatus.YES).apmsProcessState("보호중")
             .noticeStartDate(LocalDate.parse("2026-03-02")).noticeEndDate(LocalDate.parse("2026-03-22"))
             .happenDate(LocalDate.parse("2026-03-01")).happenPlace("수집 장소").imageUrl("https://source.invalid/a.jpg")
-            .shelter(shelterRepository.findByCareRegNo("CR-APMS").get()).status(AnimalStatus.PROTECT).apiSource(ApiSource.APMS_ANIMAL)
+            .shelter(shelterRepository.findByCareRegNo("CR-APMS").get()).status(status).apiSource(ApiSource.APMS_ANIMAL)
             .favoriteCount(0).build()
 
     @Test
@@ -133,6 +135,44 @@ class ApmsCollectionJpaContractTest : JpaContractBase() {
         assertThat(row("pawbridge_animal.animals", "id", EXISTING).let { listOf(it.get("breed").asText(), it.get("color").asText(), it.get("description").asText(), it.get("favorite_count").asInt()) })
             .isEqualTo(listOf("바뀐 품종", "흰색", "직접 쓴 설명", 7))
         assertThat(count("SELECT count(*) FROM pawbridge_animal.animal_search_documents WHERE animal_id IN (?, ?)", newId, EXISTING)).isEqualTo(2)
+    }
+
+    @Test
+    fun `상태가 바뀐 동물과 같은 상태인 동물과 미상이 된 동물이 한 묶음일 때__쓰면__바뀐 동물만 이전 상태와 시각을 쓰고 나머지는 이전 기록을 둔다`() {
+        // given
+        seedAnimal(EXISTING, SHELTER, status = "NOTICE")
+        seedAnimal(SAME, SHELTER, status = "PROTECT")
+        seedAnimal(TO_UNKNOWN, SHELTER, status = "PROTECT")
+        execute(
+            "UPDATE pawbridge_animal.animals SET previous_status = 'NOTICE', status_changed_at = '2026-10-01 00:00:00+00' WHERE id IN (?, ?)",
+            SAME, TO_UNKNOWN,
+        )
+        val now = Instant.parse("2026-11-02T03:00:00.123456Z")
+        val writer = AnimalItemWriter(search, animalRepository, Clock.fixed(now, ZoneOffset.UTC))
+        val chunk = Chunk(
+            listOf(
+                animalFrom(EXISTING, "N-$EXISTING", "D-1", "믹스견", AnimalStatus.PROTECT),
+                animalFrom(SAME, "N-$SAME", "D-2", "믹스견", AnimalStatus.PROTECT),
+                animalFrom(TO_UNKNOWN, "N-$TO_UNKNOWN", "D-3", "믹스견", AnimalStatus.UNKNOWN),
+            ),
+        )
+
+        // when
+        TransactionTemplate(animalManager).executeWithoutResult { writer.write(chunk) }
+
+        // then
+        val stored = listOf(EXISTING, SAME, TO_UNKNOWN).map { id ->
+            listOf(
+                scalar("SELECT status FROM pawbridge_animal.animals WHERE id = ?", id),
+                scalar("SELECT previous_status FROM pawbridge_animal.animals WHERE id = ?", id),
+                scalar("SELECT to_char(status_changed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') FROM pawbridge_animal.animals WHERE id = ?", id),
+            )
+        }
+        assertThat(stored).containsExactly(
+            listOf("PROTECT", "NOTICE", "2026-11-02 03:00:00.123456"),
+            listOf("PROTECT", "NOTICE", "2026-10-01 00:00:00.000000"),
+            listOf("UNKNOWN", "NOTICE", "2026-10-01 00:00:00.000000"),
+        )
     }
 
     @Test
@@ -263,5 +303,7 @@ class ApmsCollectionJpaContractTest : JpaContractBase() {
         const val NAMESPACE = 0x50415742
         const val SHELTER = 8_600_001L
         const val EXISTING = 8_600_101L
+        const val SAME = 8_600_102L
+        const val TO_UNKNOWN = 8_600_103L
     }
 }

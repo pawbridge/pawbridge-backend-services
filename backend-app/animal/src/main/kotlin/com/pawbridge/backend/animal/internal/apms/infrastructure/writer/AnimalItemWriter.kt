@@ -1,21 +1,26 @@
 package com.pawbridge.backend.animal.internal.apms.infrastructure.writer
 
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Animal
+import com.pawbridge.backend.animal.internal.command.infrastructure.entity.AnimalStatusChange
+import com.pawbridge.backend.animal.internal.command.infrastructure.enums.AnimalStatus
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
 import com.pawbridge.backend.animal.internal.command.infrastructure.search.SearchDocumentWriter
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
 import org.springframework.batch.item.ItemWriter
 import org.springframework.util.StopWatch
+import java.time.Clock
 
 /**
  * Animal Entity를 DB에 저장하는 Writer
  * - id==null (신규): saveAll() → IDENTITY persist → INSERT 직행 (SELECT 없음)
- * - id!=null (기존): @Modifying JPQL UPDATE → SELECT 없이 UPDATE만 실행
+ * - id!=null (기존): 묶음의 현재 상태를 한 번 읽은 뒤 @Modifying JPQL UPDATE
+ *   (상태가 바뀐 동물은 관심 동물 알림용 이전 상태와 시각도 함께 쓴다)
  */
 class AnimalItemWriter(
     private val searchDocuments: SearchDocumentWriter,
     private val animalRepository: AnimalRepository,
+    private val clock: Clock = Clock.systemUTC(),
 ) : ItemWriter<Animal> {
 
     @Throws(Exception::class)
@@ -37,7 +42,17 @@ class AnimalItemWriter(
                 animalRepository.saveAll(newAnimals)
             }
 
+            // The chunk's rows are written only by this chunk transaction, so the statuses read here are current.
+            val currentStatus: Map<Long, AnimalStatus?> = if (existingAnimals.isEmpty()) {
+                mapOf()
+            } else {
+                animalRepository.findStatuses(existingAnimals.map { it.id!! })
+                    .associate { row -> (row[0] as Long) to (row[1] as AnimalStatus?) }
+            }
+            val now = clock.instant()
+
             for (existing in existingAnimals) {
+                val change = AnimalStatusChange.between(currentStatus[existing.id], existing.status, now)
                 animalRepository.updateAnimalFromApms(
                     existing.id,
                     existing.shelter,
@@ -57,6 +72,8 @@ class AnimalItemWriter(
                     existing.imageUrl,
                     existing.imageUrl2,
                     existing.status,
+                    change?.previousStatus,
+                    change?.changedAt,
                 )
             }
 

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -50,6 +51,22 @@ class ModuleUserAnimalLookupTest {
             result,
         )
         verify(exactly = 1) { animals.batch(match { it === ids }) }
+        confirmVerified(animals)
+    }
+
+    @Test
+    fun `최근 상태 변경이 주어졌을 때__조회하면__기준 시각과 동물을 그대로 넘기고 이전·현재 상태를 바꾸지 않고 옮긴다`() {
+        // given
+        val since = Instant.parse("2026-11-01T15:00:00Z")
+        val changed = Instant.parse("2026-11-03T01:00:00Z")
+        every { animals.statusChanges(any(), any()) } returns listOf(AnimalMemberReads.StatusChange(8L, "ADOPTED", "PROTECT", changed))
+
+        // when
+        val result = lookup.statusChanges(listOf(8L, 9L), since)
+
+        // then
+        assertIterableEquals(listOf(UserAnimalActivities.StatusChange(8L, "ADOPTED", "PROTECT", changed)), result)
+        verify(exactly = 1) { animals.statusChanges(listOf(8L, 9L), since) }
         confirmVerified(animals)
     }
 
