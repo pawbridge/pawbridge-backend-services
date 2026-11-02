@@ -98,12 +98,11 @@ class Sam3Focus:
         self.processor = Sam3Processor(self.model, device=self.device, confidence_threshold=0.5)
         self._species_text = {}
 
-    # On MPS a dtype cast or a comparison compiles one graph per tensor shape
-    # and keeps it for the life of the process. Photos arrive in thousands of
-    # sizes, so the processor's own set_image/_forward_grounding grow the
-    # process by a few GB over a gallery build. Resize, interpolate and copies
-    # run as plain Metal kernels, so only the cast and the threshold move to
-    # the CPU; every value stays identical to the pinned processor path.
+    # MPS는 dtype 변환과 비교 연산을 텐서 모양마다 그래프로 컴파일해 프로세스가
+    # 끝날 때까지 보관한다. 사진 크기가 수천 가지라 프로세서의 set_image/
+    # _forward_grounding을 그대로 쓰면 갤러리 빌드 동안 수 GB가 쌓인다. 리사이즈·
+    # 보간·복사는 그래프 없이 Metal 커널로 돌므로 변환과 임계값 비교만 CPU로 옮긴다.
+    # 결과 값은 고정된 프로세서 경로와 비트 단위로 같다.
 
     def _set_image(self, image):
         import torch
@@ -113,7 +112,7 @@ class Sam3Focus:
         width, height = image.size
         pixels = v2.functional.to_image(image).to(torch.float32).to(self.device)
         pixels = v2.functional.resize(pixels, [self.processor.resolution] * 2, antialias=True)
-        pixels = pixels.round_().to(torch.uint8)  # torchvision's own tail for uint8 input
+        pixels = pixels.round_().to(torch.uint8)  # torchvision이 uint8 입력에 하는 마무리와 같음
         pixels = self.processor.transform(pixels).unsqueeze(0)
         return {"original_height": height, "original_width": width,
                 "backbone_out": self.model.backbone.forward_image(pixels)}
