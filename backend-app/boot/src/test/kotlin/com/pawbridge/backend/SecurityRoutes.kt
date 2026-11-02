@@ -295,6 +295,7 @@ object SecurityRoutes {
         add("POST", "/api/v1/favorites/{animalId}", Access.MEMBER, animalActivities)
         add("DELETE", "/api/v1/favorites/{animalId}", Access.MEMBER, animalActivities)
         add("GET", "/api/v1/users/me/favorite-animals", Access.MEMBER, animalActivities)
+        add("GET", "/api/v1/users/me/favorite-animal-notifications", Access.MEMBER, animalActivities)
         add("GET", "/api/v1/users/me/registered-animals", Access.MEMBER, animalActivities)
         // Flag: shelter membership.
         add("GET", "/api/v1/users/me/shelter-applications", Access.MEMBER, shelterMembership)

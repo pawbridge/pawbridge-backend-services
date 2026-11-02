@@ -664,6 +664,8 @@ Animal API는 기존 전체 ShelterReads를 그대로 위임하고 같은 named 
 
 찜 추가·삭제는 `pawbridge.user-animal-activities.enabled=true`일 때 User writer 트랜잭션 하나에서 `pawbridge_user.favorites` INSERT/DELETE와 `pawbridge_animal.animals.favorite_count` 증감(`updated_at` 갱신)을 함께 처리한다. 증감은 Animal 공개 API `AnimalFavoriteCounts.adjust(animalId, +1/-1)`가 같은 `writeJdbc`·`writeTransactionManager`로 수행하며 자체 트랜잭션을 열지 않는다. 감소는 기존 값이 양수일 때만 수행한다. Outbox(`FAVORITE_ADDED`/`FAVORITE_REMOVED`)·전달기(DB 폴링)·`processed_events` 영수증·`FavoriteCompensation` 보상과 `pawbridge.favorite-delivery.*` 설정(`user-outbox-floor`/`animal-outbox-floor` 포함)은 제거했다. 이벤트 큐가 필요해지면 다시 도입한다.
 
+관심 동물 알림 `GET /api/v1/users/me/favorite-animal-notifications`(같은 플래그, `Cache-Control: no-store`)는 관심 등록 뒤에 상태가 바뀐 동물만 최신순으로 준다. 한국 날짜로 바뀐 날을 포함해 15일 동안 보인다. 상태 변화는 animal V10 트리거가 `animals.previous_status`·`status_changed_at`에 마지막 1건만 남긴다(APMS JPQL 일괄 갱신과 보호소 JPA 수정 모두). 미상(`UNKNOWN`)으로 가는 변화는 남기지 않는다. V10은 운영 DB에 수동으로 적용해야 한다.
+
 동작: 이미 찜했으면 409, 존재하지 않는 동물을 찜하면 404(`동물을 찾을 수 없습니다`)이며 찜 행도 같은 트랜잭션에서 롤백한다(UPDATE 영향 행 0). 이전에는 성공 응답 뒤 최대 4회 재시도 끝에 보상으로 취소했다. 찜하지 않은 동물의 삭제는 기존처럼 404이다. 이미 사라진 동물의 찜은 계속 삭제할 수 있다(영향 행 0이어도 삭제는 커밋하고 증감만 건너뛴다). 찜 수는 커밋 즉시 일관된다(이전: 폴링 1초 이상+재시도 지연). 회원 삭제가 `favorite_count`를 줄이지 않는 기존 갭은 구 시스템과 같고 이번에 바꾸지 않았다.
 
 락 순서: Animal 명령은 User 행 `FOR UPDATE` → Animal 행 순서이고, 찜은 `favorites` INSERT(users FK의 `FOR KEY SHARE`) → Animal 행 UPDATE 순서이며 한 트랜잭션이 Animal 행을 하나만 잡는다. 코드 검토상 순환은 찾지 못했다. 같은 회원의 명령과 찜은 users 행에서 먼저 직렬화되고, 다른 회원끼리는 서로 다른 users 행을 쥔 채 Animal 행 하나를 기다릴 뿐이며, Animal 모듈에는 users 행을 요청하는 경로가 없다. 단 실제 PostgreSQL 동시 실행으로는 검증하지 않았다(불확실). 인기 동물은 Animal 행 UPDATE에서 짧게 직렬화된다. `animal_search_changed` 트리거는 breed 등 검색 열이 바뀔 때만 동작하므로 찜 증감은 검색 dirty를 만들지 않는다.

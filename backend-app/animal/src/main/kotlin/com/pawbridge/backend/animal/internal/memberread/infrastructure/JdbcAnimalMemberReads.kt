@@ -5,6 +5,7 @@ import com.pawbridge.backend.animal.api.AnimalMemberReads
 import com.pawbridge.backend.animal.api.AnimalMemberReads.Animal
 import com.pawbridge.backend.animal.api.AnimalMemberReads.Page
 import com.pawbridge.backend.animal.api.AnimalMemberReads.PageRequest
+import com.pawbridge.backend.animal.api.AnimalMemberReads.StatusChange
 import com.pawbridge.backend.animal.api.AnimalShelterReads
 import com.pawbridge.backend.animal.api.AnimalShelterReads.Shelter
 import com.pawbridge.backend.animal.internal.discovery.application.AnimalDiscovery.AnimalStatus
@@ -23,8 +24,11 @@ import org.springframework.transaction.support.TransactionOperations
 import org.springframework.transaction.support.TransactionTemplate
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.regex.Pattern
 import javax.sql.DataSource
 
@@ -62,6 +66,31 @@ class JdbcAnimalMemberReads : AnimalMemberReads {
                     "SELECT " + COLUMNS + FROM + " WHERE a.id IN (:ids)",
                     MapSqlParameterSource("ids", ArrayList(ids)),
                     RowMapper { row, index -> animal(row, index) },
+                )
+            }!!
+        } catch (failure: RuntimeException) {
+            throw AnimalMemberReadUnavailableException(failure)
+        }
+    }
+
+    override fun statusChanges(ids: List<Long>, since: Instant): List<StatusChange> {
+        if (ids.isEmpty()) {
+            return listOf()
+        }
+        try {
+            return reads.execute {
+                jdbc.query(
+                    "SELECT id,status,previous_status,status_changed_at FROM pawbridge_animal.animals" +
+                        " WHERE id IN (:ids) AND status_changed_at >= :since",
+                    MapSqlParameterSource("ids", ids).addValue("since", OffsetDateTime.ofInstant(since, ZoneOffset.UTC)),
+                    RowMapper { row, _ ->
+                        StatusChange(
+                            row.getLong("id"),
+                            row.getString("status"),
+                            row.getString("previous_status"),
+                            row.getObject("status_changed_at", OffsetDateTime::class.java).toInstant(),
+                        )
+                    },
                 )
             }!!
         } catch (failure: RuntimeException) {
