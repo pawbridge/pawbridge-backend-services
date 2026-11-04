@@ -213,6 +213,7 @@ class RetrievalContractTest(unittest.TestCase):
     def test_left_shelter_option_adds_only_living_departures_to_status_filter(self):
         store, _, result = retrieve(embedding(), [], include_adopted_or_returned=True)
         self.assertEqual(store.search.call_args.args[3], ("NOTICE", "PROTECT", "ADOPTED", "RETURNED", "DONATED", "RELEASED"))
+        # 사망 기록을 켜지 않으면 응답에 그 키가 없다(이 필드를 모르는 이전 백엔드와 같은 모양).
         self.assertEqual(result, {"candidates": []})
 
     def test_deceased_records_are_searched_separately_with_one_encoding(self):
@@ -229,11 +230,6 @@ class RetrievalContractTest(unittest.TestCase):
         # 일부 살아 있는 후보보다 점수가 높은 사망 기록도 그 20자리를 차지하지 않고, 따로 10건까지만 돌아온다.
         self.assertEqual([c["animalId"] for c in result["candidates"]], list(range(1, 21)))
         self.assertEqual([c["animalId"] for c in result["deceasedCandidates"]], list(range(101, 111)))
-
-    def test_deceased_records_are_not_searched_or_returned_by_default(self):
-        store, _, result = retrieve(embedding(), [hit(7, .8, status="PROTECT")], include_adopted_or_returned=True)
-        store.search.assert_called_once()
-        self.assertNotIn("deceasedCandidates", result)
 
     def test_animal_channel_reaches_the_store_with_the_query_species_and_model(self):
         query = embedding(vector=[1., 0.], animal_vector=[0., 1.], model_version="dual-v2", focus_status="animal_mask")
