@@ -47,8 +47,10 @@ class PythonLostSearchClient internal constructor(
         region: String?,
         description: String?,
         includeAdoptedOrReturned: Boolean,
+        // null이면 파트를 보내지 않는다. 이 입력을 모르는 이전 네이티브는 모르는 파트를 422로 거부하므로 켰을 때만 보낸다.
+        includeDeceased: Boolean?,
     ): PythonLostSearchResponse? {
-        return endpoint.search(key, image, species, lostDate, region, description, includeAdoptedOrReturned)
+        return endpoint.search(key, image, species, lostDate, region, description, includeAdoptedOrReturned, includeDeceased)
     }
 
     internal interface Endpoint {
@@ -62,6 +64,7 @@ class PythonLostSearchClient internal constructor(
             @Param("region") region: String?,
             @Param("description") description: String?,
             @Param("includeAdoptedOrReturned") includeAdoptedOrReturned: Boolean,
+            @Param("includeDeceased") includeDeceased: Boolean?,
         ): PythonLostSearchResponse?
     }
 }

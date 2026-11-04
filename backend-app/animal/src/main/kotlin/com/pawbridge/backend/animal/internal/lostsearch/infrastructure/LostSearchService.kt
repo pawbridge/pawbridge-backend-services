@@ -65,6 +65,7 @@ class LostSearchService(
                 normalize(request.region),
                 normalize(request.description),
                 request.includeAdoptedOrReturned,
+                if (request.includeDeceased) true else null,
             )
         } catch (ex: FeignException) {
             if (ex.status() == 413) {
@@ -78,31 +79,44 @@ class LostSearchService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "사진을 읽을 수 없습니다")
         }
         val candidates = response?.candidates
-        if (response == null || candidates == null || candidates.size > 20) {
+        if (response == null || candidates == null || !isValid(candidates, MAX_CANDIDATES)) {
             throw unavailable()
         }
-        for (candidate in candidates) {
-            if (candidate == null ||
-                candidate.animalId == null ||
-                candidate.animalId <= 0 ||
-                candidate.imageScore == null ||
-                !candidate.imageScore.isFinite() ||
-                candidate.matchedEvidence == null ||
-                candidate.matchedEvidence.any { evidence -> evidence == null || !EVIDENCE.contains(evidence) }
-            ) {
-                throw unavailable()
-            }
+        // 켜지 않은 요청에 딸려 온 사망 기록은 쓰지 않는다. 켠 요청인데 없으면 계약이 어긋난 것이다.
+        val deceased = if (request.includeDeceased) response.deceasedCandidates else emptyList()
+        if (deceased == null || !isValid(deceased, MAX_DECEASED_CANDIDATES)) {
+            throw unavailable()
         }
-        if (candidates.isEmpty()) {
+        if (candidates.isEmpty() && deceased.isEmpty()) {
             return LostSearchResponse(emptyList())
         }
-        val verified = response
-        return reads.execute { currentCandidates(request, verified) }!!
+        val living = candidates.map { candidate -> candidate!! }
+        val dead = deceased.map { candidate -> candidate!! }
+        return reads.execute { currentCandidates(request, living, dead) }!!
     }
 
-    private fun currentCandidates(request: LostSearchRequest, response: PythonLostSearchResponse): LostSearchResponse {
-        val verifiedCandidates = response.candidates!!
-        val ids = verifiedCandidates.map { candidate -> candidate!!.animalId!! }.distinct()
+    private fun isValid(candidates: List<PythonLostSearchResponse.Candidate?>, limit: Int): Boolean {
+        if (candidates.size > limit) {
+            return false
+        }
+        return candidates.all { candidate ->
+            candidate != null &&
+                candidate.animalId != null &&
+                candidate.animalId > 0 &&
+                candidate.imageScore != null &&
+                candidate.imageScore.isFinite() &&
+                candidate.matchedEvidence != null &&
+                candidate.matchedEvidence.all { evidence -> evidence != null && EVIDENCE.contains(evidence) }
+        }
+    }
+
+    // 살아 있는 후보와 사망 기록을 한 번의 조회로 읽고, 각각 지금 DB 상태로 다시 거른다.
+    private fun currentCandidates(
+        request: LostSearchRequest,
+        living: List<PythonLostSearchResponse.Candidate>,
+        deceased: List<PythonLostSearchResponse.Candidate>,
+    ): LostSearchResponse {
+        val ids = (living + deceased).map { candidate -> candidate.animalId!! }.distinct()
         val current = LinkedHashMap<Long?, Animal>()
         for (animal in animals.findWithShelterByIdIn(ids)) {
             // Collectors.toMap rejects a repeated key instead of silently replacing the first entry.
@@ -111,13 +125,27 @@ class LostSearchService(
                 throw IllegalStateException("Duplicate key " + animal.id)
             }
         }
-        val evidence = HashMap<Long?, List<String?>?>()
-        for (candidate in verifiedCandidates) {
-            // The first evidence list for an animal wins.
-            evidence.putIfAbsent(candidate!!.animalId, candidate.matchedEvidence)
-        }
         val allowedStatuses = if (request.includeAdoptedOrReturned) ACTIVE_AND_RESOLVED else ACTIVE
-        val matches = ids
+        return LostSearchResponse(
+            matches(request, living, current, allowedStatuses),
+            matches(request, deceased, current, DECEASED),
+        )
+    }
+
+    private fun matches(
+        request: LostSearchRequest,
+        candidates: List<PythonLostSearchResponse.Candidate>,
+        current: Map<Long?, Animal>,
+        allowedStatuses: Set<AnimalStatus>,
+    ): List<LostSearchResponse.Candidate> {
+        val evidence = HashMap<Long?, List<String?>?>()
+        for (candidate in candidates) {
+            // The first evidence list for an animal wins.
+            evidence.putIfAbsent(candidate.animalId, candidate.matchedEvidence)
+        }
+        return candidates
+            .map { candidate -> candidate.animalId }
+            .distinct()
             .filter { id -> current.containsKey(id) }
             .map { id -> current[id]!! }
             .filter { animal -> animal.species == request.species }
@@ -129,7 +157,6 @@ class LostSearchService(
                     evidence[animal.id],
                 )
             }
-        return LostSearchResponse(matches)
     }
 
     // Java String.isBlank(): empty or only Character.isWhitespace characters (Kotlin isBlank also accepts NBSP).
@@ -148,6 +175,8 @@ class LostSearchService(
 
     companion object {
         const val MAX_IMAGE_BYTES: Long = 5 * 1024 * 1024
+        private const val MAX_CANDIDATES = 20
+        private const val MAX_DECEASED_CANDIDATES = 10
 
         // Set.of rejects null lookups with a NullPointerException; the Java sets are kept for that behavior.
         private val EVIDENCE: Set<String> = java.util.Set.of(
@@ -156,11 +185,18 @@ class LostSearchService(
             "REGISTERED_DESCRIPTION_TEXT_MATCH",
         )
         private val ACTIVE: Set<AnimalStatus> = java.util.Set.of(AnimalStatus.NOTICE, AnimalStatus.PROTECT)
+        // 살아서 보호소를 떠난 동물(입양, 반환, 기증, 방사)까지 포함한다.
         private val ACTIVE_AND_RESOLVED: Set<AnimalStatus> = java.util.Set.of(
             AnimalStatus.NOTICE,
             AnimalStatus.PROTECT,
             AnimalStatus.ADOPTED,
             AnimalStatus.RETURNED,
+            AnimalStatus.DONATED,
+            AnimalStatus.RELEASED,
+        )
+        private val DECEASED: Set<AnimalStatus> = java.util.Set.of(
+            AnimalStatus.NATURAL_DEATH,
+            AnimalStatus.EUTHANIZED,
         )
     }
 }

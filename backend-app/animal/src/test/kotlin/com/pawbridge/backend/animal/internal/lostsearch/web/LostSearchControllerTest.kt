@@ -47,7 +47,8 @@ class LostSearchControllerTest {
             multipart("/api/v1/animals/lost-candidates")
                 .file(MockMultipartFile("image", byteArrayOf(1)))
                 .param("species", "DOG")
-                .param("region", "서울"),
+                .param("region", "서울")
+                .param("includeDeceased", "true"),
         ).andReturn().response
 
         // then
@@ -57,11 +58,15 @@ class LostSearchControllerTest {
         assertThat(candidate.get("animal").get("id").asLong()).isEqualTo(7L)
         assertThat(candidate.get("shelterPhone").asText()).isEqualTo("02-0000")
         assertThat(candidate.has("imageScore")).isFalse()
+        assertThat(result.get("deceasedCandidates").isArray).isTrue()
+        assertThat(result.get("deceasedCandidates")).isEmpty()
         val request = slot<LostSearchRequest>()
         verify(exactly = 1) { service.search(capture(request)) }
         assertThat(request.captured.species).isEqualTo(Species.DOG)
         assertThat(request.captured.image!!.bytes).isEqualTo(byteArrayOf(1))
         assertThat(request.captured.region).isEqualTo("서울")
+        assertThat(request.captured.includeDeceased).isTrue()
+        assertThat(request.captured.includeAdoptedOrReturned).isFalse()
     }
 
     @Test
