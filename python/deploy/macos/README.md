@@ -83,3 +83,35 @@ python -m unittest tests.test_gpu_device tests.test_dinov3 tests.test_sam3_focus
 위 단위 테스트는 실제 GPU 추론·DB·전체 검색 품질 검증을 대신하지 않는다. 운영에
 사용한 MPS 패치의 재현·실제 검색 근거는 인프라의 운영 출처 기록과 연결한다. 실제
 재부팅·정전 복귀, 장기 부하와 앞으로의 예약 실행까지 검증됐다고 확대하지 않는다.
+
+## SAM3 패치가 바뀔 때의 교체 절차
+
+실행기(`mac_native_service.py`)는 기동할 때 소스의 `deploy/macos/sam3-manifest.json`에 적힌
+`patched_files` 해시를 실제로 import되는 `sam3` 패키지와 대조하고, 하나라도 다르면
+`Pinned SAM3 patch changed`로 멈춘다. 따라서 이 패치나 manifest가 바뀐 소스는 **앱 소스와
+SAM3 패키지를 한 번에** 교체해야 한다. 소스만 바꾸거나 패키지만 바꾸면 서비스가 기동하지 않는다.
+
+1. 위 "독립 Python 환경 준비"대로 검증된 원본 사본에 `prepare_sam3_mps.py`로 새 패키지를
+   만든다. 목적지는 기존 패키지를 덮어쓰지 않는 새 디렉터리(예: `sam3-package-<패치 해시 앞 7자리>`)로
+   둔다. 기존 디렉터리는 롤백용으로 남긴다.
+2. launchd plist의 `PYTHONPATH`를 새 패키지 디렉터리로 바꾸고, 같은 교체 안에서 소스 receipt를
+   새 main 커밋으로 바꾼 뒤 서비스를 다시 띄운다. 기동 로그에서 `Pinned SAM3 patch changed`가
+   없고 `/health`가 200인지 본다.
+3. 롤백은 둘을 함께 되돌린다: plist `PYTHONPATH`를 이전 패키지 디렉터리로, 소스 receipt를 이전
+   커밋으로 바꾼 뒤 다시 띄운다.
+
+주의: 가상환경 `site-packages`에는 패치되지 않은 upstream `sam3`가 따로 설치돼 있고, 운영은
+`PYTHONPATH`의 패키지로 이를 가린다. plist에서 `PYTHONPATH`를 빼면 패치 안 된 패키지가
+import되어 기동 검사에 걸린다.
+
+### MPS 어텐션 직접 구현 (2026-11-04)
+
+`sam3/perflib/mps_attention.py`는 PyTorch 2.10의 MPS `scaled_dot_product_attention`이 이 모델의
+호출 모양에서 느린 경로를 타는 문제(SAM 3 한 장 2.4초 중 1.4초) 때문에 마스크 없는 추론 어텐션을
+행렬곱·softmax·행렬곱으로 직접 계산한다(SAM 3 한 장 2.37초 → 1.28초, 마스크·벡터는 원래 경로와 같음).
+`tests/test_sam3_mps_attention.py`가 패치 조각을 그대로 실행해 계약을 검사한다.
+
+- 되돌리기: 환경변수 `PAWBRIDGE_SAM3_MPS_ATTENTION=sdpa`를 서비스 환경에 넣으면 재빌드 없이
+  원래 경로(512 질의 분할 + PyTorch 함수)로 돌아간다.
+- 제거 조건: PyTorch 2.16은 같은 경로를 Metal 커널로 바꾼다(개발판 실측에서 직접 구현보다 빠름).
+  2.16을 채택할 때 같은 측정으로 재비교한 뒤 이 직접 구현을 제거한다.
