@@ -92,13 +92,14 @@ python -m unittest tests.test_gpu_device tests.test_dinov3 tests.test_sam3_focus
 SAM3 패키지를 한 번에** 교체해야 한다. 소스만 바꾸거나 패키지만 바꾸면 서비스가 기동하지 않는다.
 
 1. 위 "독립 Python 환경 준비"대로 검증된 원본 사본에 `prepare_sam3_mps.py`로 새 패키지를
-   만든다. 목적지는 기존 패키지를 덮어쓰지 않는 새 디렉터리(예: `sam3-package-<패치 해시 앞 7자리>`)로
-   둔다. 기존 디렉터리는 롤백용으로 남긴다.
-2. launchd plist의 `PYTHONPATH`를 새 패키지 디렉터리로 바꾸고, 같은 교체 안에서 소스 receipt를
-   새 main 커밋으로 바꾼 뒤 서비스를 다시 띄운다. 기동 로그에서 `Pinned SAM3 patch changed`가
-   없고 `/health`가 200인지 본다.
-3. 롤백은 둘을 함께 되돌린다: plist `PYTHONPATH`를 이전 패키지 디렉터리로, 소스 receipt를 이전
-   커밋으로 바꾼 뒤 다시 띄운다.
+   만든다. 목적지는 기존 패키지를 덮어쓰지 않는 새 디렉터리(예: `sam3-package-<패치 후 파일 해시 앞 7자리>`)로
+   둔다. 기동 검사와 같은 방법(manifest `patched_files` 해시 대조)으로 새 디렉터리를 먼저 확인한다.
+2. launchd plist의 `PYTHONPATH`는 그대로 두고(재적재 불필요), 기존 `sam3-package` 디렉터리를
+   `sam3-package-<이전 해시>-before-<시각>`으로 이름을 바꾼 뒤 새 디렉터리를 `sam3-package`로 바꾼다.
+   같은 교체 안에서 실행 설정의 소스·receipt 2줄을 새 main 커밋으로 바꾸고 `launchctl kickstart -k`로
+   다시 띄운다. 기동 로그에서 `Pinned SAM3 patch changed`가 없고 `/health`가 200인지 본다.
+   (2026-11-04 교체가 이 방식이다. 실행 설정 백업 파일과 이전 패키지 디렉터리는 남긴다.)
+3. 롤백은 둘을 함께 되돌린다: 디렉터리 이름을 반대로 바꾸고 실행 설정 백업을 복원한 뒤 다시 띄운다.
 
 주의: 가상환경 `site-packages`에는 패치되지 않은 upstream `sam3`가 따로 설치돼 있고, 운영은
 `PYTHONPATH`의 패키지로 이를 가린다. plist에서 `PYTHONPATH`를 빼면 패치 안 된 패키지가
