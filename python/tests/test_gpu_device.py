@@ -91,7 +91,10 @@ class AutoreleasePoolTest(unittest.TestCase):
     def test_mps_work_drains_one_pool_per_request_even_on_error(self):
         objc = Mock()
         objc.objc_autoreleasePoolPush.return_value = 42
-        with patch("app.vision.gpu_device._objc", return_value=objc):
+        # autorelease_pool 은 macOS 가 아니면 pool 을 열지 않으므로, Linux CPU 이미지의 병합 게이트에서도
+        # 같은 로직을 검사하도록 플랫폼을 darwin 으로 고정한다(Objective-C 런타임은 아래 Mock 이 대신한다).
+        with patch("app.vision.gpu_device.sys.platform", "darwin"), \
+                patch("app.vision.gpu_device._objc", return_value=objc):
             with autorelease_pool("mps"):
                 objc.objc_autoreleasePoolPop.assert_not_called()
             with self.assertRaises(ValueError), autorelease_pool("mps"):
