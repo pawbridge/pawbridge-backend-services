@@ -90,7 +90,7 @@ class LostSearchServiceTest {
             transaction
         }
         justRun { reader.commit(any()) }
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(
             listOf(
                 candidate(2),
                 candidate(1),
@@ -113,7 +113,7 @@ class LostSearchServiceTest {
         // then
         val image = slot<FormData>()
         verifyOrder {
-            client.search(KEY, capture(image), "DOG", "2026-10-20", "서울", "귀가 접힘", false)
+            client.search(KEY, capture(image), "DOG", "2026-10-20", "서울", "귀가 접힘", false, null)
             reader.getTransaction(any())
             animals.findWithShelterByIdIn(listOf(2L, 1L, 3L, 4L, 5L))
             reader.commit(transaction)
@@ -137,7 +137,7 @@ class LostSearchServiceTest {
 
         every { reader.getTransaction(any()) } returns transaction
         justRun { reader.commit(any()) }
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(
             (0 until statuses.size).map { i -> candidate((i + 1).toLong()) },
         )
         every { animals.findWithShelterByIdIn(any()) } returns
@@ -149,7 +149,14 @@ class LostSearchServiceTest {
         // then
         assertThat(result.candidates.map { c -> c.animal.status }).containsExactlyElementsOf(
             if (includeResolved) {
-                listOf(AnimalStatus.NOTICE, AnimalStatus.PROTECT, AnimalStatus.ADOPTED, AnimalStatus.RETURNED)
+                listOf(
+                    AnimalStatus.NOTICE,
+                    AnimalStatus.PROTECT,
+                    AnimalStatus.ADOPTED,
+                    AnimalStatus.RETURNED,
+                    AnimalStatus.DONATED,
+                    AnimalStatus.RELEASED,
+                )
             } else {
                 listOf(AnimalStatus.NOTICE, AnimalStatus.PROTECT)
             },
@@ -157,9 +164,75 @@ class LostSearchServiceTest {
     }
 
     @Test
+    fun `사망 기록을 켰을 때__검색하면__켠 파트를 보내고 한 번의 조회로 두 목록을 각각 지금 상태로 거른다`() {
+        // given
+        val request = request()
+        request.includeDeceased = true
+
+        every { reader.getTransaction(any()) } returns transaction
+        justRun { reader.commit(any()) }
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(
+            listOf(candidate(1), candidate(2)),
+            listOf(candidate(11), candidate(12), candidate(13), candidate(14)),
+        )
+        every { animals.findWithShelterByIdIn(any()) } returns listOf(
+            animal(1, Species.DOG, AnimalStatus.PROTECT),
+            animal(2, Species.DOG, AnimalStatus.EUTHANIZED),
+            animal(11, Species.DOG, AnimalStatus.NATURAL_DEATH),
+            animal(12, Species.DOG, AnimalStatus.PROTECT),
+            animal(13, Species.CAT, AnimalStatus.EUTHANIZED),
+            animal(14, Species.DOG, AnimalStatus.EUTHANIZED),
+        )
+
+        // when
+        val result = service.search(request)
+
+        // then
+        verify(exactly = 1) { client.search(KEY, any<FormData>(), "DOG", null, null, null, false, true) }
+        verify(exactly = 1) { animals.findWithShelterByIdIn(listOf(1L, 2L, 11L, 12L, 13L, 14L)) }
+        // 그새 사망한 2는 살아 있는 목록에서, 그새 보호 상태로 바뀐 12와 다른 축종 13은 사망 목록에서 빠진다.
+        assertThat(result.candidates.map { c -> c.animal.id }).containsExactly(1L)
+        assertThat(result.deceasedCandidates.map { c -> c.animal.id }).containsExactly(11L, 14L)
+        assertThat(result.deceasedCandidates.first().shelterPhone).isEqualTo("02-0000-0000")
+    }
+
+    @Test
+    fun `사망 기록을 켜지 않았을 때__응답에 사망 기록이 딸려 오면__보내지 않고 쓰지도 않는다`() {
+        // given
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns
+            PythonLostSearchResponse(listOf(), listOf(candidate(11)))
+
+        // when
+        val result = service.search(request())
+
+        // then
+        verify(exactly = 1) { client.search(KEY, any<FormData>(), "DOG", null, null, null, false, null) }
+        assertThat(result.candidates).isEmpty()
+        assertThat(result.deceasedCandidates).isEmpty()
+        confirmVerified(reader, animals)
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidDeceased")
+    fun `사망 기록을 켰는데 그 목록이 올바르지 않을 때__검색하면__DB 접근 없이 503이다`(deceased: List<PythonLostSearchResponse.Candidate?>?) {
+        // given
+        val request = request()
+        request.includeDeceased = true
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns
+            PythonLostSearchResponse(listOf(candidate(1)), deceased)
+
+        // when
+        val failure = catchThrowable { service.search(request) }
+
+        // then
+        assertStatus(failure, 503)
+        confirmVerified(reader, animals)
+    }
+
+    @Test
     fun `후보가 비어 있을 때__검색하면__읽기 트랜잭션을 열거나 DB를 조회하지 않는다`() {
         // given
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
 
         // when
         val result = service.search(request())
@@ -174,7 +247,7 @@ class LostSearchServiceTest {
         // given
         every { reader.getTransaction(any()) } returns transaction
         justRun { reader.commit(any()) }
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(Collections.nCopies(20, candidate(1)))
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(Collections.nCopies(20, candidate(1)))
         every { animals.findWithShelterByIdIn(any()) } returns listOf(animal(1, Species.DOG, AnimalStatus.PROTECT))
 
         // when
@@ -189,7 +262,7 @@ class LostSearchServiceTest {
     @MethodSource("invalidResponses")
     fun `파이썬 응답이 올바르지 않을 때__검색하면__DB 접근 없이 503이고 허가를 반납한다`(response: PythonLostSearchResponse?) {
         // given
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returnsMany listOf(response, PythonLostSearchResponse(listOf()))
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returnsMany listOf(response, PythonLostSearchResponse(listOf()))
 
         // when
         val failure = catchThrowable { service.search(request()) }
@@ -218,7 +291,7 @@ class LostSearchServiceTest {
             Response.builder().request(request).status(remoteStatus).reason(KEY).body(KEY, StandardCharsets.UTF_8).build(),
         )
 
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } throws error andThen PythonLostSearchResponse(listOf())
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } throws error andThen PythonLostSearchResponse(listOf())
 
         // when
         val failure = catchThrowable { service.search(request()) }
@@ -260,7 +333,7 @@ class LostSearchServiceTest {
             }
         }
 
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
 
         // when
         val failure = catchThrowable { service.search(request) }
@@ -285,14 +358,14 @@ class LostSearchServiceTest {
         val request = request()
         request.image = MockMultipartFile("image", ByteArray(LostSearchService.MAX_IMAGE_BYTES.toInt()))
 
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
 
         // when
         val result = service.search(request)
 
         // then
         assertThat(result.candidates).isEmpty()
-        verify(exactly = 1) { client.search(KEY, any<FormData>(), "DOG", null, null, null, false) }
+        verify(exactly = 1) { client.search(KEY, any<FormData>(), "DOG", null, null, null, false, null) }
     }
 
     @Test
@@ -318,7 +391,7 @@ class LostSearchServiceTest {
         every { image.isEmpty } returns false
         every { image.size } returns 1L
         every { image.bytes } throws IOException(KEY)
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returns PythonLostSearchResponse(listOf())
 
         // when
         val failure = catchThrowable { service.search(request) }
@@ -337,7 +410,7 @@ class LostSearchServiceTest {
 
         every { reader.getTransaction(any()) } returns transaction
         justRun { reader.rollback(any()) }
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } returnsMany listOf(
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returnsMany listOf(
             PythonLostSearchResponse(listOf(candidate(1))),
             PythonLostSearchResponse(listOf()),
         )
@@ -359,7 +432,7 @@ class LostSearchServiceTest {
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
 
-        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) } answers {
+        every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } answers {
             entered.countDown()
             assertThat(release.await(5, TimeUnit.SECONDS)).isTrue()
             PythonLostSearchResponse(listOf())
@@ -383,13 +456,22 @@ class LostSearchServiceTest {
             assertThat(completed.candidates).isEmpty()
             assertThat(next.candidates).isEmpty()
         }
-        verify(exactly = 2) { client.search(any(), any<FormData>(), any(), any(), any(), any(), any()) }
+        verify(exactly = 2) { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) }
         confirmVerified(reader, animals)
     }
 
     companion object {
         private const val KEY = "synthetic-lost-search-private-key"
         private const val EVIDENCE = "REGISTERED_DESCRIPTION_TEXT_MATCH"
+
+        // 이전 네이티브처럼 필드가 없거나, 10건을 넘거나, 항목이 깨진 경우.
+        @JvmStatic
+        fun invalidDeceased(): Stream<List<PythonLostSearchResponse.Candidate?>?> = Stream.of(
+            null,
+            Collections.nCopies(11, PythonLostSearchResponse.Candidate(1L, .5, listOf())),
+            listOf<PythonLostSearchResponse.Candidate?>(null),
+            listOf(PythonLostSearchResponse.Candidate(1L, Double.NaN, listOf())),
+        )
 
         @JvmStatic
         fun invalidResponses(): Stream<PythonLostSearchResponse?> = Stream.of(
