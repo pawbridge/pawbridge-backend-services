@@ -47,6 +47,7 @@ class PythonLostSearchClientTest {
             "서울",
             "귀가 접힌 강아지",
             true,
+            true,
         )
     }
 
@@ -87,6 +88,7 @@ class PythonLostSearchClientTest {
             "name=\"image\"; filename=\"photo\"", "Content-Type: application/octet-stream", "image-bytes",
             "name=\"species\"", "DOG", "name=\"lostDate\"", "2026-10-20", "name=\"region\"", "서울",
             "name=\"description\"", "귀가 접힌 강아지", "name=\"includeAdoptedOrReturned\"", "true",
+            "name=\"includeDeceased\"",
         ).doesNotContain(KEY)
         assertThat(options.captured.connectTimeoutMillis()).isEqualTo(3000)
         assertThat(options.captured.readTimeoutMillis()).isEqualTo(45000)
@@ -109,13 +111,17 @@ class PythonLostSearchClientTest {
             null,
             null,
             false,
+            null,
         )
 
         // then
         val request = slot<Request>()
         verify(exactly = 1) { transport.execute(capture(request), any()) }
         val body = String(request.captured.body(), StandardCharsets.UTF_8)
-        assertThat(body).doesNotContain("name=\"lostDate\"", "name=\"region\"", "name=\"description\"", "null")
+        // 사망 기록을 켜지 않으면 이 입력을 모르는 이전 네이티브도 받도록 파트 자체를 보내지 않는다.
+        assertThat(body).doesNotContain(
+            "name=\"lostDate\"", "name=\"region\"", "name=\"description\"", "name=\"includeDeceased\"", "null",
+        )
         assertThat(body).contains("name=\"includeAdoptedOrReturned\"", "false")
         assertThat(result!!.candidates).isEmpty()
     }

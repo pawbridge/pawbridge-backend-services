@@ -12,9 +12,13 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_PIXELS = 16_000_000
 CANDIDATE_POOL = 200
 MAX_RESULTS = 20
+# 사망 기록은 살아 있는 후보와 섞지 않고 따로 이만큼만 보여준다.
+MAX_DECEASED_RESULTS = 10
 AUXILIARY_BOOST = 0.01
 ACTIVE_STATUSES = ("NOTICE", "PROTECT")
-RESOLVED_STATUSES = ("ADOPTED", "RETURNED")
+# 살아서 보호소를 떠난 동물: 입양, 반환, 기증, 방사. 입력 이름 includeAdoptedOrReturned는 호환을 위해 그대로 둔다.
+RESOLVED_STATUSES = ("ADOPTED", "RETURNED", "DONATED", "RELEASED")
+DECEASED_STATUSES = ("NATURAL_DEATH", "EUTHANIZED")
 
 
 class InvalidPhoto(ValueError):
@@ -70,7 +74,8 @@ def auxiliary_evidence(source, lost_date=None, region=None, description=None):
     return evidence
 
 
-def rank_candidates(hits, lost_date=None, region=None, description=None, *, coat_color=None, color_weight=0.):
+def rank_candidates(hits, lost_date=None, region=None, description=None, *, coat_color=None, color_weight=0.,
+                    limit=MAX_RESULTS):
     candidates = []
     penalties = {}
     for hit in hits:
@@ -86,17 +91,26 @@ def rank_candidates(hits, lost_date=None, region=None, description=None, *, coat
     # Provisional bounded boost: <= .03, so metadata cannot overturn large visual gaps.
     candidates.sort(key=lambda c: (-(c["imageScore"] + AUXILIARY_BOOST * len(c["matchedEvidence"]) - penalties[c["animalId"]]),
                                    -c["imageScore"], c["animalId"]))
-    return candidates[:MAX_RESULTS]
+    return candidates[:limit]
 
 
-def search_photo(data, species, lost_date=None, region=None, description=None, include_adopted_or_returned=False):
+def search_photo(data, species, lost_date=None, region=None, description=None, include_adopted_or_returned=False,
+                 include_deceased=False):
     from app.vision.dinov3 import get_encoder, gallery_index
     color_weight = ranking_weight()
     with decode_photo(data) as image:
         embedding = get_encoder().encode_with_metadata(image, species)
     logging.getLogger(__name__).info("Lost-search image processing: %s", embedding.focus_status)
     from app.gallery.storage import get_postgresql_store
+    store, alias = get_postgresql_store(), gallery_index()
     statuses = ACTIVE_STATUSES + (RESOLVED_STATUSES if include_adopted_or_returned else ())
-    hits = get_postgresql_store().search(gallery_index(), embedding, species, statuses, CANDIDATE_POOL)
-    return {"candidates": rank_candidates(hits, lost_date, region, description,
-                                          coat_color=embedding.coat_color, color_weight=color_weight)}
+    hits = store.search(alias, embedding, species, statuses, CANDIDATE_POOL)
+    ranking = dict(lost_date=lost_date, region=region, description=description,
+                   coat_color=embedding.coat_color, color_weight=color_weight)
+    result = {"candidates": rank_candidates(hits, **ranking)}
+    if include_deceased:
+        # 사망 기록은 별도 검색으로 뽑아 살아 있는 후보의 상위 자리를 차지하지 않게 한다. 사진 벡터는 위에서 한 번만 계산한다.
+        # 끈 요청의 응답에는 이 키를 넣지 않아, 이 필드를 모르는 이전 호출자와도 응답 모양이 같다.
+        deceased = store.search(alias, embedding, species, DECEASED_STATUSES, CANDIDATE_POOL)
+        result["deceasedCandidates"] = rank_candidates(deceased, **ranking, limit=MAX_DECEASED_RESULTS)
+    return result

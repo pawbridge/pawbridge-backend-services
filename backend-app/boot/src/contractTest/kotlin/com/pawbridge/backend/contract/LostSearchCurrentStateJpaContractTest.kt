@@ -55,6 +55,7 @@ class LostSearchCurrentStateJpaContractTest : JpaContractBase() {
         seedAnimal(ADOPTED_DOG, SHELTER, "ADOPTED", "DOG")
         seedAnimal(NOTICE_DOG, SHELTER, "NOTICE", "DOG")
         seedAnimal(PROTECTED_CAT, SHELTER, "PROTECT", "CAT")
+        seedAnimal(DECEASED_DOG, SHELTER, "NATURAL_DEATH", "DOG")
     }
 
     @AfterEach
@@ -90,6 +91,22 @@ class LostSearchCurrentStateJpaContractTest : JpaContractBase() {
     }
 
     @Test
+    fun `사망 기록을 켰을 때__검색하면__사망 기록은 지금 사망 상태인 같은 축종만 따로 준다`() {
+        // given
+        answer = """{"candidates":[{"animalId":$PROTECTED_DOG,"imageScore":0.5,"matchedEvidence":[]}],""" +
+            """"deceasedCandidates":[{"animalId":$DECEASED_DOG,"imageScore":0.6,"matchedEvidence":[]},""" +
+            """{"animalId":$ADOPTED_DOG,"imageScore":0.4,"matchedEvidence":[]}]}"""
+
+        // when
+        val result = search.search(request().apply { includeDeceased = true })
+
+        // then
+        assertThat(result.candidates.map { it.animal.id }).isEqualTo(listOf(PROTECTED_DOG))
+        assertThat(result.deceasedCandidates.map { it.animal.id }).isEqualTo(listOf(DECEASED_DOG))
+        assertThat(result.deceasedCandidates.first().shelterPhone).isEqualTo("02-000-0000")
+    }
+
+    @Test
     fun `입양된 동물이 후보에 있을 때__종료 동물 포함을 켜고 끄면__켰을 때만 입양 동물이 들어간다`() {
         // given
         remote(ADOPTED_DOG, PROTECTED_DOG)
@@ -108,6 +125,7 @@ class LostSearchCurrentStateJpaContractTest : JpaContractBase() {
         const val ADOPTED_DOG = 8_500_102L
         const val NOTICE_DOG = 8_500_103L
         const val PROTECTED_CAT = 8_500_104L
+        const val DECEASED_DOG = 8_500_105L
         const val GONE = 8_500_199L
     }
 }
