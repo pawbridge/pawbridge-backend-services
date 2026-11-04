@@ -1,7 +1,7 @@
 {
   "commit": "660a5e9e1b8b4c02c0ad97229b88a09a6e4ff5b7",
   "archive_sha256": "a5de213683abe6e141897f40817f670ea850155916831eda66d315c8c50f1cda",
-  "patch_sha256": "bee34b1b567cad02f66eac7fb670205c21b60c8ce129de5bdea86fef358f5d06",
+  "patch_sha256": "63f26018e8df925ab4609be71f20b856216371b1108f7c714f07d34d2a58da07",
   "upstream_files": {
     "sam3/visualization_utils.py": "f81bcb15510817f9f734a6bfb2b233c024105dd725fb7bb55d6662b5076371cb",
     "sam3/model_builder.py": "d71d6d3e485ec3eae48bbc2ba676f401b5853d65c4195a91d077b04da38121c2",
@@ -205,6 +205,6 @@
     "sam3/model/geometry_encoders.py": "2cc24225ea28d536f5965cd26316bc569806ccf3657f05a8f7804c654bcdebd6",
     "sam3/model/vitdet.py": "6148b77656681bbf336b19b66cc090e4c044d468083f450092498be811b8bca7",
     "sam3/model/model_misc.py": "e6ce590ca953a6bbb982b96c0722b10262892b62c0b901d5eb4c02ae63b0e4f9",
-    "sam3/perflib/mps_attention.py": "eecdd8fb6a516d20c3290a49c42b49c836e5c6c053040c5e95f24ef6acc5e62b"
+    "sam3/perflib/mps_attention.py": "884de3d2ea56964aa56061e0f5f55d25006eded1bf74a30802d12a0c1c899258"
   }
 }
