@@ -22,6 +22,7 @@ class SearchConditions(BaseModel):
     region: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=500)
     includeAdoptedOrReturned: bool = False
+    includeDeceased: bool = False
 
     @field_validator("region", "description", mode="before")
     @classmethod
@@ -51,8 +52,9 @@ async def lost_candidates(request: Request):
             return {"type": "http.request", "body": bytes(body), "more_body": False}
         parsed = Request(request.scope, receive)
         try:
-            async with parsed.form(max_files=1, max_fields=5) as form:
-                if set(form.keys()) - {"image", "species", "lostDate", "region", "description", "includeAdoptedOrReturned"}:
+            async with parsed.form(max_files=1, max_fields=6) as form:
+                if set(form.keys()) - {"image", "species", "lostDate", "region", "description",
+                                       "includeAdoptedOrReturned", "includeDeceased"}:
                     raise HTTPException(422, "지원하지 않는 입력입니다")
                 if len(form.multi_items()) != len(form):
                     raise HTTPException(422, "중복된 입력입니다")
@@ -66,7 +68,8 @@ async def lost_candidates(request: Request):
             # Do not abandon a running thread on cancellation: keep the gate until it exits.
             return await anyio.to_thread.run_sync(
                 search_photo, data, conditions.species, conditions.lostDate,
-                conditions.region, conditions.description, conditions.includeAdoptedOrReturned)
+                conditions.region, conditions.description, conditions.includeAdoptedOrReturned,
+                conditions.includeDeceased)
         except ValidationError as exc:
             raise HTTPException(422, "종류·날짜·지역·특징 입력을 확인해 주세요") from exc
         except InvalidPhoto as exc:
