@@ -115,7 +115,20 @@ class LostApiTest(unittest.TestCase):
             response = self.post({"species": "DOG", "lostDate": "2026-09-08", "region": "상주시", "description": "갈색 귀",
                                   "includeAdoptedOrReturned": "true"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(search.call_args.args[1:], ("DOG", date(2026,9,8), "상주시", "갈색 귀", True))
+        self.assertEqual(search.call_args.args[1:], ("DOG", date(2026,9,8), "상주시", "갈색 귀", True, False))
+
+    def test_deceased_option_reaches_search_and_defaults_to_off(self):
+        # 사망 기록 입력이 없는 이전 호출자도 그대로 받아들이고, 꺼진 것으로 본다.
+        for fields, expected in (({"species": "CAT"}, False), ({"species": "CAT", "includeDeceased": "true"}, True)):
+            with self.subTest(fields=fields), patch.object(api, "search_photo", return_value={"candidates": []}) as search:
+                self.assertEqual(self.post(fields).status_code, 200)
+            self.assertEqual(search.call_args.args[-1], expected)
+
+    def test_unknown_and_duplicate_fields_are_rejected(self):
+        for fields in ({"species": "DOG", "includeEverything": "true"}, {"species": "DOG", "includeDeceased": ["true", "false"]}):
+            with self.subTest(fields=fields), patch.object(api, "search_photo") as search:
+                self.assertEqual(self.post(fields).status_code, 422)
+            search.assert_not_called()
 
     def test_unauthenticated_request_does_not_search(self):
         with patch.object(api, "search_photo") as search:
@@ -124,7 +137,7 @@ class LostApiTest(unittest.TestCase):
 
     def test_invalid_species_date_and_long_description_do_not_search(self):
         for fields in ({"species":"ETC"}, {"species":"DOG","lostDate":"bad"}, {"species":"CAT","description":"x"*501},
-                       {"species":"DOG","includeAdoptedOrReturned":"invalid"}):
+                       {"species":"DOG","includeAdoptedOrReturned":"invalid"}, {"species":"DOG","includeDeceased":"invalid"}):
             with self.subTest(fields=str(fields)[:40]), patch.object(api,"search_photo") as search:
                 self.assertEqual(self.post(fields).status_code,422)
                 search.assert_not_called()
@@ -137,7 +150,7 @@ class LostApiTest(unittest.TestCase):
         with patch.object(api, "search_photo", return_value={"candidates": []}) as search:
             response = self.post({"species": "DOG", "region": "  ", "description": "  갈색 귀  "})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(search.call_args.args[3:], (None, "갈색 귀", False))
+        self.assertEqual(search.call_args.args[3:], (None, "갈색 귀", False, False))
 
     def test_image_and_request_size_limits(self):
         with patch.object(api,"search_photo") as search:
@@ -170,7 +183,10 @@ def retrieve(query, hits, **options):
     from app.lost_search.service import search_photo
     from app.gallery.pg_store import PostgresqlGalleryStore
     store = create_autospec(PostgresqlGalleryStore, instance=True)
-    if isinstance(hits, Exception):
+    responses = options.pop("responses", None)
+    if responses is not None:
+        store.search.side_effect = responses
+    elif isinstance(hits, Exception):
         store.search.side_effect = hits
     else:
         store.search.return_value = hits
@@ -194,9 +210,26 @@ class RetrievalContractTest(unittest.TestCase):
         self.assertEqual([call[0] for call in store.method_calls], ["search"])
         self.assertEqual(result["candidates"][0]["animalId"], 7)
 
-    def test_resolved_option_adds_only_adopted_and_returned_to_status_filter(self):
-        store, _, _ = retrieve(embedding(), [], include_adopted_or_returned=True)
-        self.assertEqual(store.search.call_args.args[3], ("NOTICE", "PROTECT", "ADOPTED", "RETURNED"))
+    def test_left_shelter_option_adds_only_living_departures_to_status_filter(self):
+        store, _, result = retrieve(embedding(), [], include_adopted_or_returned=True)
+        self.assertEqual(store.search.call_args.args[3], ("NOTICE", "PROTECT", "ADOPTED", "RETURNED", "DONATED", "RELEASED"))
+        # 사망 기록을 켜지 않으면 응답에 그 키가 없다(이 필드를 모르는 이전 백엔드와 같은 모양).
+        self.assertEqual(result, {"candidates": []})
+
+    def test_deceased_records_are_searched_separately_with_one_encoding(self):
+        living = [hit(id, .9 - id / 100, status="PROTECT") for id in range(1, 26)]
+        deceased = [hit(id, .9 - id / 1000, status="NATURAL_DEATH") for id in range(101, 126)]
+        query = embedding()
+        store, encoder, result = retrieve(query, [], arguments=("CAT",), include_deceased=True,
+                                          responses=[living, deceased])
+        encoder.return_value.encode_with_metadata.assert_called_once()
+        self.assertEqual([c.args[3] for c in store.search.call_args_list],
+                         [("NOTICE", "PROTECT"), ("NATURAL_DEATH", "EUTHANIZED")])
+        self.assertTrue(all(c.args[1] is query and c.args[2] == "CAT" and c.args[4] == 200
+                            for c in store.search.call_args_list))
+        # 일부 살아 있는 후보보다 점수가 높은 사망 기록도 그 20자리를 차지하지 않고, 따로 10건까지만 돌아온다.
+        self.assertEqual([c["animalId"] for c in result["candidates"]], list(range(1, 21)))
+        self.assertEqual([c["animalId"] for c in result["deceasedCandidates"]], list(range(101, 111)))
 
     def test_animal_channel_reaches_the_store_with_the_query_species_and_model(self):
         query = embedding(vector=[1., 0.], animal_vector=[0., 1.], model_version="dual-v2", focus_status="animal_mask")

@@ -56,7 +56,7 @@ class LostStorageTest(unittest.TestCase):
             return SimpleNamespace(vector=[1.]+[0.]*1023,animal_vector=None,model_version='test',focus_status='test',coat_color=None)
         def retrieve(*args):
             self.assertEqual(calls,['inference'])
-            self.assertEqual(args[3],('NOTICE','PROTECT','ADOPTED','RETURNED'))
+            self.assertEqual(args[3],('NOTICE','PROTECT','ADOPTED','RETURNED','DONATED','RELEASED'))
             self.assertEqual(args[4],200)
             return [{'_score':1.8,'_source':{'id':1}},
                     {'_score':1.795,'_source':{'id':2,'happen_place':'서울'}}]
