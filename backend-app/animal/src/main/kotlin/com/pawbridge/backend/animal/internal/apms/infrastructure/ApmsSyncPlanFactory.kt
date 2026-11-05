@@ -9,6 +9,8 @@ import org.springframework.batch.core.explore.JobExplorer
 import java.time.Clock
 import java.time.LocalDate
 import java.util.TreeMap
+import kotlin.time.TimeSource
+import kotlin.time.measureTimedValue
 
 class ApmsSyncPlanFactory(
     private val animals: AnimalRepository,
@@ -18,14 +20,13 @@ class ApmsSyncPlanFactory(
 
     fun create(jobName: String): ApmsSyncPlan {
         // 실행 기록이 쌓일수록 계획 생성이 느려지는지 보기 위한 측정이다.
-        val started = System.nanoTime()
+        // 벽시계(clock)는 시각 보정으로 움직일 수 있어 경과 시간은 단조 시계로 잰다.
+        val started = TimeSource.Monotonic.markNow()
         val today = LocalDate.now(clock)
         val recent = today.minusDays(30)
         val oldest = animals.findEarliestHappenDate(ApiSource.APMS_ANIMAL)
         var history = if (oldest != null && oldest.isBefore(recent)) oldest else recent
-        val historyStarted = System.nanoTime()
-        val prior = history(jobName, today)
-        val historyMillis = elapsedMillis(historyStarted)
+        val (prior, historyTime) = measureTimedValue { history(jobName, today) }
         var updated = earlier(prior.recovery, recent)!!
         if (updated.isBefore(history)) {
             history = updated
@@ -69,8 +70,8 @@ class ApmsSyncPlanFactory(
         val plan = ApmsSyncPlan(earlier(intake, recent), history.withDayOfMonth(1), updated, today, monthly)
         log.info(
             "[BATCH] APMS plan created: elapsedMs={}, historyMs={}, instancesRead={}, executionsRead={}, retainedAttempts={}",
-            elapsedMillis(started),
-            historyMillis,
+            started.elapsedNow().inWholeMilliseconds,
+            historyTime.inWholeMilliseconds,
             prior.instancesRead,
             prior.executionsRead,
             prior.attempts.size,
@@ -142,8 +143,6 @@ class ApmsSyncPlanFactory(
 
     private companion object {
         private val log = LoggerFactory.getLogger(ApmsSyncPlanFactory::class.java)
-
-        private fun elapsedMillis(started: Long): Long = (System.nanoTime() - started) / 1_000_000
 
         private fun earlier(left: LocalDate?, right: LocalDate?): LocalDate? {
             if (left == null) {
