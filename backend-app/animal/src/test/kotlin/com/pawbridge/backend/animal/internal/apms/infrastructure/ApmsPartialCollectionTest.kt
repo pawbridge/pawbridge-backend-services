@@ -37,12 +37,11 @@ class ApmsPartialCollectionTest {
         }
 
         // when
-        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        val animals = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000).animals()
 
         // then
-        assertThat(snapshot.animals()).hasSize(990)
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isPositive()
+        // 같은 날짜의 입소일 조회와 수정일 조회가 모두 같은 990건을 돌려주므로 두 구간이 기록된다.
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 990, incomplete = 0, providerGaps = 2))
         assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.PROVIDER_GAP_DETAILS))
             .contains("reported=991", "observed=990")
     }
@@ -288,9 +287,7 @@ class ApmsPartialCollectionTest {
         val animals = snapshot.animals()
 
         // then
-        assertThat(animals).hasSize(1001)
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isEqualTo(1)
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1001, incomplete = 0, providerGaps = 1))
         assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.PROVIDER_GAP_DETAILS))
             .contains("intake=2026-09-09..2026-09-10", "reported=1002", "observed=1001")
         verify(exactly = 2) { intakePage(api, 1) }
@@ -312,9 +309,7 @@ class ApmsPartialCollectionTest {
         val animals = snapshot.animals()
 
         // then
-        assertThat(animals).hasSize(1001)
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isEqualTo(1)
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1001, incomplete = 0, providerGaps = 1))
         verify(exactly = 3) { intakePage(api, 2) }
     }
 
@@ -335,9 +330,7 @@ class ApmsPartialCollectionTest {
         val animals = snapshot.animals()
 
         // then
-        assertThat(animals).hasSize(1002)
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1002, incomplete = 0, providerGaps = 0))
     }
 
     @Test
@@ -354,11 +347,10 @@ class ApmsPartialCollectionTest {
         )
 
         // when
-        snapshot.animals()
+        val animals = snapshot.animals()
 
         // then
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1002, incomplete = 1, providerGaps = 0))
     }
 
     @Test
@@ -372,11 +364,11 @@ class ApmsPartialCollectionTest {
         every { intakePage(api, 2) } returns response(1001, listOf(animal("last-a", "20260910")), 2)
 
         // when
-        snapshot.animals()
+        val animals = snapshot.animals()
 
         // then
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+        // 첫 쪽이 잘리면 그 자리에서 멈추고 둘째 쪽은 읽지 않으므로 999마리만 남는다.
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 999, incomplete = 1, providerGaps = 0))
     }
 
     @Test
@@ -390,13 +382,23 @@ class ApmsPartialCollectionTest {
         every { intakePage(api, 2) } returns response(1003, listOf(animal("last-a", "20260910")), 2)
 
         // when
-        snapshot.animals()
+        val animals = snapshot.animals()
 
         // then
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1001, incomplete = 1, providerGaps = 0))
         assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.INCOMPLETE_DETAILS))
             .contains("reported=1003", "observed=1001")
-        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+    }
+
+    /** 수집 결과에서 함께 확인할 값을 한 객체로 묶는다. */
+    private data class Collected(val animals: Int, val incomplete: Int, val providerGaps: Int)
+
+    private fun collected(animals: List<ApmsAnimal>, execution: JobExecution): Collected {
+        return Collected(
+            animals.size,
+            execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT),
+            execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT),
+        )
     }
 
     private fun stubEmptyWindows(api: ApmsApiClient) {
