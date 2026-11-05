@@ -456,7 +456,8 @@ class ApmsAnimalSnapshotTest {
                 Arguments.of("응답 없음", { null }, "UNSUCCESSFUL_RESPONSE", true),
                 Arguments.of("항목 없음", { page("3", null, 1) }, "COUNT_MISMATCH", false),
                 Arguments.of("빈 항목", { page("3", listOf(), 1) }, "COUNT_MISMATCH", false),
-                Arguments.of("잘린 쪽", { page("2", listOf(one), 1) }, "COUNT_MISMATCH", false),
+                // 1마리 부족은 제공자 불일치로 받아들이므로 2마리 이상 모자란 쪽으로 확인한다.
+                Arguments.of("잘린 쪽", { page("3", listOf(one), 1) }, "COUNT_MISMATCH", false),
             )
         }
 
