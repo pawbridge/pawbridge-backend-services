@@ -48,6 +48,7 @@ open class ApmsAnimalSnapshot(
         val byNumber = LinkedHashMap<String, ApmsAnimal>()
         val incomplete = ArrayList<String>()
         var countMismatches = 0
+        val providerGaps = ArrayList<String>()
         val results = ArrayList<ApmsQueryProgress.Result>()
         // Complete the first pass before spending retries on a problematic interval.
         // A bad early month must not consume the request budget of later healthy months.
@@ -62,6 +63,13 @@ open class ApmsAnimalSnapshot(
                 result = recover(query, result, 0, RecoveryBudget(RECOVERY_REQUESTS_PER_QUERY), byNumber)
             }
             results.add(ApmsQueryProgress.Result(query, result.complete))
+            if (result.complete && result.providerGap) {
+                providerGaps.add(
+                    "intake=" + query.intakeStart + ".." + query.intakeEnd +
+                        ";updated=" + query.updatedStart + ".." + query.updatedEnd +
+                        ";reported=" + result.expected + ";observed=" + result.numbers.size,
+                )
+            }
             if (!result.complete) {
                 if ("COUNT_MISMATCH" == result.reason) {
                     countMismatches++
@@ -81,6 +89,11 @@ open class ApmsAnimalSnapshot(
         execution.executionContext.putString(INCOMPLETE_DETAILS, incomplete.joinToString("\n"))
         execution.executionContext.putInt(COUNT_MISMATCH_COUNT, countMismatches)
         execution.executionContext.putInt(COLLECTED_COUNT, snapshot.size)
+        execution.executionContext.putInt(PROVIDER_GAP_COUNT, providerGaps.size)
+        execution.executionContext.putString(PROVIDER_GAP_DETAILS, providerGaps.joinToString("\n"))
+        if (providerGaps.isNotEmpty()) {
+            log.warn("[BATCH] APMS provider reported one more animal than it returned: {}", providerGaps.joinToString(" | "))
+        }
         log.info(
             "APMS snapshot ready: requests={}, animals={}, incompleteQueries={}, updatedStart={}, end={}",
             requests,
@@ -99,12 +112,24 @@ open class ApmsAnimalSnapshot(
         budget: RecoveryBudget,
         byNumber: MutableMap<String, ApmsAnimal>,
     ): Outcome {
-        val retry = scan(query, byNumber, budget)
         val observed = HashSet(first.numbers)
+        var expected = first.expected
+        var previous = first
+        var retry = scan(query, byNumber, budget)
         observed.addAll(retry.numbers)
-        val expected = Math.max(first.expected, retry.expected)
-        if (retry.complete && retry.expected >= expected && retry.numbers.containsAll(observed)) {
+        expected = Math.max(expected, retry.expected)
+        if (fills(retry, expected, observed)) {
             return retry
+        }
+        // 첫 조회가 중간에 끊겨 비교할 결과가 없으면 한 번 더 받아 연속된 두 결과를 맞춘다.
+        if (!first.providerGap && retry.providerGap) {
+            previous = retry
+            retry = scan(query, byNumber, budget)
+            observed.addAll(retry.numbers)
+            expected = Math.max(expected, retry.expected)
+            if (fills(retry, expected, observed)) {
+                return retry
+            }
         }
         val reason = first.reason
         val days = ChronoUnit.DAYS.between(query.intakeStart, query.intakeEnd)
@@ -130,7 +155,21 @@ open class ApmsAnimalSnapshot(
                 return Outcome(true, children.size.toLong(), children, "")
             }
         }
+        // 다시 받고 나눠 받아도 같은 1마리가 계속 빠지면 제공자가 보고 건수를 잘못 준 것으로 보고 받은 그대로 완료한다.
+        if (sameProviderGap(previous, retry, expected, observed)) {
+            return Outcome(true, retry.expected, retry.numbers, "", true)
+        }
         return Outcome(false, expected, observed, reason)
+    }
+
+    private fun fills(retry: Outcome, expected: Long, observed: Set<String>): Boolean {
+        return retry.complete && retry.expected >= expected && retry.numbers.containsAll(observed)
+    }
+
+    private fun sameProviderGap(previous: Outcome, retry: Outcome, expected: Long, observed: Set<String>): Boolean {
+        return previous.providerGap && retry.providerGap &&
+            previous.expected == retry.expected && retry.expected == expected &&
+            previous.numbers == retry.numbers && retry.numbers.containsAll(observed)
     }
 
     private fun scan(
@@ -157,6 +196,9 @@ open class ApmsAnimalSnapshot(
             if (total < 0) {
                 total = response.total
             }
+            // 이 쪽을 받기 전까지 모든 쪽이 꽉 차고 합계가 같았는지, 이 쪽에서 합계나 중복이 어긋났는지 따로 본다.
+            val earlierPagesConsistent = consistent
+            var pageStable = response.total == total
             consistent = consistent && response.total == total && response.countMatches
             total = Math.max(total, response.total)
             for (item in response.items) {
@@ -165,6 +207,7 @@ open class ApmsAnimalSnapshot(
                 // add()는 부수효과가 있으므로 consistent가 이미 false여도 반드시 실행한다(Java의 &=).
                 val added = numbers.add(desertionNo)
                 consistent = consistent && added
+                pageStable = pageStable && added
                 if (!byNumber.containsKey(desertionNo) && byNumber.size >= maxAnimals) {
                     return Outcome(false, total, numbers, "ANIMAL_BUDGET")
                 }
@@ -172,7 +215,10 @@ open class ApmsAnimalSnapshot(
             }
             if (response.last || response.items.isEmpty() || !consistent) {
                 val complete = consistent && numbers.size.toLong() == total
-                return Outcome(complete, total, numbers, if (complete) "" else "COUNT_MISMATCH")
+                // 앞쪽은 모두 정상이고 마지막 쪽에서만 정확히 1마리 모자란 경우만 제공자 불일치 후보로 본다.
+                val providerGap = !complete && earlierPagesConsistent && pageStable && response.last &&
+                    response.items.isNotEmpty() && numbers.size.toLong() == total - 1
+                return Outcome(complete, total, numbers, if (complete) "" else "COUNT_MISMATCH", providerGap)
             }
             page++
         }
@@ -211,6 +257,8 @@ open class ApmsAnimalSnapshot(
         val expected: Long,
         val numbers: Set<String>,
         val reason: String?,
+        /** 미완료면 "마지막 쪽에서만 1마리 부족", 완료면 그 상태가 두 번 같게 나와 받아들였다는 뜻이다. */
+        val providerGap: Boolean = false,
     )
 
     private class RecoveryBudget(var remaining: Int)
@@ -243,6 +291,8 @@ open class ApmsAnimalSnapshot(
         const val INCOMPLETE_DETAILS: String = "apms.sync.incompleteQueryDetails"
         const val COUNT_MISMATCH_COUNT: String = "apms.sync.countMismatchQueryCount"
         const val COLLECTED_COUNT: String = "apms.sync.collectedCount"
+        const val PROVIDER_GAP_COUNT: String = "apms.sync.providerCountGapQueryCount"
+        const val PROVIDER_GAP_DETAILS: String = "apms.sync.providerCountGaps"
         private const val MAX_SPLIT_DEPTH = 2
         private const val RECOVERY_REQUESTS_PER_QUERY = 8
     }
