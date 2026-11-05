@@ -3,6 +3,7 @@ package com.pawbridge.backend.animal.internal.apms.infrastructure
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.batch.core.JobExecution
@@ -12,11 +13,10 @@ import org.springframework.batch.core.scope.context.ChunkContext
 import org.springframework.batch.repeat.RepeatStatus
 
 class ApmsCollectionVerificationTest {
-    @ParameterizedTest
-    @CsvSource("0,0", "1,1", "3,3")
-    fun `미완료 건수가 모두 건수 불일치로 설명될 때__검증하면__기존 완료 정책대로 끝낸다`(incomplete: Int, mismatches: Int) {
+    @Test
+    fun `미완료 구간이 없을 때__검증하면__끝낸다`() {
         // given
-        val contribution = contribution(incomplete, mismatches)
+        val contribution = contribution(0, 0)
         val chunkContext = mockk<ChunkContext>()
 
         // when
@@ -27,8 +27,8 @@ class ApmsCollectionVerificationTest {
     }
 
     @ParameterizedTest
-    @CsvSource("1,0", "3,1", "3,2")
-    fun `건수 불일치로 설명되지 않는 미해결 사유가 있을 때__검증하면__불완전한 실행을 거부한다`(incomplete: Int, mismatches: Int) {
+    @CsvSource("1,0", "1,1", "3,1", "3,3")
+    fun `미완료 구간이 남았을 때__건수 불일치만 있어도__불완전한 실행을 거부한다`(incomplete: Int, mismatches: Int) {
         // given
         val contribution = contribution(incomplete, mismatches)
         val chunkContext = mockk<ChunkContext>()

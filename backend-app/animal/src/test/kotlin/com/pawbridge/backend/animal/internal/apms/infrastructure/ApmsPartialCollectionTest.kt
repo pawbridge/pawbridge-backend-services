@@ -17,7 +17,7 @@ import java.time.LocalDate
 
 class ApmsPartialCollectionTest {
     @Test
-    fun `991건이 보고됐지만 990건만 반환됐을 때__수집하면__확인된 동물은 유지하고 불완전한 구간을 기록한다`() {
+    fun `991건이 보고됐지만 매번 같은 990건만 반환될 때__수집하면__제공자 불일치로 기록하고 완료한다`() {
         // given
         val api = mockk<ApmsApiClient>()
         val day = LocalDate.of(2026, 9, 10)
@@ -41,8 +41,10 @@ class ApmsPartialCollectionTest {
 
         // then
         assertThat(snapshot.animals()).hasSize(990)
-        assertThat(execution.executionContext.getInt("apms.sync.incompleteQueryCount")).isPositive()
-        assertThat(execution.executionContext.getString("apms.sync.incompleteQueryDetails")).contains("COUNT_MISMATCH")
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isPositive()
+        assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.PROVIDER_GAP_DETAILS))
+            .contains("reported=991", "observed=990")
     }
 
     @Test
@@ -270,6 +272,145 @@ class ApmsPartialCollectionTest {
         // then
         assertThat(animals).hasSize(1000)
         assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
+    }
+
+    @Test
+    fun `마지막 쪽에서 매번 같은 1마리가 빠질 때__수집하면__같은 조회를 한 번 더 받고 제공자 불일치로 완료한다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1002, fullPage(), 1)
+        every { intakePage(api, 2) } returns response(1002, listOf(animal("last-a", "20260910")), 2)
+
+        // when
+        val animals = snapshot.animals()
+
+        // then
+        assertThat(animals).hasSize(1001)
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isEqualTo(1)
+        assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.PROVIDER_GAP_DETAILS))
+            .contains("intake=2026-09-09..2026-09-10", "reported=1002", "observed=1001")
+        verify(exactly = 2) { intakePage(api, 1) }
+        verify(exactly = 2) { intakePage(api, 2) }
+    }
+
+    @Test
+    fun `첫 조회가 마지막 쪽에서 끊기고 이후 두 번 같은 1마리가 빠질 때__수집하면__제공자 불일치로 완료한다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        val lastPage = response(1002, listOf(animal("last-a", "20260910")), 2)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1002, fullPage(), 1)
+        every { intakePage(api, 2) } throws IllegalStateException("offline") andThen lastPage andThen lastPage
+
+        // when
+        val animals = snapshot.animals()
+
+        // then
+        assertThat(animals).hasSize(1001)
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isEqualTo(1)
+        verify(exactly = 3) { intakePage(api, 2) }
+    }
+
+    @Test
+    fun `다시 받았을 때 빠졌던 1마리가 채워질 때__수집하면__제공자 불일치 없이 완료한다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1002, fullPage(), 1)
+        every { intakePage(api, 2) } returnsMany listOf(
+            response(1002, listOf(animal("last-a", "20260910")), 2),
+            response(1002, listOf(animal("last-a", "20260910"), animal("last-b", "20260910")), 2),
+        )
+
+        // when
+        val animals = snapshot.animals()
+
+        // then
+        assertThat(animals).hasSize(1002)
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isZero()
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+    }
+
+    @Test
+    fun `두 번 모두 1마리가 빠지지만 받은 동물이 서로 다를 때__수집하면__미해결로 남긴다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1002, fullPage(), 1)
+        every { intakePage(api, 2) } returnsMany listOf(
+            response(1002, listOf(animal("last-a", "20260910")), 2),
+            response(1002, listOf(animal("last-b", "20260910")), 2),
+        )
+
+        // when
+        snapshot.animals()
+
+        // then
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+    }
+
+    @Test
+    fun `마지막이 아닌 첫 쪽에서 1마리가 빠질 때__수집하면__제공자 불일치로 보지 않고 미해결로 남긴다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1001, fullPage().drop(1), 1)
+        every { intakePage(api, 2) } returns response(1001, listOf(animal("last-a", "20260910")), 2)
+
+        // when
+        snapshot.animals()
+
+        // then
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+    }
+
+    @Test
+    fun `마지막 쪽에서 매번 같은 2마리가 빠질 때__수집하면__미해결로 남긴다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1003, fullPage(), 1)
+        every { intakePage(api, 2) } returns response(1003, listOf(animal("last-a", "20260910")), 2)
+
+        // when
+        snapshot.animals()
+
+        // then
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.INCOMPLETE_COUNT)).isEqualTo(1)
+        assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.INCOMPLETE_DETAILS))
+            .contains("reported=1003", "observed=1001")
+        assertThat(execution.executionContext.getInt(ApmsAnimalSnapshot.PROVIDER_GAP_COUNT)).isZero()
+    }
+
+    private fun stubEmptyWindows(api: ApmsApiClient) {
+        every {
+            api.getAbandonmentAnimals(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } answers { response(0, listOf(), arg<Int>(1)) }
+    }
+
+    private fun intakePage(api: ApmsApiClient, page: Int): ApmsRootResponse<ApmsAnimal>? {
+        return api.getAbandonmentAnimals("test-key", page, 1000, "20260909", "20260910", null, null, "json", null, null)
+    }
+
+    private fun fullPage(): List<ApmsAnimal> {
+        return (0 until 1000).map { i -> animal("id-" + i, "20260909") }
     }
 
     private fun executionFor(start: LocalDate, end: LocalDate): JobExecution {
