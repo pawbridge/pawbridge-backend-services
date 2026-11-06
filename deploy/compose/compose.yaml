@@ -22,7 +22,8 @@ services:
     user: ${OPERATING_UID}:${OPERATING_GID}
     mem_limit: 1g
     memswap_limit: 1g
-    cpus: 1.0
+    # 1코어에서는 추천 벡터 쿼리만으로 포화돼 2코어로 올렸다(2026-11-06 부하 시험, 9/22 MSA와 같은 값).
+    cpus: 2.0
     pids_limit: 256
     stop_grace_period: 60s
     env_file: [{path: "${OPERATING_SECRETS}/postgres.env", format: raw}]
