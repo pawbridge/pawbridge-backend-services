@@ -293,3 +293,71 @@ class Sam3GraphCacheTest(unittest.TestCase):
             self.assertEqual(prepared.status, "original_no_confident_animal")
         finally:
             prepared.image.close()
+
+
+@unittest.skipIf(torch is None, "Requires the dedicated PyTorch runtime")
+class Sam3FocusCacheTest(unittest.TestCase):
+    """SAM 3 출력 저장: 같은 사진은 저장한 출력으로 같은 결과를 내고, 꺼져 있으면 아무것도 쓰지 않는다."""
+
+    def _focus(self, calls):
+        from app.vision.sam3_focus import Sam3Focus
+        focus = object.__new__(Sam3Focus)
+        focus.device = "cpu"
+
+        def set_image(working):
+            calls.append(working.size)
+            return {}
+
+        def species_prompt(_state, _species):
+            height, width = 120, 160
+            masks = torch.zeros((1, 1, height, width), dtype=torch.bool)
+            masks[0, 0, 20:100, 30:130] = True
+            return {"boxes": torch.tensor([[25., 15., 135., 105.]]), "scores": torch.tensor([.93]), "masks": masks}
+
+        focus._set_image, focus._set_species_prompt = set_image, species_prompt
+        return focus
+
+    def test_cached_output_reproduces_the_same_crop_without_running_sam(self):
+        calls = []
+        focus = self._focus(calls)
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"LOST_SEARCH_FOCUS_CACHE_DIR": root}), \
+                Image.effect_noise((160, 120), 64).convert("RGB") as image:
+            first = focus.prepare(image, "DOG")
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(len(list(Path(root).rglob("*.npz"))), 1)
+            # 두 번째는 SAM 3를 부르면 실패하게 해 두고, 저장한 출력만으로 같은 결과가 나오는지 본다.
+            focus._set_image = lambda _working: self.fail("SAM 3 must not run on a cache hit")
+            second = focus.prepare(image, "DOG")
+            try:
+                self.assertEqual(first.status, "animal_mask")
+                self.assertEqual(second.status, first.status)
+                self.assertEqual(second.coat_color, first.coat_color)
+                self.assertEqual(second.image.tobytes(), first.image.tobytes())
+            finally:
+                first.image.close(); second.image.close()
+
+    def test_other_species_or_photo_does_not_reuse_and_unreadable_file_is_recomputed(self):
+        calls = []
+        focus = self._focus(calls)
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"LOST_SEARCH_FOCUS_CACHE_DIR": root}), \
+                Image.effect_noise((160, 120), 64).convert("RGB") as image, Image.effect_noise((160, 120), 32).convert("RGB") as other:
+            for photo, species in ((image, "DOG"), (image, "CAT"), (other, "DOG")):
+                focus.prepare(photo, species).image.close()
+            self.assertEqual(len(calls), 3)
+            saved = sorted(Path(root).rglob("*.npz"))
+            self.assertEqual(len(saved), 3)
+            for path in saved:
+                path.write_bytes(b"broken")
+            focus.prepare(image, "DOG").image.close()
+            self.assertEqual(len(calls), 4)
+            self.assertFalse(list(Path(root).rglob("*.tmp")))
+
+    def test_disabled_cache_writes_nothing(self):
+        calls = []
+        focus = self._focus(calls)
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"LOST_SEARCH_FOCUS_CACHE_DIR": ""}), \
+                Image.effect_noise((160, 120), 64).convert("RGB") as image:
+            focus.prepare(image, "DOG").image.close()
+            focus.prepare(image, "DOG").image.close()
+            self.assertEqual(len(calls), 2)
+            self.assertFalse(list(Path(root).rglob("*")))

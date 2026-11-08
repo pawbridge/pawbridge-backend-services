@@ -1,7 +1,10 @@
 """Pinned SAM 3 image-only segmentation; no model downloads or image synthesis."""
 from contextlib import nullcontext
 import hashlib
+import logging
+import os
 from pathlib import Path
+import tempfile
 
 from app.settings import VisionSettings
 from app.vision.animal_focus import FocusResult, prepare_focus, square_image
@@ -20,6 +23,56 @@ def focus_version():
     if settings.pooling != "token":
         return FOCUS_VERSION
     return FOCUS_VERSION_CLS_384 if settings.input_size == 384 else FOCUS_VERSION_CLS
+
+
+FOCUS_CACHE_VERSION = "sam3-focus-cache-v1"
+
+
+def focus_cache_path(working, species):
+    """SAM 3 입력 사진(1024 축소본)과 체크포인트, 종으로 정해지는 저장 위치. 설정이 비어 있으면 None."""
+    root = VisionSettings.load().focus_cache_dir
+    if not root:
+        return None
+    digest = hashlib.sha256()
+    # 같은 사진이라도 체크포인트, 종 문구, 크기가 다르면 다른 결과이므로 모두 키에 넣는다.
+    digest.update(f"{FOCUS_CACHE_VERSION}:{CHECKPOINT_SHA256}:{species}:{working.mode}:{working.size}:".encode())
+    digest.update(working.tobytes())
+    name = digest.hexdigest()
+    return Path(root) / name[:2] / f"{name}.npz"
+
+
+def read_focus_cache(path):
+    import numpy as np
+    try:
+        with np.load(path) as data:
+            count, height, width = (int(v) for v in data["mask_shape"])
+            masks = np.unpackbits(data["masks"], count=count * height * width).reshape(count, height, width).astype(bool)
+            return data["boxes"], masks, data["scores"]
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError, KeyError):
+        # 깨진 파일은 쓰지 않고 다시 계산한다. 다시 계산한 결과가 덮어쓴다.
+        logging.getLogger(__name__).warning("Ignoring unreadable SAM 3 focus cache")
+        return None
+
+
+def write_focus_cache(path, boxes, masks, scores):
+    import numpy as np
+    masks = np.asarray(masks, dtype=bool)
+    temporary = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # 다른 프로세스가 반쯤 쓴 파일을 읽지 않도록 임시 파일에 쓴 뒤 이름을 바꾼다.
+        with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".tmp", delete=False) as handle:
+            temporary = handle.name
+            np.savez_compressed(handle, boxes=np.asarray(boxes, dtype=np.float32), scores=np.asarray(scores, dtype=np.float32),
+                                masks=np.packbits(masks), mask_shape=np.array(masks.shape, dtype=np.int64))
+        os.replace(temporary, path)
+    except OSError:
+        # 저장은 다음 재계산을 빠르게 하려는 것뿐이라 실패해도 이번 결과는 그대로 쓴다.
+        logging.getLogger(__name__).warning("Cannot write SAM 3 focus cache")
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def load_mapped_checkpoint(model, checkpoint_path):
@@ -169,12 +222,19 @@ class Sam3Focus:
                 working.thumbnail((1024, 1024), Image.Resampling.BICUBIC)
             elif working.mode != "RGB" or max(working.size) > 1024:
                 raise ValueError("Prepared SAM 3 image must be bounded RGB")
-            with torch.inference_mode(), torch.autocast(self.device, dtype=torch.bfloat16):
-                state = self._set_image(working)
-                prediction = self._set_species_prompt(state, species)
-            boxes = prediction["boxes"].detach().float().cpu().numpy()
-            masks = prediction["masks"].detach().cpu().numpy()
-            scores = prediction["scores"].detach().float().cpu().numpy()
-            if masks.ndim == 4 and masks.shape[1] == 1:
-                masks = masks[:, 0]
+            cache = focus_cache_path(working, species)
+            cached = read_focus_cache(cache) if cache else None
+            if cached is not None:
+                boxes, masks, scores = cached
+            else:
+                with torch.inference_mode(), torch.autocast(self.device, dtype=torch.bfloat16):
+                    state = self._set_image(working)
+                    prediction = self._set_species_prompt(state, species)
+                boxes = prediction["boxes"].detach().float().cpu().numpy()
+                masks = prediction["masks"].detach().cpu().numpy()
+                scores = prediction["scores"].detach().float().cpu().numpy()
+                if masks.ndim == 4 and masks.shape[1] == 1:
+                    masks = masks[:, 0]
+                if cache:
+                    write_focus_cache(cache, boxes, masks, scores)
             return prepare_prediction(working, boxes, masks, scores)
