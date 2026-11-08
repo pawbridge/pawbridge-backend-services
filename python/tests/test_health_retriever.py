@@ -80,7 +80,8 @@ class RuleHealthRetrieverTest(unittest.TestCase):
     def test_positive_notice_with_vaccine_list(self):
         notice = "사상충-양성, 접종(종합백신/코로나장염/광견병), 피부병"
         matches = self.retriever.search(notice, None, "DOG")
-        self.assertEqual(ids(matches), ["heartworm-positive", "vaccination-notation-dog", "rabies-vaccination"])
+        # 병이 있는 것(사상충 양성, 피부병)을 접종 표기보다 앞에 두고, 최대 3개라 광견병 표기는 밀린다.
+        self.assertEqual(ids(matches), ["heartworm-positive", "skin-disease", "vaccination-notation-dog"])
 
     def test_vaccine_corona_is_not_infection(self):
         matches = self.retriever.search("접종(코로나장염)", None, "DOG")
@@ -161,6 +162,25 @@ class RuleHealthRetrieverTest(unittest.TestCase):
         retriever = RuleHealthRetriever([make_entry("external-parasites", ["옴", "진드기"], "any")])
         self.assertEqual(ids(retriever.search("목쪽에 진물이 나옴", None, "DOG")), [])
         self.assertEqual(ids(retriever.search("옴, 피부병", None, "DOG")), ["external-parasites"])
+
+    def test_space_separated_results_belong_to_their_own_term(self):
+        self.assertEqual(ids(self.retriever.search("심장사상충 양성 파보 음성", None, "DOG")), ["heartworm-positive", "infection-test-negative"])
+        self.assertNotIn("heartworm-negative", ids(self.retriever.search("심장사상충 치료중 파보 음성", None, "DOG")))
+
+    def test_question_synonym_follows_notice_context(self):
+        matches = self.retriever.search("심장사상충 음성", "사상충 걱정돼요", "DOG")
+        self.assertEqual(ids(matches), ["heartworm-negative"])
+
+    def test_vaccine_word_after_next_alias_still_counts(self):
+        self.assertEqual(ids(self.retriever.search("광견병 종합백신 접종", None, "DOG")), ["rabies-vaccination", "vaccination-notation-dog"])
+        self.assertEqual(ids(self.retriever.search("심장사상충 양성 종합백신 접종", None, "DOG")), ["heartworm-positive", "vaccination-notation-dog"])
+
+    def test_absent_after_positive_word(self):
+        self.assertEqual(ids(self.retriever.search("파보 의심 없음, 피부병 증상 없음", None, "DOG")), [])
+
+    def test_notice_results_keep_disease_entries_before_vaccination(self):
+        notice = "접종(종합백신/코로나장염/광견병), 피부병, 사상충 양성, 파보 양성"
+        self.assertEqual(ids(self.retriever.search(notice, None, "DOG")), ["skin-disease", "heartworm-positive", "parvovirus-positive"])
 
     def test_at_most_three_results(self):
         notice = "사상충 양성, 파보 양성, 지알디아 양성, 피부병"

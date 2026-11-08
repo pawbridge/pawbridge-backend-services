@@ -18,7 +18,7 @@ CONTEXT_WINDOW = 14
 SEPARATORS = re.compile(r"[,./;\n·]")
 
 NEGATIVE_WORDS = re.compile(r"음성|\(-\)|negative")
-POSITIVE_WORDS = re.compile(r"양성|\(\+\)|감염|확진|의심|positive")
+POSITIVE_WORDS = re.compile(r"양성|\(\+\)|감염|확진|의심|증상|소견|positive")
 # 예방약, 바르는 예방 처치도 접종처럼 "병이 있다"는 뜻이 아니다.
 VACCINE_WORDS = re.compile(r"접종|백신|예방주사|예방약|도포")
 # '외상없음'처럼 그 상태가 없다는 표현
@@ -27,6 +27,8 @@ ABSENT_WINDOW = 4
 
 # 나열된 용어가 결과 하나를 함께 쓰는 경우('파보, 코로나 음성')에 문맥을 이어받는 최대 간격
 LIST_GAP = re.compile(r"^[\s,&+/]{1,3}$")
+# 공고 결과 순서: 병이 있는 것(양성, 상태) → 음성 → 접종 표기. 같은 등급은 글 순서.
+CONTEXT_ORDER = {"positive": 0, "any": 0, "negative": 1, "vaccination": 2}
 HANGUL = re.compile(r"[가-힣]")
 
 
@@ -77,28 +79,43 @@ def normalize_species(species: str | None) -> str | None:
     return None
 
 
-def detect_context(text: str, start: int, end: int) -> str | None:
-    """용어가 나온 자리의 문맥을 읽는다: vaccination, absent, negative, positive, 모르면 None."""
+def detect_context(text: str, start: int, end: int, limit: int | None = None) -> str | None:
+    """용어가 나온 자리의 문맥을 읽는다: vaccination, absent, negative, positive, 모르면 None.
+
+    limit은 다음 용어가 시작하는 자리다. '심장사상충 양성 파보 음성'처럼 띄어쓰기로만 나열되면
+    뒤 용어의 결과('음성')를 앞 용어의 것으로 읽지 않도록 거기서 창을 끊는다.
+    """
     # '종합백신'처럼 용어 자체가 백신 이름이거나 접종 괄호 안이면 접종 표기다.
     if VACCINE_WORDS.search(text[start:end]) or _inside_vaccine_list(text, start):
         return "vaccination"
 
-    after = text[end:end + CONTEXT_WINDOW]
-    separator = SEPARATORS.search(after)
+    # 접종 낱말은 다음 용어까지 포함해 읽는다('광견병 종합백신 접종'의 '광견병'은 접종 표기다).
+    full_window = text[end:end + CONTEXT_WINDOW]
+    separator = SEPARATORS.search(full_window)
     if separator:
-        after = after[:separator.start()]
+        full_window = full_window[:separator.start()]
     before = text[max(0, start - 4):start]
-
-    if VACCINE_WORDS.search(after) or VACCINE_WORDS.search(before):
+    if VACCINE_WORDS.search(before):
         return "vaccination"
-    if NEGATIVE_WORDS.search(after):
-        return "negative"
+    vaccine = VACCINE_WORDS.search(full_window)
+
+    # 결과 낱말(양성, 음성)은 다음 용어 앞까지만 읽는다.
+    cut = min(len(full_window), limit - end) if limit is not None else len(full_window)
+    after = full_window[:max(cut, 0)]
+    negative = NEGATIVE_WORDS.search(after)
+    positive = POSITIVE_WORDS.search(after)
     # '외상없음', '피부병 없음'처럼 바로 뒤에 붙을 때만 부정으로 본다.
     # '허피스로 기력이 없고'의 '없고'는 다른 말(기력)에 대한 것이다.
-    if ABSENT_WORDS.search(after[:ABSENT_WINDOW]):
+    absent = ABSENT_WORDS.search(after[:ABSENT_WINDOW])
+    # '파보 의심 없음', '피부병 증상 없음'처럼 상태 낱말 바로 뒤의 '없음'은 그 상태가 없다는 뜻이다.
+    if positive and ABSENT_WORDS.match(after[positive.end():].lstrip()):
         return "absent"
-    if POSITIVE_WORDS.search(after):
-        return "positive"
+
+    # 같은 창에 여러 낱말이 있으면 용어에 가장 가까운 것을 따른다.
+    candidates = ((vaccine, "vaccination"), (negative, "negative"), (positive, "positive"), (absent, "absent"))
+    found = [(match.start(), name) for match, name in candidates if match]
+    if found:
+        return min(found)[1]
     return None
 
 
@@ -169,21 +186,24 @@ class RuleHealthRetriever:
 
         results: dict[str, HealthMatch] = {}
         # 사용자가 직접 물은 용어를 먼저 둔다. 문맥은 질문에 없으면 공고에서 가져온다.
-        notice_aliases = {alias for alias, _context in notice_hits}
         for alias, context in question_hits:
-            notice_context = self._context_for_alias(alias, notice_hits)
+            # 질문의 '사상충'과 공고의 '심장사상충'처럼 별칭이 달라도 같은 해설을 가리키면 공고의 문맥을 따른다.
+            in_notice, notice_context = self._same_topic_in_notice(alias, notice_hits)
             used_context = context or notice_context
             # 공고에 없는 병 이름을 물었으면 문맥이 없어도 병 해설로 답한다.
             # 공고에 결과 없이 이름만 있으면('홍역키트 검사') 양성으로 짐작하지 않는다.
-            fallback = alias not in notice_aliases
-            for chosen in self._choose_entries(alias, used_context, wanted_species, allow_positive_fallback=fallback):
+            for chosen in self._choose_entries(alias, used_context, wanted_species, allow_positive_fallback=not in_notice):
                 reason = f"질문의 '{alias}'({used_context or '문맥 없음'})"
                 results.setdefault(chosen.id, HealthMatch(chosen, 1.0, reason))
+        notice_matches: list[HealthMatch] = []
         for alias, context in notice_hits:
             # 공고에 결과 없이 이름만 있으면('파보 키트 검사') 양성으로 짐작하지 않는다.
             for chosen in self._choose_entries(alias, context, wanted_species, allow_positive_fallback=False):
                 reason = f"공고의 '{alias}'({context or '문맥 없음'})"
-                results.setdefault(chosen.id, HealthMatch(chosen, 0.9, reason))
+                notice_matches.append(HealthMatch(chosen, 0.9, reason))
+        # 최대 3개에서 밀려도 병 해설이 남도록 병이 있는 것 → 음성 → 접종 표기 순으로 둔다(stable sort라 같은 등급은 글 순서).
+        for match in sorted(notice_matches, key=lambda item: CONTEXT_ORDER[item.entry.match.context]):
+            results.setdefault(match.entry.id, match)
         return list(results.values())[:MAX_RESULTS]
 
     def blocked_entry_ids(self, notice_text: str | None, question: str | None, species: str | None) -> set[str]:
@@ -221,17 +241,25 @@ class RuleHealthRetriever:
                     continue
                 for index in range(start, end):
                     taken[index] = True
-                hits.append(_Hit(start, end, alias, detect_context(text, start, end)))
+                hits.append(_Hit(start, end, alias, None))
         hits.sort(key=lambda hit: hit.start)
+        # 문맥은 다음 용어가 시작하는 자리까지만 읽는다(별칭을 다 찾은 뒤에 정해야 다음 자리를 안다).
+        for index, hit in enumerate(hits):
+            limit = hits[index + 1].start if index + 1 < len(hits) else None
+            hit.context = detect_context(text, hit.start, hit.end, limit)
         _inherit_list_context(text, hits, self._test_aliases)
         return [(hit.alias, hit.context) for hit in hits]
 
-    @staticmethod
-    def _context_for_alias(alias: str, notice_hits: list[tuple[str, str | None]]) -> str | None:
+    def _same_topic_in_notice(self, alias: str, notice_hits: list[tuple[str, str | None]]) -> tuple[bool, str | None]:
+        """질문의 별칭과 같은 해설을 가리키는 공고 별칭이 있는지, 있으면 그 문맥은 무엇인지."""
+        topic = {entry.id for entry in self._entries_for(alias)}
+        in_notice = False
         for notice_alias, context in notice_hits:
-            if notice_alias == alias and context:
-                return context
-        return None
+            if topic & {entry.id for entry in self._entries_for(notice_alias)}:
+                in_notice = True
+                if context:
+                    return True, context
+        return in_notice, None
 
     def _choose_entries(
         self,
