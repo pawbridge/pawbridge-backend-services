@@ -25,7 +25,9 @@ class FocusResult:
 
 
 def square_image(image):
-    return ImageOps.pad(image, (256, 256), method=Image.Resampling.BICUBIC, color=BACKGROUND)
+    # DINOv3 입력 크기로 바로 패딩한다. 크기를 줄이는 단계가 따로 없으므로 전처리와 크기가 같아야 한다.
+    size = VisionSettings.load().input_size
+    return ImageOps.pad(image, (size, size), method=Image.Resampling.BICUBIC, color=BACKGROUND)
 
 
 def choose_detection(labels, scores, species, boxes=None, masks=None):
