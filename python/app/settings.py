@@ -40,6 +40,9 @@ class VisionSettings(_Settings):
     pooling: Literal["avg", "token"] = Field("avg", alias="LOST_SEARCH_POOLING")
     dinov3_checkpoint: str = Field("", alias="DINOV3_CHECKPOINT")
     sam3_checkpoint: str = Field("", alias="SAM3_CHECKPOINT")
+    # 비우면 끈다. 수동 갤러리 빌드에서만 켜서 SAM 3 출력(박스, 마스크, 점수)을 사진별로 남기고,
+    # 다음 재계산(DINOv3 교체 등)에서 SAM 3를 다시 돌리지 않는다.
+    focus_cache_dir: str = Field("", alias="LOST_SEARCH_FOCUS_CACHE_DIR")
     animal_focus_checkpoint: str = Field("", alias="ANIMAL_FOCUS_CHECKPOINT")
 
 
