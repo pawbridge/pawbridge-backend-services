@@ -20,9 +20,12 @@ services:
     image: ${POSTGRES_IMAGE:?pinned image id}
     container_name: ${OPERATING_PROJECT}-postgres
     user: ${OPERATING_UID}:${OPERATING_GID}
-    mem_limit: 1g
-    memswap_limit: 1g
-    cpus: 1.0
+    # 추천 HNSW 부분 인덱스(animal V11, 약 179MB)와 자주 읽는 벡터를 메모리에 두려고 2g, shared_buffers 512MB로 올렸다.
+    # 2026-11-08 Docker VM 실제 사용은 약 2.3GB/6.4GB였다. 컨테이너 한도 합계는 VM 크기를 넘지만 한도는 예약이 아니다.
+    mem_limit: 2g
+    memswap_limit: 2g
+    # 1코어에서는 추천 벡터 쿼리만으로 포화돼 2코어로 올렸다(2026-11-06 부하 시험, 9/22 MSA와 같은 값).
+    cpus: 2.0
     pids_limit: 256
     stop_grace_period: 60s
     env_file: [{path: "${OPERATING_SECRETS}/postgres.env", format: raw}]
@@ -36,9 +39,12 @@ services:
       - {type: bind, source: "${BACKGROUND_CONFIG}/pg_hba.conf", target: /etc/postgresql/pg_hba.conf, read_only: true, bind: {create_host_path: false}}
     entrypoint: [postgres]
     command: [-c, "listen_addresses=*", -c, wal_level=replica, -c, max_replication_slots=5, -c, max_wal_senders=8,
-              -c, max_slot_wal_keep_size=512MB, -c, shared_buffers=128MB, -c, max_connections=80, -c, work_mem=4MB,
+              -c, max_slot_wal_keep_size=512MB, -c, shared_buffers=512MB, -c, max_connections=80, -c, work_mem=4MB,
               -c, temp_file_limit=256MB, -c, autovacuum=on, -c, log_statement=none, -c, log_min_error_statement=panic,
-              -c, hba_file=/etc/postgresql/pg_hba.conf]
+              -c, hba_file=/etc/postgresql/pg_hba.conf,
+              # 쿼리별 실행 횟수와 시간 집계. 시작할 때만 읽는 설정이라 바꾸면 재시작이 필요하다.
+              # 확장 등록(CREATE EXTENSION pg_stat_statements)은 V3, V4처럼 DB 소유자가 한 번 한다.
+              -c, shared_preload_libraries=pg_stat_statements]
     healthcheck:
       test: [CMD, pg_isready, -U, postgres, -d, pawbridge]
       interval: 10s
