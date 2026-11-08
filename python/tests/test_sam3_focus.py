@@ -50,6 +50,24 @@ class Sam3ContractTest(unittest.TestCase):
             finally:
                 result.image.close()
 
+    def test_input_size_384_pads_every_view_to_384_and_uses_its_own_gallery_version(self):
+        from app.vision.sam3_focus import FOCUS_VERSION_CLS, FOCUS_VERSION_CLS_384, focus_version
+        env = {"LOST_SEARCH_VISUAL_PROFILE": "sam3-animal-focus", "LOST_SEARCH_POOLING": "token"}
+        with patch.dict(os.environ, env):
+            self.assertEqual(focus_version(), FOCUS_VERSION_CLS)
+            with patch.dict(os.environ, {"LOST_SEARCH_INPUT_SIZE": "384"}), Image.new("RGB", (120, 120), "red") as image:
+                self.assertEqual(focus_version(), FOCUS_VERSION_CLS_384)
+                mask = np.zeros((1, 120, 120), dtype=bool)
+                mask[0, 20:100, 20:100] = True
+                # 동물 영역과 원본 대체 경로 모두 DINOv3 입력 크기로 바로 패딩해야 한다.
+                for result in (prepare_prediction(image, [[10, 10, 110, 110]], mask, [.9]),
+                               prepare_prediction(image, np.zeros((0, 4)), np.zeros((0, 120, 120)), np.zeros(0))):
+                    with self.subTest(status=result.status):
+                        try:
+                            self.assertEqual(result.image.size, (384, 384))
+                        finally:
+                            result.image.close()
+
     def test_missing_detection_keeps_full_photo_without_color(self):
         with Image.new("RGB", (120, 120), "red") as image:
             result = prepare_prediction(image, np.zeros((0, 4)),

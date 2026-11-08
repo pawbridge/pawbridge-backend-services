@@ -13,10 +13,16 @@ CHECKPOINT_SHA256 = "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3c
 FOCUS_VERSION = "dinov3-large-sam39999e234-dual-pad256-v1"
 # CLS-token vectors are not comparable with patch-average ones, so their galleries carry another version.
 FOCUS_VERSION_CLS = "dinov3-large-sam39999e234-dual-pad256-cls-v1"
+# 384 입력 벡터는 256과 비교할 수 없으므로 갤러리 버전을 따로 둔다.
+FOCUS_VERSION_CLS_384 = "dinov3-large-sam39999e234-dual-pad384-cls-v1"
+CLS_VERSIONS = frozenset({FOCUS_VERSION_CLS, FOCUS_VERSION_CLS_384})
 
 
 def focus_version():
-    return FOCUS_VERSION_CLS if VisionSettings.load().pooling == "token" else FOCUS_VERSION
+    settings = VisionSettings.load()
+    if settings.pooling != "token":
+        return FOCUS_VERSION
+    return FOCUS_VERSION_CLS_384 if settings.input_size == 384 else FOCUS_VERSION_CLS
 
 
 FOCUS_CACHE_VERSION = "sam3-focus-cache-v1"
