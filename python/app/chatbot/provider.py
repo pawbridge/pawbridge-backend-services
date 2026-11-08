@@ -7,7 +7,8 @@ class ChatbotProvider(ABC):
     name: str
 
     @abstractmethod
-    async def generate_answer(self, prompt: str) -> str:
+    async def generate_answer(self, prompt: str, json_output: bool = False) -> str:
+        """json_output이 참이면 JSON 하나로 답하도록 요청한다(지원하지 않는 제공자는 무시해도 된다)."""
         raise NotImplementedError
 
 
@@ -23,7 +24,7 @@ class NotImplementedChatbotProvider(ChatbotProvider):
     def __init__(self, name: str):
         self.name = name
 
-    async def generate_answer(self, prompt: str) -> str:
+    async def generate_answer(self, prompt: str, json_output: bool = False) -> str:
         raise NotImplementedError(f"LLM provider '{self.name}' is not implemented in Step 1")
 
 

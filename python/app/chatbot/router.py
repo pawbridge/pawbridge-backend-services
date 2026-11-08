@@ -51,10 +51,29 @@ class ChatbotMessageRequest(BaseModel):
         return value
 
 
+class HealthSource(BaseModel):
+    org: str
+    title: str
+    url: str
+    checkedAt: str
+    language: str
+
+
+class HealthCard(BaseModel):
+    id: str
+    title: str
+    summary: list[str]
+    cautions: list[str]
+    askShelter: list[str]
+
+
 class ChatbotMessageResponse(BaseModel):
     answer: str
     safetyNotice: str
     provider: str
+    # 건강 해설 RAG를 켰을 때만 채워진다. 끄면 빈 목록이라 기존 호출부는 그대로 동작한다.
+    sources: list[HealthSource] = Field(default_factory=list)
+    healthCards: list[HealthCard] = Field(default_factory=list)
 
 
 @router.post(

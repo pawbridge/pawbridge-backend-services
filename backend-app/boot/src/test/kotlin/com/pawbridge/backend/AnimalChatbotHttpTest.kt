@@ -70,7 +70,10 @@ class AnimalChatbotHttpTest {
 
         // then
         val json = mapper.readTree(response.contentAsByteArray)
-        assertThat(json.size()).isEqualTo(4)
+        // 기존 네 칸 + 건강 해설 RAG의 sources, healthCards(없으면 빈 목록)
+        assertThat(json.size()).isEqualTo(6)
+        assertThat(json.path("sources").size()).isEqualTo(0)
+        assertThat(json.path("healthCards").size()).isEqualTo(0)
         assertThat(json.path("sessionId").asText()).isEqualTo("owned-session")
         assertThat(json.path("answer").asText()).isEqualTo("안내 답변")
         assertThat(json.path("safetyNotice").asText()).isEqualTo("안전 주의")

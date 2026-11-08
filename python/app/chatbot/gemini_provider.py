@@ -21,7 +21,7 @@ class GeminiChatbotProvider(ChatbotProvider):
         self.model = settings.gemini_model.strip() or ChatbotSettings.model_fields["gemini_model"].default
         self.timeout_seconds = settings.gemini_timeout_seconds
 
-    async def generate_answer(self, prompt: str) -> str:
+    async def generate_answer(self, prompt: str, json_output: bool = False) -> str:
         if not self.api_key:
             raise ChatbotProviderConfigurationError("GEMINI_API_KEY is not configured")
 
@@ -38,6 +38,8 @@ class GeminiChatbotProvider(ChatbotProvider):
                 "maxOutputTokens": 1024,
             },
         }
+        if json_output:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:

@@ -137,6 +137,9 @@ class ChatbotServiceTest {
         // then
         val input = slot<PythonChatbotMessageRequest>()
         assertEquals(ChatbotMessageResponse(SESSION, answer.answer, answer.safetyNotice, answer.provider), result)
+        // 건강 해설 칸이 없는 Python 응답이면 빈 목록으로 전달한다.
+        assertEquals(emptyList<Any>(), result.sources)
+        assertEquals(emptyList<Any>(), result.healthCards)
         verify(exactly = 1) { ai.createChatbotMessage(KEY, capture(input)) }
         assertEquals(
             AnimalChatbotContext("DOG", "mix", "2023년생", "5(Kg)", "white", null, null, "calm", "보호중"),

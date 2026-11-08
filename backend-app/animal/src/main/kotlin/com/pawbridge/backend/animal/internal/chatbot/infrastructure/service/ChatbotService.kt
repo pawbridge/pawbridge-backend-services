@@ -101,6 +101,8 @@ class ChatbotService(
             aiResponse!!.answer,
             aiResponse.safetyNotice,
             aiResponse.provider,
+            aiResponse.sources.orEmpty(),
+            aiResponse.healthCards.orEmpty(),
         )
     }
 
