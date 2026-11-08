@@ -64,6 +64,14 @@ class CheckAnswerTest(unittest.TestCase):
         self.assertFalse(checked.fallback)
         self.assertEqual(checked.used, [1, 3])
 
+    def test_grouped_citations_keep_known_numbers_only(self):
+        raw = json.dumps({"answer": "증상입니다 [1, 3]. 진료가 필요합니다 [2, 9].", "used": [1]}, ensure_ascii=False)
+        checked = check_answer(raw, self.evidence)
+        self.assertFalse(checked.fallback)
+        self.assertEqual(checked.answer, "증상입니다 [1, 3]. 진료가 필요합니다 [2].")
+        self.assertEqual(checked.used, [1, 2, 3])
+        self.assertTrue(any("[9]" in problem for problem in checked.problems))
+
     def test_json_inside_code_fence(self):
         raw = '```json\n{"answer": "증상입니다 [1].", "used": [1]}\n```'
         self.assertEqual(check_answer(raw, self.evidence).used, [1])
