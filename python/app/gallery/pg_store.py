@@ -10,6 +10,55 @@ from app.gallery.builder import PREFIX, CONTRACT, gallery_mapping
 # Provisional evaluation weight, not a calibrated identity probability.
 ANIMAL_REGION_WEIGHT = 0.7
 
+# 유사 동물 추천 후보는 입양 가능한 같은 종의 부분 HNSW 인덱스(animal V11)로 먼저 줄이고,
+# 점수는 기존과 같은 두 벡터 혼합식으로 다시 매긴다.
+# 2026-11-08 격리 시험(운영 갤러리 복사본, 기준 동물 1,500마리)에서 이 후보 수와 탐색 폭으로
+# 털색 재정렬 뒤 추천 6개가 전수 비교와 순서까지 모두 같았다. 동물 영역 후보만 200개 쓰면 57%만 같았다.
+RECOMMENDATION_ANIMAL_CANDIDATES = 400
+RECOMMENDATION_IMAGE_CANDIDATES = 200
+RECOMMENDATION_EF_SEARCH = 100
+# 부분 인덱스의 조건과 같은 값을 SQL 글자로 넣는다. 바인드 변수로 넘기면 준비된 문장의 일반 계획에서
+# 플래너가 부분 인덱스를 쓸 수 있는지 증명하지 못한다. 값은 아래 두 가지로만 정해진다.
+RECOMMENDATION_SPECIES_SQL = {'DOG': "'DOG'", 'CAT': "'CAT'"}
+RECOMMENDATION_AVAILABLE_SQL = "('NOTICE','PROTECT')"
+
+
+def recommendation_candidates_sql(species, source_has_animal_vector):
+    """기준 동물의 추천 후보 SQL. 이름 붙은 변수: build, animal, model, species, weight."""
+    candidate_filter = (
+        'c.build_key=%(build)s AND c.animal_id<>%(animal)s AND c.model_version=%(model)s '
+        f'AND c.species={RECOMMENDATION_SPECIES_SQL[species]} AND c.status IN {RECOMMENDATION_AVAILABLE_SQL}'
+    )
+    source_vector = ('(SELECT {column} FROM lost_gallery_documents '
+                     'WHERE build_key=%(build)s AND animal_id=%(animal)s)')
+    branches = []
+    if source_has_animal_vector:
+        branches.append(
+            f'(SELECT c.animal_id FROM lost_gallery_documents c WHERE {candidate_filter} '
+            f'ORDER BY c.animal_vector <=> {source_vector.format(column="animal_vector")} '
+            f'LIMIT {RECOMMENDATION_ANIMAL_CANDIDATES})'
+        )
+    # 동물 영역 벡터가 없는 문서(약 17%)는 animal_vector 인덱스에 없으므로 전체 사진 벡터로도 후보를 뽑는다.
+    # 기준 동물에 동물 영역 벡터가 없으면 점수가 전체 사진 거리만으로 정해지므로 이쪽에서 더 많이 뽑는다.
+    image_limit = RECOMMENDATION_IMAGE_CANDIDATES if source_has_animal_vector else RECOMMENDATION_ANIMAL_CANDIDATES
+    branches.append(
+        f'(SELECT c.animal_id FROM lost_gallery_documents c WHERE {candidate_filter} '
+        f'ORDER BY c.image_vector <=> {source_vector.format(column="image_vector")} '
+        f'LIMIT {image_limit})'
+    )
+    return (
+        'SELECT d.document,(CASE WHEN q.animal_vector IS NOT NULL AND d.animal_vector IS NOT NULL '
+        'THEN 1.0+(1.0-%(weight)s)*(1.0-(d.image_vector <=> q.image_vector)) '
+        '+%(weight)s*(1.0-(d.animal_vector <=> q.animal_vector)) '
+        'ELSE 2.0-(d.image_vector <=> q.image_vector) END)::real AS score '
+        f'FROM ({" UNION ".join(branches)}) candidate '
+        'JOIN lost_gallery_documents d ON d.build_key=%(build)s AND d.animal_id=candidate.animal_id '
+        'JOIN lost_gallery_documents q ON q.build_key=%(build)s AND q.animal_id=%(animal)s '
+        'JOIN animals a ON a.id=d.animal_id '
+        "WHERE a.species=%(species)s AND a.status IN ('NOTICE','PROTECT') "
+        'ORDER BY score DESC,d.animal_id ASC LIMIT 200'
+    )
+
 
 class GalleryUnavailable(RuntimeError):
     pass
@@ -232,10 +281,18 @@ class PostgresqlGalleryStore:
         return [{'_source': row[0], '_score': row[1]} for row in rows]
 
     def recommendation_candidates(self, alias, animal_id, species, model_version, color_version=None):
-        """Reuse one published 1024-dim snapshot; filter live availability before top-200."""
+        """Reuse one published 1024-dim snapshot; filter live availability before top-200.
+
+        후보는 갤러리 문서의 status(갤러리 동기화 때 animals.status로 맞춰짐)가 입양 가능인 것 중에서
+        HNSW로 뽑고, 그 뒤 animals.status를 다시 확인한다. 그래서 막 입양된 동물은 섞이지 않고,
+        다시 입양 가능해진 동물은 다음 갤러리 동기화부터 후보에 들어간다.
+        """
         if type(animal_id) is not int or animal_id <= 0 or species not in {'DOG', 'CAT'}:
             raise ValueError('Invalid recommendation source')
         with self.connection(read_only=True) as conn:
+            # 이 트랜잭션에서만 쓰는 HNSW 탐색 설정. 조건에 맞는 후보가 모자라면 더 찾아 들어간다(pgvector 0.8).
+            conn.execute(f'SET LOCAL hnsw.ef_search = {RECOMMENDATION_EF_SEARCH}')
+            conn.execute('SET LOCAL hnsw.iterative_scan = relaxed_order')
             head = conn.execute('SELECT h.build_key,b.metadata,b.completed FROM lost_gallery_heads h '
                 'JOIN lost_gallery_builds b ON b.build_key=h.build_key WHERE h.alias=%s', (alias,)).fetchone()
             if (not head or not head[2] or head[1].get('contract') != CONTRACT
@@ -243,7 +300,7 @@ class PostgresqlGalleryStore:
                     or color_version and head[1].get('coat_color_version') != color_version):
                 raise RecommendationGalleryUnavailable('Matching published recommendation gallery required')
             build = head[0]
-            source = conn.execute('SELECT document FROM lost_gallery_documents '
+            source = conn.execute('SELECT document,animal_vector IS NOT NULL FROM lost_gallery_documents '
                 'WHERE build_key=%s AND animal_id=%s AND species=%s AND model_version=%s',
                 (build, animal_id, species, model_version)).fetchone()
             if not source:
@@ -251,16 +308,9 @@ class PostgresqlGalleryStore:
             # Source may already be adopted. Candidates must still be available now.
             # q and d refer to the same immutable build throughout this transaction.
             rows = conn.execute(
-                'SELECT d.document,(CASE WHEN q.animal_vector IS NOT NULL AND d.animal_vector IS NOT NULL '
-                'THEN 1.0+(1.0-%s)*(1.0-(d.image_vector <=> q.image_vector)) '
-                '+%s*(1.0-(d.animal_vector <=> q.animal_vector)) '
-                'ELSE 2.0-(d.image_vector <=> q.image_vector) END)::real AS score '
-                'FROM lost_gallery_documents q JOIN lost_gallery_documents d ON d.build_key=q.build_key '
-                'JOIN animals a ON a.id=d.animal_id '
-                "WHERE q.build_key=%s AND q.animal_id=%s AND d.animal_id<>q.animal_id "
-                "AND d.model_version=%s AND d.species=%s AND a.species=%s "
-                "AND a.status IN ('NOTICE','PROTECT') ORDER BY score DESC,d.animal_id ASC LIMIT 200",
-                (ANIMAL_REGION_WEIGHT, ANIMAL_REGION_WEIGHT, build, animal_id, model_version, species, species)).fetchall()
+                recommendation_candidates_sql(species, source_has_animal_vector=source[1]),
+                {'build': build, 'animal': animal_id, 'model': model_version,
+                 'species': species, 'weight': ANIMAL_REGION_WEIGHT}).fetchall()
         return source[0], [{'_source': row[0], '_score': row[1]} for row in rows]
 
     def delete_unpublished(self, target, *, check_cancelled=None):
