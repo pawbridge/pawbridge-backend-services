@@ -167,6 +167,12 @@ class RuleHealthRetrieverTest(unittest.TestCase):
         self.assertEqual(ids(self.retriever.search("심장사상충 양성 파보 음성", None, "DOG")), ["heartworm-positive", "infection-test-negative"])
         self.assertNotIn("heartworm-negative", ids(self.retriever.search("심장사상충 치료중 파보 음성", None, "DOG")))
 
+    def test_basis_tells_notice_state_from_general_question(self):
+        only_question = self.retriever.search("순함", "심장사상충 있으면 어떡해요?", "DOG")
+        self.assertEqual([(match.entry.id, match.basis) for match in only_question], [("heartworm-positive", "question")])
+        in_notice = self.retriever.search("심장사상충 양성", "심장사상충 치료 오래 걸려요?", "DOG")
+        self.assertEqual([match.basis for match in in_notice], ["notice"])
+
     def test_question_synonym_follows_notice_context(self):
         matches = self.retriever.search("심장사상충 음성", "사상충 걱정돼요", "DOG")
         self.assertEqual(ids(matches), ["heartworm-negative"])
