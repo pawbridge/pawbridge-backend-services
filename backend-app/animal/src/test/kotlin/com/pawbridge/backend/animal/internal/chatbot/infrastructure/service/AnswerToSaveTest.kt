@@ -18,6 +18,11 @@ class AnswerToSaveTest {
     }
 
     @Test
+    fun `번호가 묶여 있을 때__저장하면__묶음째 지운다`() {
+        assertEquals("운동을 제한해야 합니다. 보호소에 물어보세요.", answerToSave(rag("운동을 제한해야 합니다 [1, 12]. 보호소에 물어보세요.")))
+    }
+
+    @Test
     fun `출처가 없는 일반 답일 때__저장하면__목록 번호와 줄바꿈을 그대로 둔다`() {
         val answer = "확인할 것:\n[1] 건강\n[2] 성격"
         assertEquals(answer, answerToSave(plain(answer)))
