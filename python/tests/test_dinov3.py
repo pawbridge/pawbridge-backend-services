@@ -63,3 +63,22 @@ class DualEmbeddingTest(unittest.TestCase):
                 self.assertEqual(len(calls), 2 if status == "animal_mask" else 1)
         self.assertEqual(full_views[0], full_views[1])
         self.assertEqual(full_views[1], full_views[2])
+
+
+class InputSizeGuardTest(unittest.TestCase):
+    def test_vector_rejects_a_tensor_that_does_not_match_the_configured_size(self):
+        try:
+            import torch
+        except ModuleNotFoundError as error:
+            if error.name != "torch":
+                raise
+            self.skipTest("Requires the dedicated PyTorch runtime")
+        from app.vision.dinov3 import DinoV3Encoder
+        encoder = object.__new__(DinoV3Encoder)
+        encoder.device = "cpu"
+        encoder.input_size = 384
+        # 전처리가 256을 내면 모델은 그대로 받으므로, 모델을 부르기 전에 막혀야 한다.
+        encoder.transform = lambda _view: torch.zeros(3, 256, 256)
+        encoder.model = lambda _tensor: self.fail("model must not run")
+        with self.assertRaisesRegex(RuntimeError, "LOST_SEARCH_INPUT_SIZE"):
+            encoder._vector_for(object())

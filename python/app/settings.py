@@ -38,9 +38,22 @@ class VisionSettings(_Settings):
                        alias="LOST_SEARCH_INDEX")
     # "token" uses the CLS token instead of the patch average; its vectors need their own gallery.
     pooling: Literal["avg", "token"] = Field("avg", alias="LOST_SEARCH_POOLING")
+    # DINOv3 입력 크기. 384는 SAM 3 + CLS 조합에서만 검증했고(2026-11-07 보류 세트), 모델 버전과 갤러리가 따로다.
+    input_size: int = Field(256, alias="LOST_SEARCH_INPUT_SIZE")
     dinov3_checkpoint: str = Field("", alias="DINOV3_CHECKPOINT")
     sam3_checkpoint: str = Field("", alias="SAM3_CHECKPOINT")
+    # 비우면 끈다. 수동 갤러리 빌드에서만 켜서 SAM 3 출력(박스, 마스크, 점수)을 사진별로 남기고,
+    # 다음 재계산(DINOv3 교체 등)에서 SAM 3를 다시 돌리지 않는다.
+    focus_cache_dir: str = Field("", alias="LOST_SEARCH_FOCUS_CACHE_DIR")
     animal_focus_checkpoint: str = Field("", alias="ANIMAL_FOCUS_CHECKPOINT")
+
+    @model_validator(mode="after")
+    def supported_input_size(self):
+        if self.input_size not in (256, 384):
+            raise ValueError("LOST_SEARCH_INPUT_SIZE must be 256 or 384")
+        if self.input_size == 384 and (self.visual_profile != "sam3-animal-focus" or self.pooling != "token"):
+            raise ValueError("LOST_SEARCH_INPUT_SIZE=384 requires sam3-animal-focus with token pooling")
+        return self
 
 
 class CoatColorSettings(_Settings):
