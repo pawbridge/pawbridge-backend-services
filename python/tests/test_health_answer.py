@@ -141,6 +141,16 @@ class SourcesAndCardsTest(unittest.TestCase):
         sources = sources_for([1, 3], evidence)
         self.assertEqual([source["url"] for source in sources], ["https://example.org/a"])
 
+    def test_question_basis_is_marked_in_prompt_and_cards(self):
+        match = make_match()
+        general = HealthMatch(match.entry, 1.0, "질문의 '피부병'(문맥 없음)", "question")
+        evidence = build_evidence([general], "DOG")
+        context = AnimalContext(species="DOG", specialMark="순함")
+        prompt = build_prompt(context, [], "피부병이면 어떡해요?", evidence)
+        self.assertIn("공고에는 없는 질문 관련 일반 정보", prompt)
+        self.assertEqual(health_cards([general], "DOG")[0]["basis"], "question")
+        self.assertEqual(health_cards([match], "DOG")[0]["basis"], "notice")
+
     def test_cards_follow_species(self):
         cards = health_cards([make_match()], "DOG")
         self.assertIn("개에만 해당하는 문장입니다.", cards[0]["summary"])

@@ -55,6 +55,7 @@ HEALTH_RULES = [
     "근거를 쓴 문장 끝에 그 근거 번호를 [1]처럼 붙이세요.",
     "질문과 관련 없는 근거는 쓰지 마세요.",
     "근거로 답할 수 없으면 모른다고 하고 보호소나 동물병원 확인을 권하세요.",
+    "'공고에는 없는 질문 관련 일반 정보'라고 표시된 근거는 이 동물이 그 병이 있다는 뜻이 아니니, 일반 정보로만 말하세요.",
     '다음 JSON 하나로만 답하세요: {"answer": "답변", "used": [쓴 근거 번호]}',
 ]
 
@@ -74,6 +75,7 @@ class Evidence:
     entry: HealthEntry
     fact: HealthFact
     section: Section
+    basis: str = "notice"
 
 
 @dataclass
@@ -101,13 +103,19 @@ def build_evidence(
             summary = summary[:max_summary_per_entry]
         for section, facts in (("summary", summary), ("cautions", cautions)):
             for fact in facts:
-                evidence.append(Evidence(len(evidence) + 1, match.entry, fact, section))
+                evidence.append(Evidence(len(evidence) + 1, match.entry, fact, section, match.basis))
     return evidence
 
 
 def format_evidence(evidence: list[Evidence]) -> str:
-    """프롬프트에 넣을 근거 목록. 해설 제목을 붙여 어느 병 이야기인지 남긴다."""
-    lines = [f"[{item.number}] ({item.entry.title}) {item.fact.text}" for item in evidence]
+    """프롬프트에 넣을 근거 목록. 해설 제목을 붙여 어느 병 이야기인지 남긴다.
+
+    질문에만 나온 용어로 찾은 해설은 이 동물의 상태가 아니라는 표시를 붙인다.
+    """
+    lines = []
+    for item in evidence:
+        label = item.entry.title if item.basis == "notice" else f"{item.entry.title}, 이 동물의 공고에는 없는 질문 관련 일반 정보"
+        lines.append(f"[{item.number}] ({label}) {item.fact.text}")
     return "\n".join(lines)
 
 
@@ -227,6 +235,8 @@ def health_cards(matches: list[HealthMatch], species: str | None) -> list[dict]:
                 "summary": [fact.text for fact in summary],
                 "cautions": [fact.text for fact in cautions],
                 "askShelter": list(match.entry.ask_shelter),
+                # notice: 공고에 적힌 이 동물의 상태, question: 질문에 대한 일반 정보(화면에서 구분해 표시)
+                "basis": match.basis,
             }
         )
     return cards
