@@ -47,6 +47,8 @@ class HealthMatch:
     entry: HealthEntry
     score: float
     reason: str
+    # notice: 공고에 적힌 상태로 찾음(이 동물의 상태). question: 질문에만 나온 용어로 찾음(일반 정보).
+    basis: str = "notice"
 
 
 class HealthRetriever(Protocol):
@@ -194,7 +196,9 @@ class RuleHealthRetriever:
             # 공고에 결과 없이 이름만 있으면('홍역키트 검사') 양성으로 짐작하지 않는다.
             for chosen in self._choose_entries(alias, used_context, wanted_species, allow_positive_fallback=not in_notice):
                 reason = f"질문의 '{alias}'({used_context or '문맥 없음'})"
-                results.setdefault(chosen.id, HealthMatch(chosen, 1.0, reason))
+                # 공고에도 같은 주제가 있으면 이 동물의 상태이고, 질문에만 있으면 일반 정보다.
+                basis = "notice" if in_notice else "question"
+                results.setdefault(chosen.id, HealthMatch(chosen, 1.0, reason, basis))
         notice_matches: list[HealthMatch] = []
         for alias, context in notice_hits:
             # 공고에 결과 없이 이름만 있으면('파보 키트 검사') 양성으로 짐작하지 않는다.
