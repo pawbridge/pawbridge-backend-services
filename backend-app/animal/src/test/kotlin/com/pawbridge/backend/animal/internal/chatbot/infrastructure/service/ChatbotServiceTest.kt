@@ -160,8 +160,8 @@ class ChatbotServiceTest {
         assertNull(saved[0].provider)
         assertNull(saved[0].safetyNotice)
         assertEquals(ChatbotMessageRole.ASSISTANT, saved[1].role)
-        // 화면으로 가는 답에는 근거 번호가 남고, 저장한 답에서는 지운다.
-        assertEquals("saved answer", saved[1].content)
+        // 출처가 없는 일반 답은 대괄호 번호도 그대로 저장한다.
+        assertEquals("saved answer [1]", saved[1].content)
         assertEquals(answer.provider, saved[1].provider)
         assertEquals(answer.safetyNotice, saved[1].safetyNotice)
         assertSame(saved[0].session, saved[1].session)

@@ -8,4 +8,6 @@ data class ChatbotHealthCard(
     val summary: List<String>?,
     val cautions: List<String>?,
     val askShelter: List<String>?,
+    // notice: 공고에 적힌 이 동물의 상태, question: 질문에 대한 일반 정보
+    val basis: String? = null,
 )

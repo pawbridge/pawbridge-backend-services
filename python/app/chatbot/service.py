@@ -2,12 +2,20 @@ from functools import lru_cache
 
 from fastapi import HTTPException, status
 
-from app.chatbot.health.answer import build_evidence, check_answer, health_cards, sources_for
+from app.chatbot.health.answer import (
+    FALLBACK_ANSWER,
+    build_evidence,
+    check_answer,
+    check_plain_answer,
+    health_cards,
+    sources_for,
+)
 from app.chatbot.health.knowledge import load_entries
 from app.chatbot.health.retriever import RuleHealthRetriever
 from app.chatbot.prompt_builder import build_prompt
 from app.chatbot.provider import (
     ChatbotProviderConfigurationError,
+    ChatbotProviderTruncatedError,
     ChatbotProviderUpstreamError,
     get_chatbot_provider,
 )
@@ -21,8 +29,17 @@ SAFETY_NOTICE = (
 
 @lru_cache(maxsize=1)
 def health_retriever() -> RuleHealthRetriever:
-    """승인된 해설로 규칙 검색기를 한 번만 만든다. 해설 형식이 틀리면 여기서 실패한다."""
-    return RuleHealthRetriever(load_entries())
+    """승인된 해설로 규칙 검색기를 한 번만 만든다. 해설이 잘못됐거나 하나도 없으면 실패한다."""
+    entries = load_entries()
+    if not entries:
+        raise RuntimeError("HEALTH_RAG_ENABLED인데 승인된 건강 해설이 하나도 없습니다")
+    return RuleHealthRetriever(entries)
+
+
+def load_health_retriever_if_enabled() -> None:
+    """기동 때 부른다. 설정이 켜져 있으면 해설을 미리 읽어 잘못된 상태를 요청 전에 드러낸다."""
+    if ChatbotSettings.load().health_rag_enabled:
+        health_retriever()
 
 
 class ChatbotService:
@@ -35,6 +52,7 @@ class ChatbotService:
             matches = health_retriever().search(animal.specialMark, req.question, animal.species)
             evidence = build_evidence(matches, animal.species)
 
+        provider = None
         try:
             provider = get_chatbot_provider()
             prompt = build_prompt(animal, req.recentMessages, req.question, evidence)
@@ -44,6 +62,11 @@ class ChatbotService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=str(exc),
             ) from exc
+        except ChatbotProviderTruncatedError as exc:
+            # 근거 답변이 잘렸으면 오류 대신 대체 답변과 검수된 해설을 보여 준다.
+            if not evidence:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+            answer = None
         except ChatbotProviderUpstreamError as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -51,15 +74,20 @@ class ChatbotService:
             ) from exc
 
         sources = []
+        cards = []
         if evidence:
-            checked = check_answer(answer, evidence)
-            answer = checked.answer
-            sources = sources_for(checked.used, evidence)
+            checked = check_answer(answer, evidence, expect_json=True) if answer is not None else None
+            answer = checked.answer if checked else FALLBACK_ANSWER
+            sources = sources_for(checked.used, evidence) if checked else []
+            cards = health_cards(matches, animal.species)
+        elif evidence is not None:
+            # 설정은 켜졌지만 근거를 찾지 못한 답도 의학 표현을 검사한다.
+            answer = check_plain_answer(answer).answer
 
         return {
             "answer": answer,
             "safetyNotice": SAFETY_NOTICE,
             "provider": provider.name,
             "sources": sources,
-            "healthCards": health_cards(matches, animal.species),
+            "healthCards": cards,
         }

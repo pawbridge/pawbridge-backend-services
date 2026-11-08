@@ -5,6 +5,7 @@ import httpx
 from app.chatbot.provider import (
     ChatbotProvider,
     ChatbotProviderConfigurationError,
+    ChatbotProviderTruncatedError,
     ChatbotProviderUpstreamError,
 )
 from app.settings import ChatbotSettings
@@ -82,7 +83,7 @@ class GeminiChatbotProvider(ChatbotProvider):
 
         finish_reason = candidates[0].get("finishReason")
         if finish_reason == "MAX_TOKENS":
-            raise ChatbotProviderUpstreamError("Gemini response was truncated by token limit")
+            raise ChatbotProviderTruncatedError("Gemini response was truncated by token limit")
 
     @staticmethod
     def _log_response_metadata(response_body: dict) -> None:

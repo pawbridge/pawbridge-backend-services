@@ -20,6 +20,10 @@ class ChatbotProviderUpstreamError(RuntimeError):
     pass
 
 
+class ChatbotProviderTruncatedError(ChatbotProviderUpstreamError):
+    """답이 길이 상한에 걸려 잘렸다. 근거 답변에서는 대체 답변으로 바꿀 수 있다."""
+
+
 class NotImplementedChatbotProvider(ChatbotProvider):
     def __init__(self, name: str):
         self.name = name

@@ -65,6 +65,8 @@ class HealthCard(BaseModel):
     summary: list[str]
     cautions: list[str]
     askShelter: list[str]
+    # notice: 공고에 적힌 이 동물의 상태, question: 질문에 대한 일반 정보
+    basis: str = "notice"
 
 
 class ChatbotMessageResponse(BaseModel):
