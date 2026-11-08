@@ -88,7 +88,7 @@ class ChatbotService(
                     ChatbotMessage.user(session, guardResult.questionForLlm),
                     ChatbotMessage.assistant(
                         session,
-                        aiResponse!!.answer,
+                        withoutCitations(aiResponse!!.answer),
                         aiResponse.provider,
                         aiResponse.safetyNotice,
                     ),
@@ -189,6 +189,11 @@ class ChatbotService(
         )
     }
 
+    // 건강 해설 근거 번호([1])는 그 응답에서만 뜻이 있다. 저장된 답은 다음 질문의 최근 대화로 다시 쓰이고
+    // 그때는 근거 번호가 새로 매겨지므로, 저장할 때만 지운다(화면으로 가는 답에는 남긴다).
+    // 가드가 넣은 [PHONE], [EMAIL] 같은 표시는 숫자가 아니라 지우지 않는다.
+    private fun withoutCitations(answer: String?): String? = answer?.replace(CITATION, "")
+
     // Java String.isBlank(): empty or only Character.isWhitespace characters (Kotlin isBlank also accepts NBSP).
     private fun isBlank(value: String): Boolean = value.all { Character.isWhitespace(it) }
 
@@ -196,6 +201,7 @@ class ChatbotService(
     private fun javaTrim(value: String): String = value.trim { it <= ' ' }
 
     private companion object {
+        private val CITATION = Regex("""\s?\[\d+]""")
         private const val MAX_SESSION_MESSAGES = 20
         private const val QUESTION_PREVIEW_MAX_LENGTH = 200
         private const val SAFETY_NOTICE =

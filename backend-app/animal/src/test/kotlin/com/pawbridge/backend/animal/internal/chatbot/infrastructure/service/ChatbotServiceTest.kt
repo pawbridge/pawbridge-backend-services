@@ -75,7 +75,7 @@ class ChatbotServiceTest {
         .apmsProcessState("보호중")
         .build()
     private val session = ChatbotSession(ANON, animal)
-    private val answer = PythonChatbotMessageResponse("saved answer", "provider notice", "fixture-provider")
+    private val answer = PythonChatbotMessageResponse("saved answer [1]", "provider notice", "fixture-provider")
     private lateinit var service: ChatbotService
 
     @BeforeEach
@@ -160,7 +160,8 @@ class ChatbotServiceTest {
         assertNull(saved[0].provider)
         assertNull(saved[0].safetyNotice)
         assertEquals(ChatbotMessageRole.ASSISTANT, saved[1].role)
-        assertEquals(answer.answer, saved[1].content)
+        // 화면으로 가는 답에는 근거 번호가 남고, 저장한 답에서는 지운다.
+        assertEquals("saved answer", saved[1].content)
         assertEquals(answer.provider, saved[1].provider)
         assertEquals(answer.safetyNotice, saved[1].safetyNotice)
         assertSame(saved[0].session, saved[1].session)
