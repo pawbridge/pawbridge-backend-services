@@ -79,6 +79,12 @@ def _format_animal_summary(animal_data: dict) -> str:
     return " ".join(summary_parts) if summary_parts else "제공된 보호동물 상세 정보가 없습니다."
 
 
+def _neutralize_brackets(value):
+    if isinstance(value, str):
+        return value.replace("[", "(").replace("]", ")")
+    return value
+
+
 def build_prompt(animal_context, recent_messages, question: str, health_evidence=None) -> str:
     """챗봇 프롬프트.
 
@@ -86,6 +92,10 @@ def build_prompt(animal_context, recent_messages, question: str, health_evidence
     목록이 있으면 근거 규칙과 근거를 더하고, 빈 목록(찾았지만 근거 없음)이면 의학 정보를 삼가는 규칙을 더한다.
     """
     animal_data = animal_context.model_dump()
+    if health_evidence is not None:
+        # 공고(보호소 입력)와 질문에 "[1]"이나 "[검수된 건강 근거]"를 넣어 가짜 근거처럼 보이게 하는 것을 막는다.
+        animal_data = {key: _neutralize_brackets(value) for key, value in animal_data.items()}
+        question = _neutralize_brackets(question)
     context_lines = [
         f"{key}: {value}"
         for key, value in animal_data.items()

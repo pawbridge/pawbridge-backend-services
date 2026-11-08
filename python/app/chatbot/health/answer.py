@@ -9,19 +9,45 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal
 
-from app.chatbot.health.knowledge import FORBIDDEN_PATTERNS, HealthEntry, HealthFact
+from app.chatbot.health.knowledge import HealthEntry, HealthFact
 from app.chatbot.health.retriever import HealthMatch, normalize_species
 
 Section = Literal["summary", "cautions"]
 
 CITATION = re.compile(r"\[(\d+)\]")
 JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
-MAX_ANSWER_CHARS = 1200
+SENTENCE_END = re.compile(r"(?<=[.!?。])\s+")
+# 백엔드가 답을 저장하는 chatbot_messages.content가 1000자라 그 아래로 자른다.
+MAX_ANSWER_CHARS = 900
 
 FALLBACK_ANSWER = (
     "공고에 적힌 건강 상태에 대한 검수된 해설을 아래에서 확인해 주세요. "
     "이 동물의 실제 상태와 치료 여부는 보호소와 동물병원에 확인이 필요합니다."
 )
+NO_EVIDENCE_FALLBACK = (
+    "이 질문에 맞는 검수된 건강 정보가 없어 자세히 답하기 어렵습니다. "
+    "공고에 적힌 상태와 치료 여부는 보호소에 문의하고, 정확한 건강 상태는 동물병원 진료로 확인해 주세요."
+)
+
+# 답변에서 막는 표현 두 묶음.
+# 의학 표현은 근거가 있든 없든 건강 해설 RAG가 켜진 답변 전체에서 막는다.
+MEDICAL_FORBIDDEN = [
+    re.compile(r"완치"),
+    re.compile(r"(투여|처방)(하|받으)?세요"),
+    re.compile(r"(바르|발라)\s?(주)?세요"),
+    re.compile(r"약[을를]?\s?(먹이|먹여)"),
+    re.compile(r"\d+\s?(mg|ml|㎎|㎖|밀리그램|밀리리터)"),
+    re.compile(r"회복(됩니다|될 거|할 거)"),
+    re.compile(r"안심(하셔도|해도|하세요)"),
+]
+# 안심시키는 일상 표현은 근거 번호가 붙은 문장(건강 설명)에서만 막는다.
+# "아파트에서 키워도 괜찮습니다"처럼 건강과 무관한 문장까지 막지 않기 위해서다.
+REASSURANCE_FORBIDDEN = [
+    re.compile(r"괜찮(습니다|아요|다|을 거)"),
+    re.compile(r"문제\s?(가|는)?\s?없"),
+    re.compile(r"걱정(하지)?\s?(마세요|않으셔도|없)"),
+    re.compile(r"(먹이|먹여)\s?(주)?세요"),
+]
 
 HEALTH_RULES = [
     "아래 [검수된 건강 근거]는 출처가 확인된 일반 정보입니다.",
@@ -29,6 +55,7 @@ HEALTH_RULES = [
     "근거를 쓴 문장 끝에 그 근거 번호를 [1]처럼 붙이세요.",
     "질문과 관련 없는 근거는 쓰지 마세요.",
     "근거로 답할 수 없으면 모른다고 하고 보호소나 동물병원 확인을 권하세요.",
+    "'공고에는 없는 질문 관련 일반 정보'라고 표시된 근거는 이 동물이 그 병이 있다는 뜻이 아니니, 일반 정보로만 말하세요.",
     '다음 JSON 하나로만 답하세요: {"answer": "답변", "used": [쓴 근거 번호]}',
 ]
 
@@ -48,6 +75,7 @@ class Evidence:
     entry: HealthEntry
     fact: HealthFact
     section: Section
+    basis: str = "notice"
 
 
 @dataclass
@@ -75,29 +103,44 @@ def build_evidence(
             summary = summary[:max_summary_per_entry]
         for section, facts in (("summary", summary), ("cautions", cautions)):
             for fact in facts:
-                evidence.append(Evidence(len(evidence) + 1, match.entry, fact, section))
+                evidence.append(Evidence(len(evidence) + 1, match.entry, fact, section, match.basis))
     return evidence
 
 
 def format_evidence(evidence: list[Evidence]) -> str:
-    """프롬프트에 넣을 근거 목록. 해설 제목을 붙여 어느 병 이야기인지 남긴다."""
-    lines = [f"[{item.number}] ({item.entry.title}) {item.fact.text}" for item in evidence]
+    """프롬프트에 넣을 근거 목록. 해설 제목을 붙여 어느 병 이야기인지 남긴다.
+
+    질문에만 나온 용어로 찾은 해설은 이 동물의 상태가 아니라는 표시를 붙인다.
+    """
+    lines = []
+    for item in evidence:
+        label = item.entry.title if item.basis == "notice" else f"{item.entry.title}, 이 동물의 공고에는 없는 질문 관련 일반 정보"
+        lines.append(f"[{item.number}] ({label}) {item.fact.text}")
     return "\n".join(lines)
 
 
-def check_answer(raw: str, evidence: list[Evidence]) -> CheckedAnswer:
-    """LLM 응답을 검사한다. 고칠 수 없는 문제가 있으면 대체 답변으로 바꾼다."""
+def check_answer(raw: str, evidence: list[Evidence], expect_json: bool = False) -> CheckedAnswer:
+    """근거를 준 뒤 받은 LLM 응답을 검사한다. 고칠 수 없는 문제가 있으면 대체 답변으로 바꾼다.
+
+    expect_json이 참이면(JSON으로 답하라고 요청한 경우) JSON이 아닌 응답은 모두 대체 답변으로 바꾼다.
+    거짓이면(JSON을 못 지키는 모델) 평범한 글로 보고 본문의 [번호]로 검사한다.
+    """
     known = {item.number for item in evidence}
     problems: list[str] = []
 
     parsed = _parse_json(raw)
+    if parsed is BROKEN_JSON or (expect_json and parsed is None):
+        return CheckedAnswer(FALLBACK_ANSWER, [], ["JSON 응답을 해석할 수 없음"], fallback=True)
     if parsed is None:
         # JSON을 따르지 않은 모델(로컬 모델 등)도 본문의 [번호]로 검사할 수 있다.
         problems.append("JSON 형식 아님, 본문 인용으로 처리")
         answer = raw.strip()
         used = []
     else:
-        answer = str(parsed.get("answer") or "").strip()
+        answer_value = parsed.get("answer")
+        if not isinstance(answer_value, str):
+            return CheckedAnswer(FALLBACK_ANSWER, [], ["answer가 글이 아님"], fallback=True)
+        answer = answer_value.strip()
         used = _as_numbers(parsed.get("used"))
     if not answer:
         return CheckedAnswer(FALLBACK_ANSWER, [], problems + ["답변 비어 있음"], fallback=True)
@@ -107,7 +150,13 @@ def check_answer(raw: str, evidence: list[Evidence]) -> CheckedAnswer:
         problems.append(f"없는 근거 번호 {unknown}")
         return CheckedAnswer(FALLBACK_ANSWER, [], problems, fallback=True)
 
-    forbidden = [f"금지 표현 '{pattern.pattern}'" for pattern in FORBIDDEN_PATTERNS if pattern.search(answer)]
+    # 길이를 먼저 자르고 나서 번호를 모아야, 잘려 나간 문장의 근거가 출처에 남지 않는다.
+    if len(answer) > MAX_ANSWER_CHARS:
+        answer = answer[:MAX_ANSWER_CHARS].rstrip()
+        answer = re.sub(r"\s?\[\d*$", "", answer) + "…"
+        problems.append("길이 상한으로 자름")
+
+    forbidden = _forbidden_in(answer)
     if forbidden:
         return CheckedAnswer(FALLBACK_ANSWER, [], problems + forbidden, fallback=True)
 
@@ -121,11 +170,32 @@ def check_answer(raw: str, evidence: list[Evidence]) -> CheckedAnswer:
             problems.append(f"본문의 없는 번호 [{number}] 지움")
     answer = CITATION.sub(lambda found: found.group(0) if int(found.group(1)) in known else "", answer)
     used = sorted(set(used) | set(cited))
+    return CheckedAnswer(answer, used, problems)
 
+
+def check_plain_answer(raw: str) -> CheckedAnswer:
+    """근거를 찾지 못한 채 받은 답을 검사한다. 의학 표현이 있으면 근거 없는 안내로 바꾼다."""
+    answer = raw.strip()
+    if not answer:
+        return CheckedAnswer(NO_EVIDENCE_FALLBACK, [], ["답변 비어 있음"], fallback=True)
+    problems = [f"금지 표현 '{pattern.pattern}'" for pattern in MEDICAL_FORBIDDEN if pattern.search(answer)]
+    if problems:
+        return CheckedAnswer(NO_EVIDENCE_FALLBACK, [], problems, fallback=True)
     if len(answer) > MAX_ANSWER_CHARS:
         answer = answer[:MAX_ANSWER_CHARS].rstrip() + "…"
         problems.append("길이 상한으로 자름")
-    return CheckedAnswer(answer, used, problems)
+    return CheckedAnswer(answer, [], problems)
+
+
+def _forbidden_in(answer: str) -> list[str]:
+    """의학 표현은 답 전체에서, 안심 표현은 근거 번호가 붙은 문장에서만 찾는다."""
+    problems = [f"금지 표현 '{pattern.pattern}'" for pattern in MEDICAL_FORBIDDEN if pattern.search(answer)]
+    cited_sentences = [sentence for sentence in SENTENCE_END.split(answer) if CITATION.search(sentence)]
+    for sentence in cited_sentences:
+        for pattern in REASSURANCE_FORBIDDEN:
+            if pattern.search(sentence):
+                problems.append(f"근거 문장의 안심 표현 '{pattern.pattern}'")
+    return problems
 
 
 def sources_for(used: list[int], evidence: list[Evidence]) -> list[dict]:
@@ -165,21 +235,31 @@ def health_cards(matches: list[HealthMatch], species: str | None) -> list[dict]:
                 "summary": [fact.text for fact in summary],
                 "cautions": [fact.text for fact in cautions],
                 "askShelter": list(match.entry.ask_shelter),
+                # notice: 공고에 적힌 이 동물의 상태, question: 질문에 대한 일반 정보(화면에서 구분해 표시)
+                "basis": match.basis,
             }
         )
     return cards
 
 
-def _parse_json(raw: str) -> dict | None:
+# JSON처럼 시작하는데 해석이 안 되는 응답. 원문을 사용자에게 내보내면 안 된다.
+BROKEN_JSON = object()
+
+
+def _parse_json(raw: str):
+    """JSON 객체면 dict, 평범한 글이면 None, JSON처럼 시작하는데 깨졌으면 BROKEN_JSON."""
     text = raw.strip()
+    looks_like_json = text.startswith(("{", "[", "```"))
     found = JSON_OBJECT.search(text)
     if not found:
-        return None
+        return BROKEN_JSON if looks_like_json else None
     try:
         parsed = json.loads(found.group(0))
     except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
+        return BROKEN_JSON if looks_like_json else None
+    if not isinstance(parsed, dict):
+        return BROKEN_JSON if looks_like_json else None
+    return parsed
 
 
 def _as_numbers(value) -> list[int]:
