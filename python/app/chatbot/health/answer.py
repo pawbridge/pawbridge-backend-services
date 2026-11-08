@@ -14,7 +14,8 @@ from app.chatbot.health.retriever import HealthMatch, normalize_species
 
 Section = Literal["summary", "cautions"]
 
-CITATION = re.compile(r"\[(\d+)\]")
+# Gemini는 근거 번호를 [1]뿐 아니라 [1, 3]처럼 묶어 쓰기도 한다.
+CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
 JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 SENTENCE_END = re.compile(r"(?<=[.!?。])\s+")
 # 백엔드가 답을 저장하는 chatbot_messages.content가 1000자라 그 아래로 자른다.
@@ -160,15 +161,19 @@ def check_answer(raw: str, evidence: list[Evidence], expect_json: bool = False) 
     if forbidden:
         return CheckedAnswer(FALLBACK_ANSWER, [], problems + forbidden, fallback=True)
 
-    # 본문에 붙은 번호는 실제 있는 근거만 남기고, used와 합친다.
+    # 본문에 붙은 번호는 실제 있는 근거만 남기고, used와 합친다. [1, 9]처럼 묶인 표기는 있는 번호만 남긴다.
     cited = []
-    for number_text in CITATION.findall(answer):
-        number = int(number_text)
-        if number in known:
-            cited.append(number)
-        else:
-            problems.append(f"본문의 없는 번호 [{number}] 지움")
-    answer = CITATION.sub(lambda found: found.group(0) if int(found.group(1)) in known else "", answer)
+
+    def keep_known_numbers(found: re.Match) -> str:
+        numbers = [int(text) for text in re.split(r"\s*,\s*", found.group(1))]
+        kept = [number for number in numbers if number in known]
+        for number in numbers:
+            if number not in known:
+                problems.append(f"본문의 없는 번호 [{number}] 지움")
+        cited.extend(kept)
+        return f"[{', '.join(str(number) for number in kept)}]" if kept else ""
+
+    answer = CITATION.sub(keep_known_numbers, answer)
     used = sorted(set(used) | set(cited))
     return CheckedAnswer(answer, used, problems)
 
