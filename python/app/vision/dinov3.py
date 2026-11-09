@@ -93,7 +93,13 @@ class DinoV3Encoder:
                     "crop_pct": 1.0, "crop_mode": "center"}
         if config != expected or self.model.global_pool != pooling:
             raise RuntimeError("DINOv3 preprocessing or pooling changed")
-        self.transform = timm.data.create_transform(**config, is_training=False)
+        # 체크포인트 설정은 256으로 고정이라 다른 크기는 전처리에 직접 넣는다.
+        # 모델은 RoPE라 가중치 그대로 다른 크기를 받지만, 그 동작이 꺼져 있으면 시작하지 않는다.
+        self.input_size = settings.input_size
+        if self.input_size != 256 and not getattr(self.model, "dynamic_img_size", False):
+            raise RuntimeError("DINOv3 model does not accept a non-default input size")
+        self.transform = timm.data.create_transform(
+            **{**config, "input_size": (3, self.input_size, self.input_size)}, is_training=False)
         if visual_profile() == "animal-focus":
             from app.vision.animal_focus import AnimalFocus, FOCUS_VERSION
             self.focus = AnimalFocus()
@@ -108,6 +114,9 @@ class DinoV3Encoder:
         import torch
         import torch.nn.functional as functional
         tensor = self.transform(view).unsqueeze(0).to(self.device)
+        # 설정 크기와 다른 텐서가 들어가도 모델은 조용히 받으므로 여기서 막는다.
+        if tuple(tensor.shape[-2:]) != (self.input_size, self.input_size):
+            raise RuntimeError("DINOv3 input size does not match LOST_SEARCH_INPUT_SIZE")
         with torch.inference_mode(), torch.autocast(self.device, dtype=torch.float16):
             vector = functional.normalize(self.model(tensor).float(), dim=-1)
         return validate_vector(vector.squeeze(0).cpu().tolist())

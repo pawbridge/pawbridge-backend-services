@@ -1,7 +1,9 @@
 package com.pawbridge.backend.animal.internal.travel.infrastructure.collection
 
 import com.pawbridge.backend.animal.internal.travel.application.PetTravelException
+import org.slf4j.LoggerFactory
 import java.sql.Connection
+import java.sql.SQLException
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -68,7 +70,7 @@ class PetTravelCollector(
                 regions[row["code"]!!] = row["name"]!!
             }
             if (regions.isEmpty()) {
-                throw PetTravelException.unavailable()
+                throw PetTravelException.unavailable(REGIONS_EMPTY, TourApiClient.Operation.REGIONS.name)
             }
             catalog.saveRegions(regions, clock.instant())
             var pages = 0
@@ -80,11 +82,11 @@ class PetTravelCollector(
                 // An unexpected empty middle page is not evidence of completed inventory.
                 val remaining = page.totalCount.toLong() - (state.nextPage - 1).toLong() * 100
                 if (page.items.size.toLong() != minOf(100L, maxOf(0L, remaining))) {
-                    throw PetTravelException.unavailable()
+                    throw PetTravelException.unavailable(SYNC_PAGE_SIZE, TourApiClient.Operation.SYNC.name)
                 }
                 for (row in page.items) {
                     if (shown != row["showflag"]) {
-                        throw PetTravelException.unavailable()
+                        throw PetTravelException.unavailable(SYNC_SHOWFLAG, TourApiClient.Operation.SYNC.name)
                     }
                     // Never interpret legacy areacode as a legal-district code.
                     val region = row["lDongRegnCd"]
@@ -156,6 +158,7 @@ class PetTravelCollector(
             catalog.finishRun(id, "QUOTA", "REQUEST_BUDGET", counts[0], counts[1], counts[2], clock.instant())
             return Result("QUOTA", counts[0], counts[1], counts[2])
         } catch (exception: Exception) {
+            warnFailure("travel collection failed", exception, counts)
             catalog.finishRun(id, "FAILED", "COLLECTION_FAILED", counts[0], counts[1], counts[2], clock.instant())
             // Do not retain upstream URL/credential-bearing causes in Batch metadata.
             throw IllegalStateException("TRAVEL_COLLECTION_FAILED")
@@ -239,6 +242,7 @@ class PetTravelCollector(
                 throw exception
             }
             val changed = "PET_INVENTORY_CHANGED" == exception.message
+            warnFailure("travel pet bulk failed", exception, counts)
             catalog.petCollectionFailed(if (changed) "PET_INVENTORY_CHANGED" else "PET_BULK_FAILED", changed)
             return "PET_BULK_FAILED"
         }
@@ -260,12 +264,52 @@ class PetTravelCollector(
         counts[0]++
     }
 
+    /**
+     * 실패 원인을 키 없는 값으로만 한 줄 남긴다. 수집 한 번에 단계별로 많아야 한 줄이다.
+     * 원인 예외의 메시지에는 서비스 키가 든 요청 URL이 들어갈 수 있어 클래스 이름만 남긴다.
+     */
+    private fun warnFailure(event: String, failure: Exception, counts: IntArray) {
+        val travel = failure as? PetTravelException
+        log.warn(
+            "[BATCH] {}: kind={}, operation={}, status={}, cause={}, requests={}, discovered={}, published={}",
+            event,
+            kindOf(failure),
+            travel?.operation,
+            travel?.status,
+            failure.javaClass.simpleName,
+            counts[0],
+            counts[1],
+            counts[2],
+        )
+    }
+
     companion object {
+        // 수집기가 직접 판단한 실패의 kind 값
+        const val REGIONS_EMPTY = "REGIONS_EMPTY"
+        const val SYNC_PAGE_SIZE = "SYNC_PAGE_SIZE"
+        const val SYNC_SHOWFLAG = "SYNC_SHOWFLAG"
+        const val DATABASE = "DATABASE"
+        const val OTHER = "OTHER"
+
         private const val LOCK = "pawbridge_animal.petTravelCollection"
         private const val LOCK_LOST = "TRAVEL_LOCK_LOST"
         private const val ONE = 1
 
         // Java passed Runnable::run: the abort task runs on the calling thread.
         private val DIRECT_EXECUTOR = Executor { command -> command.run() }
+
+        private val log = LoggerFactory.getLogger(PetTravelCollector::class.java)
+
+        // 우리 코드가 정한 대문자 코드(TRAVEL_LOCK_LOST 같은)만 메시지에서 꺼낸다.
+        private val OWN_CODE = Regex("[A-Z][A-Z_]{2,39}")
+
+        private fun kindOf(failure: Exception): String {
+            return when {
+                failure is PetTravelException -> failure.reason
+                failure is SQLException -> DATABASE
+                failure is IllegalStateException && failure.message != null && OWN_CODE.matches(failure.message!!) -> failure.message!!
+                else -> OTHER
+            }
+        }
     }
 }
