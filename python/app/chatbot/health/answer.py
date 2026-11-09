@@ -16,17 +16,21 @@ Section = Literal["summary", "cautions"]
 
 # Gemini는 근거 번호를 [1]뿐 아니라 [1, 3]처럼 묶어 쓰기도 한다.
 CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+# 줄바꿈은 남기려고 번호 앞의 공백과 탭만 같이 지운다.
+CITATION_WITH_SPACE = re.compile(r"[ \t]*\[\d+(?:\s*,\s*\d+)*\]")
 JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 SENTENCE_END = re.compile(r"(?<=[.!?。])\s+")
 # 백엔드가 답을 저장하는 chatbot_messages.content가 1000자라 그 아래로 자른다.
 MAX_ANSWER_CHARS = 900
 
+# 화면에는 출처와 해설 칸이 없으므로 대체 답변은 그 칸을 가리키지 않는다.
+# '검수된'은 수의사 검수로 읽힐 수 있어 쓰지 않는다.
 FALLBACK_ANSWER = (
-    "공고에 적힌 건강 상태에 대한 검수된 해설을 아래에서 확인해 주세요. "
-    "이 동물의 실제 상태와 치료 여부는 보호소와 동물병원에 확인이 필요합니다."
+    "이 질문에는 지금 자세히 답하기 어렵습니다. "
+    "공고에 적힌 상태와 치료 여부는 보호소에, 정확한 건강 상태는 동물병원 진료로 확인해 주세요."
 )
 NO_EVIDENCE_FALLBACK = (
-    "이 질문에 맞는 검수된 건강 정보가 없어 자세히 답하기 어렵습니다. "
+    "이 질문에 맞는 건강 정보가 없어 자세히 답하기 어렵습니다. "
     "공고에 적힌 상태와 치료 여부는 보호소에 문의하고, 정확한 건강 상태는 동물병원 진료로 확인해 주세요."
 )
 
@@ -176,6 +180,15 @@ def check_answer(raw: str, evidence: list[Evidence], expect_json: bool = False) 
     answer = CITATION.sub(keep_known_numbers, answer)
     used = sorted(set(used) | set(cited))
     return CheckedAnswer(answer, used, problems)
+
+
+def strip_citations(answer: str) -> str:
+    """사용자에게 보낼 답에서 근거 번호 [n]을 지운다.
+
+    번호는 답 검사와 로그(쓴 근거)에만 쓰고 화면에는 보이지 않는다. 번호 앞 공백도 같이 지워
+    "제한해야 합니다 [2]."가 "제한해야 합니다."가 되게 한다.
+    """
+    return CITATION_WITH_SPACE.sub("", answer).strip()
 
 
 def check_plain_answer(raw: str) -> CheckedAnswer:

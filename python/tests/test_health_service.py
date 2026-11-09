@@ -99,7 +99,8 @@ class HealthRagServiceTest(unittest.TestCase):
         response, mock = self.post({"HEALTH_RAG_ENABLED": "true"}, answer)
         body = response.json()
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(body["answer"], "치료 중에는 운동을 제한해야 합니다 [2].")
+        # 번호는 검사와 출처 고르기에만 쓰고 사용자에게 보내는 답에서는 지운다.
+        self.assertEqual(body["answer"], "치료 중에는 운동을 제한해야 합니다.")
         self.assertEqual([source["url"] for source in body["sources"]], ["https://example.org/a"])
         self.assertEqual(body["healthCards"][0]["id"], "heartworm-positive")
         self.assertIn("[검수된 건강 근거]", mock.await_args.args[0])
