@@ -5,6 +5,7 @@ import httpx
 from app.chatbot.provider import (
     ChatbotProvider,
     ChatbotProviderConfigurationError,
+    ChatbotProviderTruncatedError,
     ChatbotProviderUpstreamError,
 )
 from app.settings import ChatbotSettings
@@ -21,7 +22,7 @@ class GeminiChatbotProvider(ChatbotProvider):
         self.model = settings.gemini_model.strip() or ChatbotSettings.model_fields["gemini_model"].default
         self.timeout_seconds = settings.gemini_timeout_seconds
 
-    async def generate_answer(self, prompt: str) -> str:
+    async def generate_answer(self, prompt: str, json_output: bool = False) -> str:
         if not self.api_key:
             raise ChatbotProviderConfigurationError("GEMINI_API_KEY is not configured")
 
@@ -38,6 +39,8 @@ class GeminiChatbotProvider(ChatbotProvider):
                 "maxOutputTokens": 1024,
             },
         }
+        if json_output:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
@@ -80,7 +83,7 @@ class GeminiChatbotProvider(ChatbotProvider):
 
         finish_reason = candidates[0].get("finishReason")
         if finish_reason == "MAX_TOKENS":
-            raise ChatbotProviderUpstreamError("Gemini response was truncated by token limit")
+            raise ChatbotProviderTruncatedError("Gemini response was truncated by token limit")
 
     @staticmethod
     def _log_response_metadata(response_body: dict) -> None:

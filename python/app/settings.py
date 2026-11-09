@@ -93,3 +93,5 @@ class ChatbotSettings(_Settings):
     gemini_api_key: str = Field("", alias="GEMINI_API_KEY")
     gemini_model: str = Field("gemini-3.5-flash-lite", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(15, alias="GEMINI_TIMEOUT_SECONDS")
+    # 공고 건강 해설 RAG. 기본은 꺼짐이고, 켜면 승인된 해설을 근거로 답한다.
+    health_rag_enabled: bool = Field(False, alias="HEALTH_RAG_ENABLED")
