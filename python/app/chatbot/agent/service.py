@@ -1,0 +1,141 @@
+"""에이전트 모드의 요청 처리.
+
+    공고와 질문으로 근거 찾기(루프 밖, 매번) → 루프(graph.py) → 답 검사 → 기록 → 응답
+
+고정 흐름과 응답 모양이 같아 백엔드와 화면은 모드를 모른다. 실패는 종류에 따라 나눈다.
+- 상류 장애(429, 5xx, 연결 실패): 고정 흐름도 같은 모델을 부르므로 다시 시도하지 않고 고정 흐름처럼 502.
+- 시간 초과: 남은 시간이 없으므로 정해진 대체 답변.
+- 루프의 논리 실패(상한, 없는 도구, 도구 입력 오류, 빈 답, 잘림): 남은 시간이 있으면 고정 흐름, 없으면 대체 답변.
+"""
+
+import logging
+import time
+
+from fastapi import HTTPException, status
+
+from app.chatbot.agent.graph import DEADLINE_SECONDS, STOP_DEADLINE, AgentContext, AgentRun, run_agent
+from app.chatbot.health.answer import (
+    FALLBACK_ANSWER,
+    NO_EVIDENCE_FALLBACK,
+    CheckedAnswer,
+    answer_text_from_json,
+    check_answer,
+    check_plain_answer,
+    health_cards,
+    sources_for,
+    strip_citations,
+    unknown_phone_numbers,
+)
+from app.chatbot.prompt_builder import build_agent_prompt
+from app.chatbot.provider import (
+    ChatbotProviderConfigurationError,
+    ChatbotProviderTimeoutError,
+    ChatbotProviderTruncatedError,
+    ChatbotProviderUpstreamError,
+)
+from app.chatbot.service import (
+    answer_fixed,
+    chatbot_response,
+    find_health_evidence,
+    health_retriever,
+    log_health_answer,
+    provider_or_500,
+)
+
+logger = logging.getLogger("uvicorn.error")
+
+# 고정 흐름은 모델을 한 번 부른다. 남은 시간이 이보다 적으면 부르지 않고 대체 답변으로 끝낸다.
+FIXED_FLOW_MIN_SECONDS = 5.0
+STOP_TRUNCATED = "truncated"
+
+PATH_AGENT = "agent"
+PATH_FIXED = "fixed"
+PATH_FALLBACK = "fallback"
+PATH_ERROR = "error"
+
+
+async def create_agent_message(req) -> dict:
+    started = time.monotonic()
+    deadline = started + DEADLINE_SECONDS
+    animal = req.animalContext
+    matches, evidence = find_health_evidence(animal, req.question)
+    provider = provider_or_500()
+    prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
+    context = AgentContext(provider, health_retriever(), animal.specialMark, animal.species, deadline)
+
+    run = None
+    stop = None
+    try:
+        run = await run_agent(prompt, matches, evidence, context)
+        stop = run.stop
+    except ChatbotProviderConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    except (ChatbotProviderTimeoutError, TimeoutError):
+        stop = STOP_DEADLINE
+    except ChatbotProviderTruncatedError:
+        stop = STOP_TRUNCATED
+    except ChatbotProviderUpstreamError as exc:
+        log_agent_run(PATH_ERROR, "upstream", run, started)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    if stop is None:
+        response = finish_agent_answer(provider.name, run, animal.species, req.shelterContext)
+        log_agent_run(PATH_AGENT, None, run, started)
+        return response
+
+    remaining = deadline - time.monotonic()
+    if stop != STOP_DEADLINE and remaining >= FIXED_FLOW_MIN_SECONDS:
+        try:
+            response = await answer_fixed(provider, req, matches, evidence, timeout=remaining)
+        except HTTPException as exc:
+            if not isinstance(exc.__cause__, ChatbotProviderTimeoutError):
+                log_agent_run(PATH_ERROR, stop, run, started)
+                raise
+        else:
+            log_agent_run(PATH_FIXED, stop, run, started)
+            return response
+
+    # 대체 답변. 루프가 더 찾은 근거는 검사를 거치지 않았으므로 처음 찾은 해설만 카드로 보낸다.
+    log_health_answer(matches, [], True)
+    log_agent_run(PATH_FALLBACK, stop, run, started)
+    cards = health_cards(matches, animal.species) if evidence else []
+    return chatbot_response(provider.name, FALLBACK_ANSWER if evidence else NO_EVIDENCE_FALLBACK, [], cards)
+
+
+def finish_agent_answer(provider_name: str, run: AgentRun, species: str | None, shelter) -> dict:
+    """루프가 낸 답을 고정 흐름과 같은 검사에 통과시킨다. 도구로 더 찾은 근거도 검사 범위에 들어간다."""
+    evidence = run.evidence
+    if evidence:
+        checked = check_answer(run.answer, evidence, expect_json=True)
+    else:
+        text = answer_text_from_json(run.answer)
+        if text is None:
+            checked = CheckedAnswer(NO_EVIDENCE_FALLBACK, [], ["JSON 응답을 해석할 수 없음"], fallback=True)
+        else:
+            checked = check_plain_answer(text)
+
+    # 보호소 정보를 프롬프트에 넣으므로 모델이 번호를 잘못 옮기거나 지어낸 답을 막는다.
+    if not checked.fallback and unknown_phone_numbers(checked.answer, [shelter.shelterPhone if shelter else None]):
+        checked = CheckedAnswer(
+            FALLBACK_ANSWER if evidence else NO_EVIDENCE_FALLBACK,
+            [],
+            ["보호소 정보에 없는 전화번호"],
+            fallback=True,
+        )
+
+    log_health_answer(run.matches, checked.used, checked.fallback)
+    sources = sources_for(checked.used, evidence) if evidence else []
+    cards = health_cards(run.matches, species) if evidence else []
+    return chatbot_response(provider_name, strip_citations(checked.answer), sources, cards)
+
+
+def log_agent_run(path: str, stop: str | None, run: AgentRun | None, started: float) -> None:
+    """에이전트가 어떻게 끝났는지 남긴다. 질문, 검색어, 답 내용은 넣지 않는다."""
+    logger.info(
+        "Chatbot agent: path=%s stop=%s model_calls=%s tool_calls=%s elapsed_ms=%d",
+        path,
+        stop or "-",
+        run.model_calls if run else "-",
+        run.tool_calls if run else "-",
+        (time.monotonic() - started) * 1000,
+    )
