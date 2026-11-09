@@ -1,0 +1,146 @@
+{
+  "id": "skin-disease",
+  "title": "피부병, 피부염",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "피부병",
+      "피부염",
+      "피부질환",
+      "가려움",
+      "긁음",
+      "습진",
+      "피부 질환",
+      "피부상태 좋지",
+      "피부 상태 좋지",
+      "피부안좋",
+      "피부 안좋",
+      "피부가 안좋",
+      "피부 염증",
+      "피부염증"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "가려움은 병 이름이 아니라 증상입니다.",
+      "sources": [
+        "merck-itching",
+        "merck-cat-itching"
+      ]
+    },
+    {
+      "text": "가려움의 흔한 원인은 기생충, 감염, 알레르기입니다.",
+      "sources": [
+        "merck-itching",
+        "merck-cat-itching"
+      ]
+    },
+    {
+      "text": "치료가 잘 되려면 근본 원인을 찾는 것이 먼저라고 합니다.",
+      "sources": [
+        "merck-itching",
+        "merck-cat-itching"
+      ]
+    },
+    {
+      "text": "국내 동물병원 진료 기록을 분석한 농촌진흥청 자료는 피부 질환 발병 여부를 세심하게 관찰하고 치료해야 한다고 권고합니다.",
+      "sources": [
+        "rda-visits"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이의 가려움이 의심되면 수의사는 보통 진드기나 벼룩 같은 기생충부터 배제합니다.",
+      "sources": [
+        "merck-cat-itching"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 가려움 징후에는 눈에 띄게 긁는 것과 스스로 만든 피부 손상이 있습니다.",
+      "sources": [
+        "icc-itchy"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "피부병은 원인이 여러 가지라 겉모습만으로 구분하기 어렵고, 치료는 원인을 찾는 데 달려 있습니다. 입양 직후 수의사 진료로 원인을 확인하세요.",
+      "sources": [
+        "merck-itching",
+        "merck-cat-itching"
+      ]
+    },
+    {
+      "text": "국내 강연 보도에 따르면 고양이 알레르기성 피부염은 증상을 줄이고 유지하는 것이 치료 목표라고 합니다. 이 동물의 피부 상태와 원인은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "dailyvet-cat-itch"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "어떤 피부병인지 검사했는지",
+    "증상이 언제부터인지",
+    "치료를 받았는지, 지금도 치료 중인지",
+    "다른 동물이나 사람에게 옮을 수 있는 피부병인지"
+  ],
+  "sources": {
+    "merck-itching": {
+      "org": "Merck Veterinary Manual",
+      "title": "Itching (Pruritus) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/itching-pruritus-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "rda-visits": {
+      "org": "농촌진흥청 국립축산과학원",
+      "title": "동물병원 진료 기록 기반 반려견 내원 이유 분석",
+      "url": "https://www.rda.go.kr/board/board.do?mode=view&prgId=day_farmprmninfoEntry&dataNo=100000750287",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cat-itching": {
+      "org": "Merck Veterinary Manual",
+      "title": "Itching (Pruritus) in Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/skin-disorders-of-cats/itching-pruritus-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-itchy": {
+      "org": "International Cat Care",
+      "title": "Itchy cat, when it is not fleas",
+      "url": "https://icatcare.org/articles/itchy-cat-when-it-is-not-fleas",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "dailyvet-cat-itch": {
+      "org": "데일리벳(황철용 서울대 수의대 교수 KSFM 2024 강연 보도)",
+      "title": "고양이 피부 가려움증, 어떻게 관리해야 할까",
+      "url": "https://www.dailyvet.co.kr/news/academy/209061",
+      "tier": "B",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

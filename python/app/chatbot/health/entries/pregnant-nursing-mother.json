@@ -1,0 +1,255 @@
+{
+  "id": "pregnant-nursing-mother",
+  "title": "임신, 수유 중인 어미",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "임신",
+      "수유",
+      "수유중",
+      "임신중",
+      "임신견",
+      "새끼 밴",
+      "젖 먹이는",
+      "출산",
+      "임신묘",
+      "어미 고양이",
+      "어미묘",
+      "수유묘"
+    ],
+    "context": "any",
+    "exclude": [
+      "수유동",
+      "수유역",
+      "수유리",
+      "수유사거리",
+      "수유초"
+    ]
+  },
+  "summary": [
+    {
+      "text": "강아지는 태어날 때와 어미젖을 통해 감염에 대한 보호 면역을 일부 받습니다.",
+      "sources": [
+        "merck-puppy"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "임신이나 수유 중에는 일시적으로 털이 빠질 수 있습니다.",
+      "sources": [
+        "merck-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "임신한 개는 임신 초기부터 완전하고 균형 잡힌 성장기용 사료로 바꾸라고 안내합니다.",
+      "sources": [
+        "merck-feeding"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "개의 평균 임신 기간은 63일입니다.",
+      "sources": [
+        "merck-feeding"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "흔한 실수는 임신 초기에 과식시키고 수유기에 덜 먹이는 것이라고 합니다.",
+      "sources": [
+        "merck-feeding"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "대부분의 강아지는 생후 7주에서 10주 사이에 고형 사료로 이유를 마칩니다.",
+      "sources": [
+        "cornell-puppy-mother"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "강아지는 생후 7에서 8주쯤 어미를 떠날 수 있다고 합니다.",
+      "sources": [
+        "merck-puppy"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "Cornell은 강아지를 새 가정으로 보내는 최소 시기로 생후 8주를 듭니다.",
+      "sources": [
+        "cornell-puppy-mother"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "임신한 고양이는 태아가 자라면서 임신 내내 체중이 늘어납니다.",
+      "sources": [
+        "merck-feeding"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이는 수유 중에 먹는 사료와 상관없이 체중이 빠지는 경향이 있습니다.",
+      "sources": [
+        "merck-feeding"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "iCatCare는 임신을 알게 되면 성장기용 사료로 바꾸라고 권고합니다.",
+      "sources": [
+        "icc-pregnancy"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 임신 기간은 60에서 65일입니다.",
+      "sources": [
+        "merck-cat-repro"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "새끼 고양이의 이유는 생후 7주쯤 거의 끝납니다.",
+      "sources": [
+        "icc-litter"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "Merck는 새끼 고양이를 이유한 뒤, 생후 6에서 7주부터 어미와 떼어 놓을 수 있다고 봅니다.",
+      "sources": [
+        "merck-kitten-care"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "새끼가 있다면 어미와 새끼를 언제 어떻게 분리할지에 따라 새끼의 면역과 영양이 달라질 수 있어, 입양 시기는 수의사와 상의하세요.",
+      "sources": [
+        "merck-puppy"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "새끼 고양이는 건강하고 젖을 완전히 뗀 뒤 생후 8주쯤부터 새 가정으로 보낼 수 있다고 하지만, 기관마다 시기가 조금 다릅니다. 이 어미와 새끼의 실제 상태와 입양 시기는 수의사와 상의해야 합니다.",
+      "sources": [
+        "icc-pregnancy"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "임신 확인 방법(초음파, 촉진)과 예상 출산 시기",
+    "새끼가 이미 태어났는지, 몇 마리인지",
+    "어미의 접종과 구충 상태",
+    "수유 중이라면 새끼를 언제까지 함께 둘 수 있는지"
+  ],
+  "sources": {
+    "merck-puppy": {
+      "org": "Merck Veterinary Manual",
+      "title": "Puppy Care (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/routine-care-of-dogs/puppy-care",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-hairloss": {
+      "org": "Merck Veterinary Manual",
+      "title": "Hair Loss (Alopecia) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/hair-loss-alopecia-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-feeding": {
+      "org": "Merck Veterinary Manual (전문가판)",
+      "title": "Feeding Practices in Small Animals",
+      "url": "https://www.merckvetmanual.com/management-and-nutrition/nutrition-small-animals/feeding-practices-in-small-animals",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-puppy-mother": {
+      "org": "Cornell Riney Canine Health Center",
+      "title": "How long should puppies stay with their mother?",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/riney-canine-health-center/canine-health-topics/how-long-should-puppies-stay-their-mother",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-pregnancy": {
+      "org": "International Cat Care",
+      "title": "Cat pregnancy",
+      "url": "https://icatcare.org/articles/cat-pregnancy",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-litter": {
+      "org": "International Cat Care",
+      "title": "Bringing up a litter of kittens: health considerations",
+      "url": "https://icatcare.org/articles/bringing-up-a-litter-of-kittens-health-considerations",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-kitten-care": {
+      "org": "Merck Veterinary Manual",
+      "title": "Kitten Care (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/caring-for-cats/kitten-care",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cat-repro": {
+      "org": "Merck Veterinary Manual",
+      "title": "Management of Reproduction of Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/reproductive-disorders-of-cats/management-of-reproduction-of-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

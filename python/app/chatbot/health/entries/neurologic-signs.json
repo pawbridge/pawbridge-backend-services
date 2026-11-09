@@ -1,0 +1,129 @@
+{
+  "id": "neurologic-signs",
+  "title": "신경 증상(발작, 떨림, 머리 기울임 등)",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "발작",
+      "경련",
+      "떨림",
+      "머리 기울임",
+      "고개 기울임",
+      "신경증상",
+      "신경 증상",
+      "비틀거림",
+      "선회",
+      "간질",
+      "ataxia",
+      "seizure"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "신경계 이상의 주요 징후는 행동 변화, 발작, 떨림, 통증, 감각 저하, 협응 장애, 다리의 쇠약이나 마비입니다.",
+      "sources": [
+        "merck-nervous"
+      ]
+    },
+    {
+      "text": "원인은 선천 기형, 유전 질환, 감염과 염증, 중독, 대사 질환 등으로 매우 다양합니다.",
+      "sources": [
+        "merck-nervous"
+      ]
+    },
+    {
+      "text": "일부 신경계 손상은 다친 지 24~48시간이 지나서야 드러납니다.",
+      "sources": [
+        "merck-nervous"
+      ]
+    },
+    {
+      "text": "발작은 뇌 자체의 병적 변화 때문일 수도 있고, 대사 이상이나 독성 때문에 생기는 반응성 발작일 수도 있습니다.",
+      "sources": [
+        "merck-epilepsy"
+      ]
+    },
+    {
+      "text": "개 홍역도 가능한 원인의 하나이며, 신경 증상은 다른 증상과 함께, 그 뒤에, 또는 단독으로 나타날 수 있습니다.",
+      "sources": [
+        "merck-distemper"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고개 기울임, 원을 그리며 걷기, 눈이 빠르게 떨리는 증상도 홍역의 신경 증상으로 나열됩니다.",
+      "sources": [
+        "merck-distemper"
+      ],
+      "species": [
+        "dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "신경 증상의 원인은 매우 다양해 홍역이라고 단정할 수 없습니다. 이 동물의 원인은 신경학적 검사와 필요한 검사로 수의사가 확인해야 합니다.",
+      "sources": [
+        "merck-nervous"
+      ]
+    },
+    {
+      "text": "회복한 개에도 근육 떨림이나 발작이 남을 수 있다고 보고되므로, 과거 신경 증상 이력을 입양 전에 확인해 두세요.",
+      "sources": [
+        "cornell-cdv"
+      ],
+      "species": [
+        "dog"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "신경 증상이 처음 나타난 시점과 빈도(발작은 몇 분 지속, 하루 몇 번)",
+    "홍역 검사나 뇌 영상 검사를 했는지",
+    "현재 치료나 약이 있는지",
+    "발작 시 안전하게 지내는 방법을 안내받았는지"
+  ],
+  "sources": {
+    "merck-nervous": {
+      "org": "Merck Veterinary Manual",
+      "title": "Nervous System Disorders and Effects of Injuries in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/brain-spinal-cord-and-nerve-disorders-of-dogs/nervous-system-disorders-and-effects-of-injuries-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-epilepsy": {
+      "org": "Merck Veterinary Manual",
+      "title": "Epilepsy in Small Animals (전문가판)",
+      "url": "https://www.merckvetmanual.com/nervous-system/epilepsy-in-small-animals/epilepsy-in-small-animals",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-distemper": {
+      "org": "Merck Veterinary Manual",
+      "title": "Canine Distemper (Hardpad Disease) (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/disorders-affecting-multiple-body-systems-of-dogs/canine-distemper-hardpad-disease",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-cdv": {
+      "org": "Cornell Riney Canine Health Center",
+      "title": "Canine distemper virus",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/riney-canine-health-center/canine-health-topics/canine-distemper-virus",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

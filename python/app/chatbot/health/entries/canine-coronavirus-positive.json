@@ -1,0 +1,96 @@
+{
+  "id": "canine-coronavirus-positive",
+  "title": "개 코로나바이러스 장염 양성",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "코로나",
+      "코로나장염",
+      "코로나 장염",
+      "코로나바이러스",
+      "CCV"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "국내 질병 해설은 개 코로나바이러스 감염증을 구토, 설사, 탈수가 주된 증상인 급성 소화기 전염병으로 설명하며, 특히 어린 강아지에서 많이 생긴다고 합니다.",
+      "sources": [
+        "qia-ccv"
+      ]
+    },
+    {
+      "text": "WSAVA 2016년 지침은 개 코로나바이러스 감염이 대개 증상이 없거나 가볍다고 봅니다.",
+      "sources": [
+        "wsava-2016"
+      ]
+    },
+    {
+      "text": "파보바이러스와 함께 감염되면 증상이 더 나빠집니다.",
+      "sources": [
+        "qia-ccv"
+      ]
+    },
+    {
+      "text": "감염된 개의 분변에 나온 바이러스를 입으로 먹어서 옮습니다.",
+      "sources": [
+        "qia-ccv"
+      ]
+    },
+    {
+      "text": "감염된 개와 닿은 도구, 사람, 사료를 통해 퍼지는 경우가 많습니다.",
+      "sources": [
+        "qia-ccv"
+      ]
+    },
+    {
+      "text": "감염된 개는 6~9일 동안 바이러스를 내보내고, 일부는 더 오래 내보낼 수 있습니다.",
+      "sources": [
+        "qia-ccv"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "검사 키트에서 코로나바이러스가 나왔다고 해서 그것이 지금 증상의 원인이라는 뜻은 아니라고 WSAVA 지침은 설명합니다. 이 동물의 증상 원인은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "wsava-2016"
+      ]
+    },
+    {
+      "text": "파보와 함께 감염되면 더 나빠지므로 파보 검사 결과도 함께 확인하세요. 이미 개를 키운다면 분변을 바로 치우고, 언제부터 함께 지내게 할지 수의사와 상의하세요.",
+      "sources": [
+        "qia-ccv"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "코로나 양성이 언제, 어떤 검사(키트)로 나왔는지",
+    "구토, 설사 같은 증상이 있었는지, 지금은 어떤지",
+    "파보 검사 결과",
+    "치료와 분리를 했는지, 다른 개와 함께 지냈는지"
+  ],
+  "sources": {
+    "qia-ccv": {
+      "org": "국립수의과학검역원(박종현), 군산시 게시",
+      "title": "개 코로나 바이러스 감염증 (질병 해설 문서)",
+      "url": "https://www.gunsan.go.kr/_cms/board/eFileDownload/455/967067/202d5eecb56ca39796219bbb4108b148",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "wsava-2016": {
+      "org": "WSAVA Vaccination Guidelines Group (Day et al.), J Small Anim Pract 57(1)",
+      "title": "Guidelines for the Vaccination of Dogs and Cats (2015 판, 2016-01 게재)",
+      "url": "https://wsava.org/wp-content/uploads/2020/01/WSAVA-Vaccination-Guidelines-2015.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

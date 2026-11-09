@@ -1,0 +1,74 @@
+{
+  "id": "blindness",
+  "title": "실명",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "실명",
+      "시각장애",
+      "앞을 못 봄",
+      "안 보임",
+      "시력 상실",
+      "blind"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "실명이 눈에만 국한되고 다른 건강 문제가 없으면 동물은 잘 적응해 비교적 평범하게 살 수 있습니다.",
+      "sources": [
+        "acvo-blind"
+      ]
+    },
+    {
+      "text": "동물은 집 안을 머릿속 지도로 기억해 다니므로, 새 집에 자리를 잡은 뒤에는 가구 배치를 바꾸지 않는 것이 좋다고 합니다.",
+      "sources": [
+        "acvo-blind"
+      ]
+    },
+    {
+      "text": "백내장은 가벼운 시력 저하부터 실명까지 일으킬 수 있습니다.",
+      "sources": [
+        "merck-lens-dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "실명의 원인과 다른 건강 문제 여부에 따라 생활이 달라지므로, 이 동물의 시력과 원인은 수의사 눈 검사로 확인해야 합니다. 입양 뒤 새 집을 익히는 동안에는 계단이나 수영장처럼 위험한 곳을 안전문으로 막고, 잠자리와 밥그릇, 물그릇 자리를 정해 두세요.",
+      "sources": [
+        "acvo-blind"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "실명의 원인과 한쪽인지 양쪽인지",
+    "갑자기 보이지 않게 되었는지",
+    "다른 건강 문제나 통증이 있는지",
+    "시설 안에서 어떻게 적응했는지"
+  ],
+  "sources": {
+    "acvo-blind": {
+      "org": "American College of Veterinary Ophthalmologists (ACVO)",
+      "title": "Living with a Blind Pet",
+      "url": "https://acvo.org/tips-treatments-tricks/k3j54gbjrz2jtbltleld8festlsj8j",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-lens-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Lens in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/eye-disorders-of-dogs/disorders-of-the-lens-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

@@ -1,0 +1,232 @@
+{
+  "id": "dental-tartar",
+  "title": "치석, 치주질환",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "치석",
+      "치주질환",
+      "치주염",
+      "치은염",
+      "잇몸",
+      "잇몸병",
+      "구취",
+      "입냄새",
+      "스케일링"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "치주질환은 개가 이를 잃는 주된 이유입니다.",
+      "sources": [
+        "merck-dental"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "잇몸에만 생긴 염증은 치아를 제대로 닦아 관리하면 되돌릴 수 있습니다.",
+      "sources": [
+        "merck-dental"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "깨끗한 치아 주변에는 잇몸병이 생기지 않는다고 합니다.",
+      "sources": [
+        "merck-dental"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "좋은 치아 관리는 플라크와 치석이 쌓이는 것을 막는 데 도움이 됩니다.",
+      "sources": [
+        "merck-routine-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "치주질환은 반려동물에서 가장 흔히 진단되는 질환이라고 합니다.",
+      "sources": [
+        "avdc-dental"
+      ]
+    },
+    {
+      "text": "치은염 단계는 되돌릴 수 있지만, 치주염으로 넘어가면 되돌릴 수 없습니다.",
+      "sources": [
+        "avdc-dental"
+      ]
+    },
+    {
+      "text": "겉으로 완전히 정상으로 보이는 치아에서도 방사선 검사를 하면 개의 약 28퍼센트, 고양이의 약 42퍼센트에서 임상적으로 중요한 이상이 발견되었다고 합니다.",
+      "sources": [
+        "avdc-dental"
+      ]
+    },
+    {
+      "text": "서울대 동물병원은 치주염이 진행되면 잇몸이 내려앉고 치아가 흔들리며 심한 통증이 생겨 발치가 필요할 수 있다고 안내합니다.",
+      "sources": [
+        "snu-dental"
+      ]
+    },
+    {
+      "text": "개의 잇몸병을 치료하지 않으면 치아를 지탱하는 조직이 사라져 치아를 잃을 수 있습니다.",
+      "sources": [
+        "merck-dental"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "4세가 넘은 고양이의 50에서 90퍼센트가 어떤 형태로든 치과 질환을 가진다고 보고됩니다.",
+      "sources": [
+        "cornell-feline-dental"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 흔한 치과 질환 세 가지는 치은염, 치주염, 치아흡수입니다.",
+      "sources": [
+        "cornell-feline-dental"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "치아흡수는 고양이가 치아를 잃는 가장 흔한 원인입니다.",
+      "sources": [
+        "cornell-feline-dental"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "굳은 치석은 양치로 제거되지 않고, 보통 수의사가 마취하고 하는 스케일링이 필요합니다.",
+      "sources": [
+        "icc-dental"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "잇몸병은 개가 치아를 잃는 주된 원인입니다. 이 동물의 구강 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-dental"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "국내 치과 전문병원 기록에서 개 발치의 82%가 치주질환 때문이었다고 보도되었으며, 두 병원의 후향 조사라는 한계가 있습니다.",
+      "sources": [
+        "dailyvet-dental"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "마취 없이 한 치아 치료는 겉만 나아 보일 뿐, 잇몸선 아래의 근본 문제를 해결하지 못한다고 합니다. 이 동물의 구강 상태와 필요한 치료는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-cat-dental"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "치아 상태 검사나 스케일링 여부",
+    "입 냄새, 잇몸 출혈, 씹는 모습",
+    "이미 빠졌거나 발치한 치아가 있는지"
+  ],
+  "sources": {
+    "merck-dental": {
+      "org": "Merck Veterinary Manual",
+      "title": "Dental Disorders of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/digestive-disorders-of-dogs/dental-disorders-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-routine-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Routine Health Care of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/routine-care-of-dogs/routine-health-care-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "dailyvet-dental": {
+      "org": "데일리벳(전남대 수의대 연구팀 논문 보도)",
+      "title": "국내 반려묘 발치 주요 원인, 치주염,FCGS,치아흡수 순",
+      "url": "https://www.dailyvet.co.kr/news/practice/companion-animal/251823",
+      "tier": "B",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-feline-dental": {
+      "org": "Cornell Feline Health Center",
+      "title": "Feline Dental Disease",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/feline-dental-disease",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-dental": {
+      "org": "International Cat Care",
+      "title": "Dental Disease in Cats",
+      "url": "https://icatcare.org/articles/dental-disease-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cat-dental": {
+      "org": "Merck Veterinary Manual",
+      "title": "Dental Disorders of Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/digestive-disorders-of-cats/dental-disorders-of-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "avdc-dental": {
+      "org": "American Veterinary Dental College (AVDC)",
+      "title": "Catching Dental Disease Early in Dogs and Cats: Why Timing Changes Outcomes",
+      "url": "https://avdc.org/catching-dental-disease-early-dogs-cats/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "snu-dental": {
+      "org": "서울대학교 수의과대학 동물병원",
+      "title": "안과, 치과 진료 안내",
+      "url": "https://vmth.snu.ac.kr/subject/ophthalmologyDentistry.do",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

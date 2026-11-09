@@ -1,0 +1,229 @@
+{
+  "id": "senior-animal",
+  "title": "노령견, 노령묘",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "노령견",
+      "노령묘",
+      "노령",
+      "노견",
+      "노묘",
+      "고령",
+      "나이 많음",
+      "시니어",
+      "senior"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "농촌진흥청 자료는 약 7세 이상을 노령견으로 나눕니다.",
+      "sources": [
+        "rda-nutrition"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "7~8세가 넘은 노령견은 1년에 두 번 이상 진료를 받는 것이 권고됩니다.",
+      "sources": [
+        "merck-routine-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "나이 든 개는 병에 걸리기 쉬워 진료를 더 자주 받아야 하고, 혈액검사나 엑스레이로 문제를 일찍 찾을 수 있습니다.",
+      "sources": [
+        "merck-routine-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "국내 진료 기록 분석에서 7세 이상 노령견은 심장질환, 신장질환, 부신피질기능항진증, 유선종양, 자궁축농증, 백내장이 급격히 늘 수 있어 정기검진이 필요하다고 합니다.",
+      "sources": [
+        "rda-senior"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "노령견은 필요한 최소 에너지가 성견보다 최대 20%까지 줄어듭니다.",
+      "sources": [
+        "rda-nutrition"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "미국고양이수의사회(AAFP)는 10세를 넘은 고양이를 노령(senior)으로 봅니다.",
+      "sources": [
+        "aafp-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "국제고양이협회(iCatCare)는 11세에서 14세를 노령(senior), 15세 이상을 초고령(super senior)으로 나눕니다.",
+      "sources": [
+        "icc-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "AAFP 2021 지침은 10세에서 15세 노령묘를 최소 6개월마다 진료받게 하라고 합니다.",
+      "sources": [
+        "aafp-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "AAFP 지침은 건강한 15세 이상 고양이는 4개월마다 진찰받으라고 합니다.",
+      "sources": [
+        "aafp-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "나이가 들었다는 것 자체는 병이 아닙니다.",
+      "sources": [
+        "cornell-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이가 그루밍을 덜 하는 것은 관절염이나 치과 질환 같은 만성 통증의 신호일 수 있습니다.",
+      "sources": [
+        "icc-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "집에서 쓰다듬거나 빗질할 때 혹이나 상처 같은 이상을 살피고, 수의사 진료가 필요해 보이면 진료를 받습니다.",
+      "sources": [
+        "icc-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "노령 동물은 겉으로 증상이 뚜렷하지 않아도 검진이 필요하다고 합니다. 이 동물의 나이와 건강 상태는 입양 전후 수의사 검진으로 확인해야 합니다.",
+      "sources": [
+        "rda-senior"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "노령 동물은 치료와 검진 비용, 돌봄 시간이 더 필요할 수 있으니 입양 전에 가능한 준비를 점검해 보세요.",
+      "sources": [
+        "merck-routine-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "노령묘의 시작 나이는 기관마다 다릅니다(AAFP 10세 초과, iCatCare 11세부터). 나이 숫자만으로 판단하지 말고, 이 동물의 나이와 건강 상태는 수의사 검진으로 확인해야 합니다.",
+      "sources": [
+        "icc-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "건강한 노령묘도 젊은 고양이보다 더 자주 진료받도록 권할 수 있으니, 검진 비용과 돌봄 시간을 입양 전에 점검해 보세요.",
+      "sources": [
+        "cornell-senior"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "정확한 나이를 어떻게 추정했는지",
+    "혈액검사나 심장 검사를 했는지",
+    "현재 먹는 약이나 관리 중인 질환이 있는지",
+    "치아와 관절 상태"
+  ],
+  "sources": {
+    "rda-nutrition": {
+      "org": "농촌진흥청 국립축산과학원",
+      "title": "반려견, 생애주기별 영양관리로 더 건강하게 키워요",
+      "url": "https://www.rda.go.kr/board/board.do?mode=view&prgId=day_farmprmninfoEntry&dataNo=100000786057",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "merck-routine-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Routine Health Care of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/routine-care-of-dogs/routine-health-care-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "rda-senior": {
+      "org": "농촌진흥청 국립축산과학원",
+      "title": "나이 든 반려견, 건강 챙겨주세요",
+      "url": "https://www.rda.go.kr/board/board.do?mode=view&prgId=day_farmprmninfoEntry&dataNo=100000753026",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "aafp-senior": {
+      "org": "American Association of Feline Practitioners (AAFP)",
+      "title": "2021 AAFP Feline Senior Care Guidelines 보도자료",
+      "url": "https://catvets.com/wp-content/uploads/2024/01/2021_AAFP_Feline_Senior_Care_Guidelines.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-senior": {
+      "org": "International Cat Care",
+      "title": "Special considerations for senior cats",
+      "url": "https://icatcare.org/articles/special-considerations-for-senior-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-senior": {
+      "org": "Cornell Feline Health Center",
+      "title": "The Special Needs of the Senior Cat",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/special-needs-senior-cat",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "id": "ringworm",
+  "title": "피부사상균(곰팡이, 링웜)",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "피부사상균",
+      "곰팡이",
+      "링웜",
+      "피부진균",
+      "백선",
+      "ringworm",
+      "dermatophyte"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "피부사상균증은 사람에게도 쉽게 감염되는 인수공통 질환입니다.",
+      "sources": [
+        "merck-ringworm"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "전문가용 자료는 피부사상균증이 인수공통 질환이라고 설명합니다.",
+      "sources": [
+        "merck-dermatophytosis"
+      ]
+    },
+    {
+      "text": "감염이 해결되는 데는 보통 6~12주가 걸린다고 합니다.",
+      "sources": [
+        "merck-dermatophytosis"
+      ]
+    },
+    {
+      "text": "임상적으로 나았다는 분명한 증거가 있을 때까지 다른 반려동물과 분리하는 것이 권고됩니다.",
+      "sources": [
+        "merck-dermatophytosis"
+      ]
+    },
+    {
+      "text": "고양이 피부사상균증의 약 98퍼센트는 Microsporum canis라는 곰팡이가 원인입니다.",
+      "sources": [
+        "merck-cat-ringworm"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "새끼 고양이가 가장 잘 감염됩니다.",
+      "sources": [
+        "merck-cat-ringworm"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이에게 가장 정확한 검사는 털과 피부 긁은 조각으로 하는 곰팡이 배양입니다.",
+      "sources": [
+        "merck-cat-ringworm"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "새로 온 고양이는 배양검사 결과가 음성으로 확인될 때까지 다른 고양이와 따로 둘 수 있습니다.",
+      "sources": [
+        "icc-ringworm"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "사람에게 옮을 수 있으므로 입양 후 가족, 특히 면역이 약한 사람이 있다면 수의사와 먼저 상의하고, 피부 증상이 있는 동물을 만진 뒤에는 손을 씻으세요.",
+      "sources": [
+        "merck-ringworm"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "치료 기간이 6~12주로 길다고 알려져 있어, 이 동물의 감염 상태와 치료 계획은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-dermatophytosis"
+      ]
+    },
+    {
+      "text": "고양이의 피부사상균증은 감염된 고양이를 만진 사람에게도 옮을 수 있습니다. 입양 후 가족, 특히 면역이 약한 사람이 있다면 수의사와 먼저 상의하세요. 이 동물의 실제 감염 여부는 수의사 검사로 확인해야 합니다.",
+      "sources": [
+        "cornell-cat-ringworm"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "곰팡이 배양이나 검사 결과",
+    "치료 시작일과 지금 상태",
+    "다른 동물과 분리해 지냈는지"
+  ],
+  "sources": {
+    "merck-ringworm": {
+      "org": "Merck Veterinary Manual",
+      "title": "Ringworm (Dermatophytosis) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/ringworm-dermatophytosis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-dermatophytosis": {
+      "org": "Merck Veterinary Manual",
+      "title": "Dermatophytosis in Dogs and Cats (전문가판)",
+      "url": "https://www.merckvetmanual.com/integumentary-system/dermatophytosis/dermatophytosis-in-dogs-and-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cat-ringworm": {
+      "org": "Merck Veterinary Manual",
+      "title": "Ringworm (Dermatophytosis) in Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/skin-disorders-of-cats/ringworm-dermatophytosis-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-cat-ringworm": {
+      "org": "Cornell Feline Health Center",
+      "title": "Ringworm: A Serious but Readily Treatable Affliction",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/ringworm-serious-readily-treatable-affliction",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-ringworm": {
+      "org": "International Cat Care",
+      "title": "Ringworm in Cats",
+      "url": "https://icatcare.org/articles/ringworm-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

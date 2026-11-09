@@ -1,0 +1,141 @@
+{
+  "id": "shelter-infection-risk",
+  "title": "전염병 감염위험(공고 문구)",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "전염병",
+      "감염위험",
+      "전염병감염위험",
+      "전염병 감염위험",
+      "감염 위험",
+      "전염성",
+      "격리"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "보호소는 입소 시 이미 잠복기인 동물을 감염 위험으로 알아채지 못할 수 있습니다.",
+      "sources": [
+        "uf-shelter-risk"
+      ]
+    },
+    {
+      "text": "보호소의 질병 위험 요인 중 가장 중요하고 흔한 것은 과밀입니다.",
+      "sources": [
+        "uf-shelter-risk"
+      ]
+    },
+    {
+      "text": "모든 보호소에는 질병 유행의 위험이 본래 있고, 최선의 관리로도 이 위험을 없앨 수는 없습니다.",
+      "sources": [
+        "uf-shelter-risk"
+      ]
+    },
+    {
+      "text": "6개월 미만 강아지와 새끼 고양이는 홍역 등에 대한 면역이 없거나 거의 없는 경우가 많습니다.",
+      "sources": [
+        "uf-shelter-risk"
+      ]
+    },
+    {
+      "text": "국내 보호소 연구에서도 보호소는 스트레스로 질병 감수성이 높아지고 다양한 전염병에 쉽게 노출되는 환경으로 서술됩니다.",
+      "sources": [
+        "kr-gwangju-2020"
+      ]
+    },
+    {
+      "text": "광주 보호소의 입양 대상 유기견 300마리를 조사한 국내 연구에서 148마리(49.3%)가 호흡기 병원체 한 가지 이상에 양성이었습니다. 한 지역 보호소 조사라 전국 비율은 아닙니다.",
+      "sources": [
+        "kr-gwangju-2020"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "집에 다른 고양이가 있다면 새 고양이를 1~2주 분리해 지내게 하는 것이 권고됩니다. 겉으로 건강해 보여도 증상이 입양 후에 나타날 수 있으니 관찰하세요.",
+      "sources": [
+        "baker-fcv"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "새로 데려온 고양이는 수의사가 진찰할 때까지 다른 고양이와 분리해 두라는 안내도 있습니다.",
+      "sources": [
+        "cornell-new-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "보호소 감염병 자료는 감염원에 노출된 동물을 백신 접종 여부와 상관없이 감염 위험으로 보고, 다른 동물을 보호하기 위해 격리하라고 설명합니다. 이미 다른 동물을 키운다면 입양 후 언제부터 함께 지내게 할지 수의사와 상의하세요.",
+      "sources": [
+        "uf-shelter-risk"
+      ]
+    },
+    {
+      "text": "보호소에서 동물을 받는 입양자는 그 시점에 알려진 질병이나 상태를 고지받아야 한다고 보호소 수의사회 지침은 설명합니다. 이 동물의 실제 감염 여부는 검사와 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "asv-2022"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "어떤 전염병 위험이 있다는 뜻인지(검사 결과, 접촉 이력)",
+    "보호소 안에서 같은 칸의 다른 동물에게 질병이 있었는지",
+    "백신 접종 날짜와 입소 후 지난 기간",
+    "입양 후 기존 동물과 분리 기간에 대한 안내"
+  ],
+  "sources": {
+    "uf-shelter-risk": {
+      "org": "University of Florida Maples Center for Shelter Medicine",
+      "title": "Why are shelters at increased risk for disease outbreaks?",
+      "url": "https://ufl.pb.unizin.org/app/uploads/sites/51/2021/06/WHY-ARE-SHELTERS-AT-INCREASED-RISK-FOR-DISEASE-OUTBREAKS.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "kr-gwangju-2020": {
+      "org": "한국가축위생학회지 43(2), 광주광역시보건환경연구원",
+      "title": "광주광역시동물보호소 입양 대상 유기견의 호흡기 질병 실태 조사",
+      "url": "https://koreascience.kr/article/JAKO202019163740013.pdf",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "baker-fcv": {
+      "org": "Cornell University Baker Institute for Animal Health",
+      "title": "Feline Calicivirus",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/baker-institute-animal-health/research-baker-institute/feline-calicivirus",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-new-cat": {
+      "org": "Cornell Feline Health Center",
+      "title": "Choosing and Caring for Your New Cat",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/choosing-and-caring-your-new-cat",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "asv-2022": {
+      "org": "Association of Shelter Veterinarians (ASV)",
+      "title": "Guidelines for Standards of Care in Animal Shelters, Second Edition",
+      "url": "https://dps.vermont.gov/sites/psd/files/documents/ASV-new-guidelines2023.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

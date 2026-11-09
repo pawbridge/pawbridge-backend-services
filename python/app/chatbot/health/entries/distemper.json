@@ -1,0 +1,90 @@
+{
+  "id": "distemper",
+  "title": "홍역(디스템퍼) 양성 또는 의심",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "홍역",
+      "디스템퍼",
+      "개홍역",
+      "CDV",
+      "distemper"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "개 홍역은 대부분 감염된 동물의 침방울을 들이마셔 옮습니다.",
+      "sources": [
+        "merck-distemper"
+      ]
+    },
+    {
+      "text": "회복한 것처럼 보여도 일부 개는 몇 달 동안 침과 대변으로 바이러스를 내보낼 수 있습니다.",
+      "sources": [
+        "merck-distemper"
+      ]
+    },
+    {
+      "text": "열, 백혈구 감소, 눈과 코의 분비물, 소화기 증상, 폐 염증, 뇌 염증이 나타날 수 있습니다.",
+      "sources": [
+        "merck-distemper"
+      ]
+    },
+    {
+      "text": "신경계 손상은 치료가 어렵고 영구적일 수 있다고 알려져 있습니다.",
+      "sources": [
+        "merck-distemper"
+      ]
+    },
+    {
+      "text": "예방은 백신이 가장 좋은 방법입니다.",
+      "sources": [
+        "merck-distemper"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "신경 증상은 다른 증상과 함께, 그 뒤에, 또는 단독으로 나타날 수 있어 경과를 수의사와 계속 확인해야 합니다. 이 동물의 실제 상태는 동물병원 진료로 확인하세요.",
+      "sources": [
+        "merck-distemper"
+      ]
+    },
+    {
+      "text": "회복 후에도 바이러스를 낼 수 있으므로, 이미 키우는 개가 있다면 접종 상태를 확인하고 접촉 시기를 수의사와 상의하세요.",
+      "sources": [
+        "merck-distemper"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "홍역 검사 방법과 결과(키트인지 정밀 검사인지)",
+    "신경 증상(떨림, 경련, 걸음 이상)을 본 적이 있는지",
+    "백신 접종 날짜",
+    "현재 치료 중인지"
+  ],
+  "sources": {
+    "merck-distemper": {
+      "org": "Merck Veterinary Manual",
+      "title": "Canine Distemper (Hardpad Disease) (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/disorders-affecting-multiple-body-systems-of-dogs/canine-distemper-hardpad-disease",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "qia-distemper": {
+      "org": "국립수의과학검역원",
+      "title": "개 디스템퍼병 (질병 해설 문서)",
+      "url": "https://www.gunsan.go.kr/_cms/board/eFileDownload/455/967062/d9af2cbab7fcba8e4669ffbf43b170bd",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

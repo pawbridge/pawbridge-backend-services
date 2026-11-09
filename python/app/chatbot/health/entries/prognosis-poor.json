@@ -1,0 +1,89 @@
+{
+  "id": "prognosis-poor",
+  "title": "예후불량, 예후 관찰",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "예후불량",
+      "예후 불량",
+      "예후매우불량",
+      "예후 매우 불량",
+      "예후나쁨",
+      "예후 나쁨",
+      "예후불량함",
+      "예후는 지켜봐",
+      "예후는지켜봐",
+      "예후 지켜봐",
+      "예후지켜봐",
+      "예후가 좋지",
+      "예후"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "예후는 의사가 진찰한 뒤 앞으로 병이 어떻게 진행될지 내다본 판단을 뜻합니다.",
+      "sources": [
+        "stdict-yehu"
+      ]
+    },
+    {
+      "text": "그래서 공고의 '예후불량'은 병 이름이 아니라, 수의사가 진찰하고 앞으로의 경과를 좋지 않게 내다본 평가입니다.",
+      "sources": [
+        "stdict-yehu"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "공고의 평가는 적힌 때의 판단이라 지금 상태와 다를 수 있습니다. 보호소 수의사회 지침은 입양자가 알려진 질병과 상태를 고지받아야 한다고 설명하므로, 지금의 상태와 치료 기록을 보호소에 꼭 확인하세요.",
+      "sources": [
+        "asv-2022"
+      ]
+    },
+    {
+      "text": "갓 태어난 새끼에게는 저체온이 질병과 사망의 흔한 원인이라, 어린 새끼라면 보온과 돌봄 계획을 먼저 확인해야 합니다. 이 동물의 실제 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "little-orphan"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "처음 평가 이후 지금 상태가 어떤지, 치료를 받고 있는지",
+    "필요한 돌봄(수유 간격, 보온, 통원)과 예상 비용",
+    "진료 기록이나 수의사 소견을 받을 수 있는지",
+    "바로 입양이 어렵다면 임시보호가 가능한지"
+  ],
+  "sources": {
+    "stdict-yehu": {
+      "org": "국립국어원 표준국어대사전",
+      "title": "예후(豫後)",
+      "url": "https://stdict.korean.go.kr/search/searchResult.do?searchKeyword=%EC%98%88%ED%9B%84",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    },
+    "asv-2022": {
+      "org": "Association of Shelter Veterinarians (ASV)",
+      "title": "Guidelines for Standards of Care in Animal Shelters, Second Edition",
+      "url": "https://dps.vermont.gov/sites/psd/files/documents/ASV-new-guidelines2023.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "little-orphan": {
+      "org": "Journal of Feline Medicine and Surgery (ISFM, AAFP), Susan Little",
+      "title": "Playing Mum: Successful management of orphaned kittens",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11383068",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

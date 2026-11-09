@@ -1,0 +1,104 @@
+{
+  "id": "dog-respiratory",
+  "title": "개 호흡기 질환(기침, 켄넬코프)",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "기침",
+      "켄넬코프",
+      "기관지염",
+      "호흡기",
+      "감기"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "기관과 기관지에 염증이 생기는 개의 호흡기 질환에서는 기침 발작이 가장 두드러진 증상입니다.",
+      "sources": [
+        "merck-tracheobronchitis"
+      ]
+    },
+    {
+      "text": "켄넬코프는 대개 가볍게 지나가는 병으로 설명되지만, 강아지에서는 기관지폐렴으로 진행할 수 있습니다.",
+      "sources": [
+        "merck-kennel"
+      ]
+    },
+    {
+      "text": "켄넬코프는 좁은 곳에 함께 지내는 감수성 있는 개들 사이에서 빠르게 퍼집니다.",
+      "sources": [
+        "merck-kennel"
+      ]
+    },
+    {
+      "text": "보호소나 위탁 시설에서는 호흡기 질환 유행이 흔합니다.",
+      "sources": [
+        "cornell-cird"
+      ]
+    },
+    {
+      "text": "기침이나 폐렴 같은 호흡기 질환은 개와 개의 직접 접촉으로 퍼집니다.",
+      "sources": [
+        "cornell-cird"
+      ]
+    },
+    {
+      "text": "열, 고름 같은 콧물, 식욕 부진, 가래가 있는 기침이 함께 나타나면 폐렴을 의심합니다.",
+      "sources": [
+        "merck-kennel"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "열이나 고름 같은 콧물, 식욕 부진이 기침과 함께 있으면 폐렴일 수 있으니 서둘러 수의사 진료를 받아야 합니다. 이 동물의 실제 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-kennel"
+      ]
+    },
+    {
+      "text": "입원이 필요한 경우 다른 동물과 따로 두어야 한다고 합니다. 이미 개를 키우고 있다면 입양한 개가 기침을 할 때 다른 개와의 접촉을 조심하고 수의사와 상의하세요.",
+      "sources": [
+        "merck-kennel"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "기침이 언제부터 있었고 지금도 하는지, 콧물이나 열이 있었는지",
+    "호흡기 질환으로 진료나 검사를 받았는지, 치료 중인지",
+    "다른 개와 따로 지냈는지, 같은 공간의 개도 기침을 하는지",
+    "켄넬코프나 관련 접종을 했는지, 접종 날짜는 언제인지"
+  ],
+  "sources": {
+    "merck-kennel": {
+      "org": "Merck Veterinary Manual (전문가판)",
+      "title": "Kennel Cough (Canine Infectious Tracheobronchitis)",
+      "url": "https://www.merckvetmanual.com/respiratory-system/respiratory-diseases-of-small-animals/kennel-cough",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-cird": {
+      "org": "Cornell Riney Canine Health Center",
+      "title": "Canine respiratory disease outbreaks",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/riney-canine-health-center/canine-health-topics/canine-respiratory-disease-outbreaks",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-tracheobronchitis": {
+      "org": "Merck Veterinary Manual",
+      "title": "Tracheobronchitis (Bronchitis) in Dogs (보호자판)",
+      "url": "https://www.merckvetmanual.com/dog-owners/lung-and-airway-disorders-of-dogs/tracheobronchitis-bronchitis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

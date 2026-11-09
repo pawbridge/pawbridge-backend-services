@@ -1,0 +1,106 @@
+{
+  "id": "heartworm-positive",
+  "title": "심장사상충 양성",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "심장사상충",
+      "사상충",
+      "heartworm"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "심장사상충은 모기가 옮기는 기생충입니다. 몸 안에서 몇 달에 걸쳐 성충으로 자라 심장과 폐로 가는 혈관에 삽니다.",
+      "sources": [
+        "merck-heartworm-dog"
+      ]
+    },
+    {
+      "text": "성충이 몸 안에 오래 있을수록 심장과 폐에 손상이 커지므로, 양성이라면 치료 계획을 미리 확인하는 것이 중요합니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "검사에서 양성이 나오면 치료를 시작하기 전에 다른 검사로 한 번 더 확인하도록 권고됩니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "치료는 수의사가 여러 단계로 나눠 진행하며, 미국심장사상충학회 지침 기준으로 몇 달에 걸칩니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "치료가 끝난 뒤에도 다시 검사해 성충이 모두 없어졌는지 확인합니다.",
+      "sources": [
+        "merck-heartworm-dog"
+      ]
+    },
+    {
+      "text": "미국심장사상충학회는 승인된 예방약을 연중 계속 처방하도록 권장합니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "미국심장사상충학회는 7개월 이상의 모든 개에게 항원과 미세사상충 검사를 포함한 연간 검사를 권장합니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "치료하는 동안과 치료 뒤 회복 기간에는 운동을 제한해야 합니다. 죽은 사상충 때문에 생기는 심장과 폐 합병증을 줄이기 위해서입니다. 입양 직후 활발한 산책이나 놀이는 수의사 지시를 먼저 확인하세요.",
+      "sources": [
+        "ahs-2024-ko",
+        "merck-heartworm-dog"
+      ]
+    },
+    {
+      "text": "치료가 끝난 뒤에도 연중 예방과 매년 검사가 이어지므로 입양 뒤 비용과 일정을 생각해 두세요. 국내에서 쓰는 예방약과 일정은 동물병원과 상의하세요.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "증상의 정도와 치료 방법은 동물마다 다르므로, 정확한 상태는 동물병원 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-heartworm-dog"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "치료를 시작했는지, 시작했다면 어느 단계인지",
+    "운동 제한 기간과 주의사항을 안내받았는지",
+    "예방약을 먹이고 있는지, 다음 검사는 언제인지"
+  ],
+  "sources": {
+    "ahs-2024-ko": {
+      "org": "미국심장사상충학회(American Heartworm Society)",
+      "title": "2024 AHS 개 심장사상충 지침 요약(한국어 번역본)",
+      "url": "https://d3ft8sckhnqim2.cloudfront.net/images/AHS_Canine_Guidelines_HighlightswebKorean29NOV024.pdf",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "merck-heartworm-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Heartworm Disease in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/heart-and-blood-vessel-disorders-of-dogs/heartworm-disease-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

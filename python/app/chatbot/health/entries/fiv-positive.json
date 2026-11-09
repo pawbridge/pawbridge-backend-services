@@ -1,0 +1,107 @@
+{
+  "id": "fiv-positive",
+  "title": "고양이 면역결핍 바이러스(FIV) 양성",
+  "species": [
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "FIV",
+      "고양이 에이즈",
+      "에이즈",
+      "고양이 면역결핍",
+      "면역결핍바이러스",
+      "면역결핍 바이러스"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "FIV에 감염된 고양이는 대개 몇 년 동안 증상 없이 지냅니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "평생 FIV 관련 증상이 나타나지 않는 고양이도 있습니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "ABCD 지침은 건강한 FIV 양성 고양이가 감염되지 않은 고양이만큼 오래 살 수 있다고 설명합니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "다만 FIV 양성 고양이는 주로 2차 감염, 면역 매개 질환, 종양 때문에 증상이 생길 가능성이 더 높습니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "자연 감염의 주된 경로는 싸울 때 물려서 침이 들어가는 것으로 여겨집니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "어미에서 새끼로, 그리고 안정된 가정에서 함께 사는 고양이 사이의 전파는 비교적 드뭅니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "FIV에 감염된 어미에게서 태어난 새끼는 어미에게서 받은 항체 때문에 검사에서 양성으로 나올 수 있습니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "그래서 새끼 고양이는 약 16주령 이후에 다시 검사합니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "FIV 감염 고양이에게 보이는 증상은 대부분 FIV 자체 때문이 아니므로, 증상이 있으면 그 원인을 수의사가 확인해야 합니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "실내에서 지내게 하면 이웃 고양이에게서 다른 감염을 얻을 위험을 줄일 수 있습니다.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    },
+    {
+      "text": "이미 고양이를 키운다면 서로 만나기 전에 FIV 상태를 확인하고, 물어서 상처가 날 다툼이 없을 때까지 지켜봐야 한다고 ABCD 지침은 설명합니다. 합사 계획은 수의사와 상의하세요.",
+      "sources": [
+        "abcd-fiv"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "FIV 검사를 언제, 어떤 검사로 했는지(신속키트인지, 확인 검사를 했는지)",
+    "검사 당시 나이(16주령 전이었다면 다시 검사했는지)",
+    "현재 증상, 구내염이나 상처 치료 이력",
+    "보호소에서 다른 고양이와 함께 지냈는지, 다툰 적이 있는지"
+  ],
+  "sources": {
+    "abcd-fiv": {
+      "org": "ABCD (European Advisory Board on Cat Diseases)",
+      "title": "GUIDELINE for Feline immunodeficiency virus",
+      "url": "https://www.abcdcatsvets.org/guideline-for-feline-immunodeficiency/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

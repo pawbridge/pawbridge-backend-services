@@ -1,0 +1,97 @@
+{
+  "id": "parvovirus-positive",
+  "title": "파보 양성",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "파보",
+      "파보바이러스",
+      "파보장염",
+      "CPV",
+      "parvo"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "파보바이러스는 감염된 개의 대변에 있는 바이러스가 입이나 코로 들어가 옮습니다.",
+      "sources": [
+        "msd-parvo"
+      ]
+    },
+    {
+      "text": "감염된 개는 증상이 나타나기 전부터 회복한 뒤 약 10일까지 대변으로 바이러스를 내보냅니다.",
+      "sources": [
+        "msd-parvo"
+      ]
+    },
+    {
+      "text": "이 바이러스는 바깥 환경에서 잘 죽지 않고 여러 소독약에도 강합니다.",
+      "sources": [
+        "qia-parvo"
+      ]
+    },
+    {
+      "text": "어미에게서 받은 항체가 줄어드는 시기에 어린 강아지가 감염에 더 취약해집니다.",
+      "sources": [
+        "msd-parvo"
+      ]
+    },
+    {
+      "text": "장염형에서는 심한 구토, 피가 섞인 설사, 탈수, 백혈구 감소가 주요 증상입니다.",
+      "sources": [
+        "qia-parvo"
+      ]
+    },
+    {
+      "text": "치료는 수분을 일찍 보충하고 증상을 덜어 주는 방식이 효과적인 것으로 알려져 있습니다.",
+      "sources": [
+        "qia-parvo"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "회복한 뒤에도 한동안 바이러스가 대변으로 나오고 환경에서 오래 남으므로, 이미 키우는 개가 있다면 입양 직후 접촉과 공간 분리를 수의사와 먼저 상의하세요.",
+      "sources": [
+        "msd-parvo",
+        "qia-parvo"
+      ]
+    },
+    {
+      "text": "증상이 있는 개는 바로 검사해 격리 여부를 정한다고 합니다. 이 동물의 실제 상태와 치료 계획은 동물병원 진료로 확인해야 합니다.",
+      "sources": [
+        "msd-parvo"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "파보 검사를 언제 했고 결과가 어땠는지",
+    "현재 구토나 설사 같은 증상이 있는지, 치료를 받았는지",
+    "백신 접종 날짜와 횟수",
+    "다른 동물과 분리해 지냈는지"
+  ],
+  "sources": {
+    "msd-parvo": {
+      "org": "MSD Veterinary Manual",
+      "title": "Canine Parvovirus Infection (전문가판)",
+      "url": "https://www.msdvetmanual.com/digestive-system/infectious-diseases-of-the-gastrointestinal-tract-in-small-animals/canine-parvovirus-infection-parvoviral-enteritis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "qia-parvo": {
+      "org": "국립수의과학검역원(현 농림축산검역본부)",
+      "title": "개 파보바이러스 감염증 (질병 해설 문서)",
+      "url": "https://www.gunsan.go.kr/_cms/board/eFileDownload/455/967068/1691b76d780845939feeeaad03536da8",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

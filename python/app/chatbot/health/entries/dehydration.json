@@ -1,0 +1,111 @@
+{
+  "id": "dehydration",
+  "title": "탈수",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "탈수",
+      "탈수심함",
+      "탈수 심함",
+      "탈수증",
+      "수분 부족",
+      "dehydration"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "구토나 설사로 많은 체액이 빠지면 탈수와 전해질 불균형이 생기고, 심하면 쇼크로 이어질 수 있습니다.",
+      "sources": [
+        "merck-digestive-intro"
+      ]
+    },
+    {
+      "text": "탈수 위험이 있는 동물에게는 수분과 전해질을 보충하는 치료가 필요합니다. 치료 방법은 수의사가 정합니다.",
+      "sources": [
+        "merck-digestive-intro"
+      ]
+    },
+    {
+      "text": "고양이에서 탈수의 흔한 원인은 수분 손실을 늘리는 질환입니다.",
+      "sources": [
+        "cornell-hydration"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "탈수의 징후에는 기력 저하, 쇠약, 식욕 저하, 입안 점막의 건조가 있습니다.",
+      "sources": [
+        "cornell-hydration"
+      ]
+    },
+    {
+      "text": "탈수가 아니어도 피부 탄력이 나쁘고 눈이 들어가 보일 수 있어, 겉모습만으로 탈수를 판단하기는 어렵습니다.",
+      "sources": [
+        "merck-fluid"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "피부를 들어 올렸을 때 바로 돌아오지 않고 솟은 채로 있으면 보통 탈수를 뜻한다는 보호자용 설명이 있습니다. 참고만 하고 판단은 수의사에게 맡기세요.",
+      "sources": [
+        "vca-illness-cat"
+      ]
+    },
+    {
+      "text": "이 동물의 현재 탈수 정도와 원인은 동물병원 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-fluid"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "탈수 평가를 언제 했고 치료(수액 등)를 받았는지",
+    "구토나 설사가 아직 있는지",
+    "스스로 물을 마시는지",
+    "원인 검사를 했는지"
+  ],
+  "sources": {
+    "merck-digestive-intro": {
+      "org": "Merck Veterinary Manual",
+      "title": "Introduction to Digestive Disorders of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/digestive-disorders-of-dogs/introduction-to-digestive-disorders-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-hydration": {
+      "org": "Cornell Feline Health Center",
+      "title": "Hydration",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/hydration",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-fluid": {
+      "org": "Merck Veterinary Manual",
+      "title": "The Fluid Resuscitation Plan in Animals (전문가판)",
+      "url": "https://www.merckvetmanual.com/therapeutics/fluid-therapy/the-fluid-resuscitation-plan-in-animals",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "vca-illness-cat": {
+      "org": "VCA Animal Hospitals",
+      "title": "Recognizing the Signs of Illness in Cats",
+      "url": "https://vcahospitals.com/know-your-pet/recognizing-signs-of-illness-in-cats",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

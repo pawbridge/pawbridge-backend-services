@@ -1,0 +1,121 @@
+{
+  "id": "recumbency",
+  "title": "기립불능(일어서지 못함)",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "기립불능",
+      "기립불가",
+      "일어서지 못",
+      "못 일어남",
+      "누워만"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "압박 상처(욕창)는 마비되었거나 움직이지 못하는 동물에서 흔합니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "압박 상처는 자세를 자주 바꿔 주고, 몸과 주변을 깨끗이 하고, 영양을 챙기고, 부드러운 잠자리를 마련하면 예방하는 것이 가장 좋습니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "물리치료는 동물의 관절과 근육이 계속 기능하도록 돕습니다.",
+      "sources": [
+        "merck-emergencies"
+      ]
+    },
+    {
+      "text": "개가 갑자기 다리를 쓰지 못하게 되는 가장 흔한 원인은 외상입니다.",
+      "sources": [
+        "merck-leg-paralysis"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "개의 추간판 질환은 수술이 권고되면 미루지 말라고 합니다.",
+      "sources": [
+        "cornell-ivdd"
+      ],
+      "species": [
+        "dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "일어서지 못하는 동물은 같은 자리가 오래 눌려 압박 상처가 생길 수 있으니, 자세를 자주 바꿔 주는 돌봄이 필요합니다. 이 동물의 실제 상태와 필요한 돌봄은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "척수나 골반 신경에 병변이 있으면 방광이 늘어나도 스스로 소변을 보지 못할 수 있습니다. 모든 일어서지 못하는 동물에 해당하는 것은 아니며, 배뇨 상태는 수의사가 확인해야 합니다.",
+      "sources": [
+        "merck-micturition"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "일어서지 못하게 된 시기와 경위(외상, 갑작스러움 등)",
+    "신경 검사나 영상 검사를 받았는지, 진단명이 있는지",
+    "스스로 소변과 대변을 보는지, 배뇨 관리가 필요한지",
+    "욕창이 있는지, 자세 바꾸기와 재활 등 필요한 돌봄은 무엇인지"
+  ],
+  "sources": {
+    "merck-wound": {
+      "org": "Merck Veterinary Manual",
+      "title": "Wound Management (보호자판)",
+      "url": "https://www.merckvetmanual.com/special-pet-topics/emergencies/wound-management",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-emergencies": {
+      "org": "Merck Veterinary Manual",
+      "title": "Evaluation and Initial Treatment of Dog and Cat Emergencies (보호자판)",
+      "url": "https://www.merckvetmanual.com/special-pet-topics/emergencies/evaluation-and-initial-treatment-of-dog-and-cat-emergencies",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-leg-paralysis": {
+      "org": "Merck Veterinary Manual",
+      "title": "Leg Paralysis in Dogs (보호자판)",
+      "url": "https://www.merckvetmanual.com/dog-owners/brain-spinal-cord-and-nerve-disorders-of-dogs/leg-paralysis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-ivdd": {
+      "org": "Cornell Riney Canine Health Center",
+      "title": "Intervertebral disc disease",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/riney-canine-health-center/canine-health-information/intervertebral-disc-disease",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-micturition": {
+      "org": "Merck Veterinary Manual (전문가판)",
+      "title": "Disorders of Micturition in Dogs and Cats",
+      "url": "https://www.merckvetmanual.com/urinary-system/noninfectious-diseases-of-the-urinary-system-in-small-animals/disorders-of-micturition-in-dogs-and-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

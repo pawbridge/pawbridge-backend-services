@@ -1,0 +1,80 @@
+{
+  "id": "heartworm-negative",
+  "title": "심장사상충 음성",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "심장사상충",
+      "사상충",
+      "heartworm"
+    ],
+    "context": "negative"
+  },
+  "summary": [
+    {
+      "text": "공고의 '심장사상충 음성'은 검사에서 심장사상충이 확인되지 않았다는 뜻이지만, 감염이 없다는 확정은 아닙니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "심장사상충은 감염되고 약 120일이 지나야 다 자랍니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "항원이 검출되지 않았다는 검사 결과는 감염이 없다는 확인이 아니라, 그 검사 방법으로 항원이 검출되지 않았다는 뜻입니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "그래서 미국심장사상충학회는 7개월 이상의 개에게 해마다 검사를 권합니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    },
+    {
+      "text": "예방약은 연중 꾸준히 쓰도록 권고됩니다.",
+      "sources": [
+        "ahs-2024-ko"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "이미 성충에 감염된 개에게 예방약을 먹이면 위험할 수 있어, 예방약을 시작하기 전 검사 여부를 수의사와 확인하세요.",
+      "sources": [
+        "dailyvet-shin-2024"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "검사를 언제 했는지",
+    "보호 기간 동안 예방약을 먹였는지"
+  ],
+  "sources": {
+    "ahs-2024-ko": {
+      "org": "미국심장사상충학회(American Heartworm Society)",
+      "title": "2024 AHS 개 심장사상충 지침 요약(한국어 번역본)",
+      "url": "https://d3ft8sckhnqim2.cloudfront.net/images/AHS_Canine_Guidelines_HighlightswebKorean29NOV024.pdf",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "dailyvet-shin-2024": {
+      "org": "데일리벳(전남대 수의대 신성식 교수 칼럼)",
+      "title": "개심장사상충의 예방에 왜 검사가 필수적인가",
+      "url": "https://www.dailyvet.co.kr/news/practice/companion-animal/203190",
+      "tier": "B",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "id": "otitis-ear-mites",
+  "title": "외이염, 귀진드기",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "외이염",
+      "귀진드기",
+      "귀염증",
+      "귀 염증",
+      "귀지",
+      "귀 냄새",
+      "귀 긁음",
+      "otitis",
+      "이어마이트",
+      "이어 마이트",
+      "귀 진드기",
+      "ear mite"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "귀 질환의 징후는 머리 흔들기, 불쾌한 냄새, 피부 붉어짐, 붓기, 긁기, 귀 분비물, 비늘 같은 피부입니다.",
+      "sources": [
+        "merck-otitis"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "귀에 변화가 보이면 빨리 수의사 진료를 받아야 한다고 합니다.",
+      "sources": [
+        "merck-otitis"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "귀진드기가 있는 개는 귀 또는 전신에 쓰는 구충 처치로 다루고, 함께 접촉한 동물도 같이 치료합니다.",
+      "sources": [
+        "merck-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "귀진드기는 고양이끼리 가까이 접촉하면 매우 잘 옮습니다.",
+      "sources": [
+        "cornell-ear-mites"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "귀진드기가 있는 고양이는 귀를 거의 쉬지 않고 긁고 머리를 자주 흔들 수 있습니다.",
+      "sources": [
+        "cornell-ear-mites"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "귀진드기가 의심되면 지체 없이 동물병원 진료를 받아야 한다고 합니다.",
+      "sources": [
+        "cornell-ear-mites"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 귀진드기는 맨눈으로 겨우 보이는 흰 점처럼 보이며 움직이기도 합니다.",
+      "sources": [
+        "icc-ear"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 외이염 원인에는 기생충, 이물, 알레르기가 있습니다.",
+      "sources": [
+        "merck-cat-otitis"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "식초 혼합물 같은 자극적인 민간요법은 붓기와 분비물을 악화시킬 수 있으니 피해야 합니다.",
+      "sources": [
+        "merck-otitis"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "귀 질환의 원인은 진드기, 이물, 알레르기, 감염 등 여러 가지라 이 동물의 실제 원인은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-otitis"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이의 귀 염증은 치료하지 않으면 중이와 내이로 번져 고막이 손상될 수 있습니다. 귀를 계속 긁거나 머리를 자주 흔드는 모습이 있는지 살피고, 이 동물의 실제 원인은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "cornell-ear-mites"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이 귀에 식초 같은 민간요법을 쓰지 말고, 수의사가 권한 제품만 써야 합니다.",
+      "sources": [
+        "merck-cat-otitis"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "귀 검사(현미경 검사)를 했는지",
+    "치료 중인지, 한쪽 귀인지 양쪽인지",
+    "같이 지낸 동물도 귀 증상이 있는지"
+  ],
+  "sources": {
+    "merck-otitis": {
+      "org": "Merck Veterinary Manual",
+      "title": "Ear Infections and Otitis Externa in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/ear-disorders-of-dogs/ear-infections-and-otitis-externa-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-mange": {
+      "org": "Merck Veterinary Manual",
+      "title": "Mite Infestation (Mange, Acariasis, Scabies) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/mite-infestation-mange-acariasis-scabies-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-ear-mites": {
+      "org": "Cornell Feline Health Center",
+      "title": "Ear Mites: Tiny Critters that can Pose a Major Threat",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/ear-mites-tiny-critters-can-pose-major-threat",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cat-otitis": {
+      "org": "Merck Veterinary Manual",
+      "title": "Otitis Externa (External Ear Infection) in Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/ear-disorders-of-cats/otitis-externa-external-ear-infection-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-ear": {
+      "org": "International Cat Care",
+      "title": "Ear Problems in Cats",
+      "url": "https://icatcare.org/articles/ear-problems-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}
