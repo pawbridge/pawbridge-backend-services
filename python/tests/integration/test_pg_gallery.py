@@ -5,11 +5,13 @@ import io
 import json
 import os
 from pathlib import Path
+import random
 import tempfile
 from types import SimpleNamespace
 import unittest
 from PIL import Image
-from app.gallery.pg_store import PostgresqlGalleryStore, GalleryUnavailable
+from app.gallery.pg_store import (PostgresqlGalleryStore, GalleryUnavailable, ANIMAL_REGION_WEIGHT,
+                                  recommendation_candidates_sql)
 from app.gallery.builder import build_gallery, gallery_target, gallery_mapping, GalleryBuildCancelled
 from app.vision.sam3_focus import FOCUS_VERSION
 from app.vision.coat_color import VERSION as COLOR_VERSION
@@ -620,14 +622,18 @@ class PostgresqlGalleryTest(unittest.TestCase):
     def test_recommendations_filter_live_availability_before_200_and_allow_adopted_source(self):
         rows = [document(i) for i in range(900001, 900209)]
         rows[0]['status'] = 'ADOPTED'
-        rows[-1]['status'] = 'ADOPTED'  # Snapshot is old; current DB says PROTECT.
-        rows[-1]['image_vector'] = [.8, .6] + [0.] * 1022
+        rows[-3]['image_vector'] = [.8, .6] + [0.] * 1022
+        # 갤러리 문서는 아직 ADOPTED인데 지금 DB는 PROTECT인 동물. 후보는 갤러리 문서 status 기준의
+        # 부분 HNSW 인덱스(V11)에서 뽑으므로, 다음 갤러리 동기화로 문서 status가 맞춰지기 전까지는 빠진다.
+        rows[-1]['status'] = 'ADOPTED'
+        rows[-1]['image_vector'] = [.6, .8] + [0.] * 1022
         self.seed_recommendation_animals([(i, 'ADOPTED', 'DOG') for i in range(900001, 900209)])
-        self.seed_recommendation_animals([(900208, 'PROTECT', 'DOG'), (900207, 'PROTECT', 'CAT')])
+        self.seed_recommendation_animals([(900206, 'PROTECT', 'DOG'), (900208, 'PROTECT', 'DOG'), (900207, 'PROTECT', 'CAT')])
         self.publish('a', rows)
         source, hits = self.store.recommendation_candidates(ALIAS, 900001, 'DOG', FOCUS_VERSION, COLOR_VERSION)
         self.assertEqual(source['id'], 900001)
-        self.assertEqual([hit['_source']['id'] for hit in hits], [900208])
+        # 문서는 PROTECT지만 지금 DB가 ADOPTED이거나 종이 다른 동물은 다시 확인해서 뺀다.
+        self.assertEqual([hit['_source']['id'] for hit in hits], [900206])
         self.assertAlmostEqual(hits[0]['_score'], 1.8, places=6)
         self.assertEqual(self.pool.get_stats()['pool_available'], 1)
         with self.assertRaises(GalleryUnavailable):
@@ -651,6 +657,77 @@ class PostgresqlGalleryTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Invalid DINOv3'):
             self.store.write_page(target, [invalid])
         self.assertEqual(self.store.count(target), 0)
+
+    def test_recommendation_hnsw_candidates_keep_exact_dual_vector_scores(self):
+        # 후보 수(400 + 200)보다 적은 문서에서는 HNSW 후보가 조건에 맞는 문서를 모두 덮으므로,
+        # 결과는 기존 전수 비교 SQL과 순서와 점수까지 같아야 한다. 종, 문서와 지금 DB의 상태,
+        # 동물 영역 벡터 유무, 입양된 기준 동물을 섞는다.
+        generator = random.Random(20261108)
+
+        def vector():
+            # 갤러리는 정규화된 DINOv3 출력만 받는다.
+            values = [generator.gauss(0, 1) for _ in range(1024)]
+            norm = sum(value * value for value in values) ** 0.5
+            return [value / norm for value in values]
+
+        rows, live = [], []
+        for offset in range(150):
+            animal_id = 900001 + offset
+            row = document(animal_id)
+            row['species'] = 'CAT' if offset % 3 == 0 else 'DOG'
+            row['status'] = ('PROTECT', 'NOTICE', 'ADOPTED', 'PROTECT', 'RETURNED')[offset % 5]
+            row['image_vector'] = vector()
+            # 7의 배수만 동물 영역 벡터를 비운다(3, 5와 서로소라 종, 상태 조합이 모두 나온다).
+            if offset % 7 != 0:
+                row['animal_vector'] = vector()
+            rows.append(row)
+            live.append((animal_id, row['status'], row['species']))
+        self.seed_recommendation_animals(live)
+        self.publish('a', rows)
+        exact_sql = (
+            'SELECT d.document,(CASE WHEN q.animal_vector IS NOT NULL AND d.animal_vector IS NOT NULL '
+            'THEN 1.0+(1.0-%(weight)s)*(1.0-(d.image_vector <=> q.image_vector)) '
+            '+%(weight)s*(1.0-(d.animal_vector <=> q.animal_vector)) '
+            'ELSE 2.0-(d.image_vector <=> q.image_vector) END)::real AS score '
+            'FROM lost_gallery_documents q JOIN lost_gallery_documents d ON d.build_key=q.build_key '
+            'JOIN animals a ON a.id=d.animal_id JOIN lost_gallery_heads h ON h.build_key=q.build_key '
+            'WHERE h.alias=%(alias)s AND q.animal_id=%(animal)s AND d.animal_id<>q.animal_id '
+            'AND d.model_version=%(model)s AND d.species=%(species)s AND a.species=%(species)s '
+            "AND a.status IN ('NOTICE','PROTECT') ORDER BY score DESC,d.animal_id ASC LIMIT 200")
+        checked = set()
+        for row in rows:
+            key = (row['species'], 'animal_vector' in row, row['status'] == 'ADOPTED')
+            if key in checked:
+                continue
+            checked.add(key)
+            with self.store.connection(read_only=True) as conn:
+                expected = conn.execute(exact_sql, {
+                    'weight': ANIMAL_REGION_WEIGHT, 'alias': ALIAS, 'animal': row['id'],
+                    'model': FOCUS_VERSION, 'species': row['species']}).fetchall()
+            _, hits = self.store.recommendation_candidates(ALIAS, row['id'], row['species'], FOCUS_VERSION)
+            with self.subTest(source=row['id'], case=key):
+                self.assertTrue(expected)
+                self.assertEqual([hit['_source']['id'] for hit in hits], [doc['id'] for doc, _ in expected])
+                for hit, (_, score) in zip(hits, expected):
+                    self.assertAlmostEqual(hit['_score'], score, places=5)
+        self.assertEqual(len(checked), 8)
+
+    def test_recommendation_sql_can_use_available_partial_hnsw_indexes(self):
+        # 추천 SQL의 종, 상태 조건이 V11 부분 인덱스 조건과 어긋나면 플래너가 인덱스를 쓸 수 없다.
+        # 작은 시험 표에서는 순차 스캔이 더 싸므로 순차 스캔을 막고, 쓸 수 있는지만 확인한다.
+        cases = [
+            ('DOG', True, {'idx_lost_gallery_dog_available_animal_hnsw', 'idx_lost_gallery_dog_available_image_hnsw'}),
+            ('CAT', False, {'idx_lost_gallery_cat_available_image_hnsw'}),
+        ]
+        for species, has_animal_vector, indexes in cases:
+            with self.subTest(species=species), self.store.connection(read_only=True) as conn:
+                conn.execute('SET LOCAL enable_seqscan = off')
+                plan = '\n'.join(line for (line,) in conn.execute(
+                    'EXPLAIN ' + recommendation_candidates_sql(species, has_animal_vector),
+                    {'build': 'x', 'animal': 1, 'model': FOCUS_VERSION,
+                     'species': species, 'weight': ANIMAL_REGION_WEIGHT}).fetchall())
+                for index in indexes:
+                    self.assertIn(index, plan)
 
     def test_recommendation_source_and_candidates_stay_on_one_snapshot_during_publication(self):
         import psycopg

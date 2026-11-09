@@ -1,5 +1,9 @@
 package com.pawbridge.backend.animal.internal.travel.infrastructure.collection
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.pawbridge.backend.animal.internal.travel.application.PetTravelException
 import io.mockk.confirmVerified
 import io.mockk.every
@@ -10,9 +14,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.sql.SQLException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -118,11 +124,15 @@ class PetTravelBulkCollectorTest {
         every { catalog.hasPendingVisitDetails() } returns false
 
         // when
-        val result = collector.collect()
+        val (result, events) = captureLogs { collector.collect() }
 
         // then
         assertThat(result.status).isEqualTo("PARTIAL")
         assertThat(result.published).isEqualTo(1)
+        assertThat(events.map { event -> event.formattedMessage }).containsExactly(
+            "[BATCH] travel pet bulk failed: kind=UNAVAILABLE, operation=null, status=null, cause=PetTravelException, " +
+                "requests=1, discovered=0, published=0",
+        )
         verify(exactly = 1) { catalog.petCollectionFailed("PET_BULK_FAILED", false) }
         verify(exactly = 0) { client.fetch(TourApiClient.Operation.PET, any()) }
     }
@@ -519,5 +529,79 @@ class PetTravelBulkCollectorTest {
         verify(exactly = 0) { client.fetchDetail(TourApiClient.Operation.INTRO, "123", "12") }
         verify(exactly = 1) { client.fetchDetail(TourApiClient.Operation.INFO, "123", "12") }
         verify(exactly = 1) { client.fetchDetail(TourApiClient.Operation.IMAGES, "123", "12") }
+    }
+
+    @Test
+    fun `지역 조회가 HTTP 상태로 실패했을 때__수집하면__키 없는 원인을 WARN 한 줄로 남기고 기존처럼 실패한다`() {
+        // given
+        properties.isBulkPetEnabled = false
+        lockAcquired()
+        justRun { catalog.startRun(any(), any()) }
+        justRun { catalog.finishRun(any(), any(), any(), any(), any(), any(), any()) }
+        every { catalog.reserveRequest(any(), any(), any()) } returns true
+        every { client.fetch(TourApiClient.Operation.REGIONS, "") } throws
+            PetTravelException.unavailable(TourApiClient.HTTP_STATUS, "REGIONS", 503)
+
+        // when
+        val (failure, events) = captureLogs { catchThrowable { collector.collect() } }
+
+        // then
+        assertThat(failure).hasMessage("TRAVEL_COLLECTION_FAILED").hasNoCause()
+        assertThat(events).hasSize(1)
+        assertThat(events[0].level).isEqualTo(Level.WARN)
+        assertThat(events[0].throwableProxy).isNull()
+        assertThat(events[0].formattedMessage).isEqualTo(
+            "[BATCH] travel collection failed: kind=HTTP_STATUS, operation=REGIONS, status=503, cause=PetTravelException, " +
+                "requests=1, discovered=0, published=0",
+        )
+        verify(exactly = 1) { catalog.finishRun(any(), "FAILED", "COLLECTION_FAILED", 1, 0, 0, now) }
+    }
+
+    @Test
+    fun `저장소가 실패했을 때__수집하면__메시지 없이 DATABASE 종류로만 남긴다`() {
+        // given
+        properties.isBulkPetEnabled = false
+        lockAcquired()
+        justRun { catalog.startRun(any(), any()) }
+        justRun { catalog.finishRun(any(), any(), any(), any(), any(), any(), any()) }
+        every { catalog.reserveRequest(any(), any(), any()) } returns true
+        every { client.fetch(TourApiClient.Operation.REGIONS, "") } returns listOf(mapOf("code" to "11", "name" to "서울"))
+        every { catalog.saveRegions(any(), any()) } throws SQLException("synthetic-private serviceKey=secret")
+
+        // when
+        val (failure, events) = captureLogs { catchThrowable { collector.collect() } }
+
+        // then
+        assertThat(failure).hasMessage("TRAVEL_COLLECTION_FAILED").hasNoCause()
+        assertThat(events.map { event -> event.formattedMessage }).containsExactly(
+            "[BATCH] travel collection failed: kind=DATABASE, operation=null, status=null, cause=SQLException, " +
+                "requests=1, discovered=0, published=0",
+        )
+    }
+
+    private fun lockAcquired() {
+        every { source.connection } returns connection
+        every { connection.prepareStatement(any()) } returns statement
+        justRun { statement.setInt(any(), any()) }
+        justRun { statement.queryTimeout = any() }
+        every { statement.executeQuery() } returns lockRow
+        every { lockRow.next() } returns true
+        every { lockRow.getObject(1) } returns 1
+        justRun { lockRow.close() }
+        justRun { statement.close() }
+        justRun { connection.close() }
+    }
+
+    private fun <T> captureLogs(block: () -> T): Pair<T, List<ILoggingEvent>> {
+        val logger = LoggerFactory.getLogger(PetTravelCollector::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>()
+        appender.start()
+        logger.addAppender(appender)
+        try {
+            return block() to appender.list.toList()
+        } finally {
+            logger.detachAppender(appender)
+            appender.stop()
+        }
     }
 }

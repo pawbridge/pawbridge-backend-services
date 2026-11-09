@@ -86,6 +86,11 @@ class RecommendationTest(unittest.TestCase):
             with patch.dict(os.environ, {'LOST_SEARCH_POOLING': 'token'}):
                 self.assertEqual(recommend_animals(1, 'DOG'), [2, 3, 4, 5, 6, 7])
                 self.assertEqual(store.recommendation_candidates.call_args.args[3], FOCUS_VERSION_CLS)
+            # 384 갤러리도 CLS 계열이므로 CLS 하한을 쓴다(버전 문자열 하나와만 비교하면 0.6이 걸린다).
+            with patch.dict(os.environ, {'LOST_SEARCH_POOLING': 'token', 'LOST_SEARCH_INPUT_SIZE': '384'}):
+                from app.vision.sam3_focus import FOCUS_VERSION_CLS_384
+                self.assertEqual(recommend_animals(1, 'DOG'), [2, 3, 4, 5, 6, 7])
+                self.assertEqual(store.recommendation_candidates.call_args.args[3], FOCUS_VERSION_CLS_384)
 
     def test_chatbot_entry_point_does_not_load_heavy_models_or_expose_legacy_similarity_routes(self):
         script = """import sys
