@@ -1,5 +1,9 @@
 package com.pawbridge.backend
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.ninjasquad.springmockk.MockkBean
 import com.pawbridge.backend.boot.configuration.ReadSecurityConfiguration
 import com.pawbridge.backend.community.internal.note.application.MarkPrivateNoteRead
@@ -31,6 +35,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.dao.DataAccessResourceFailureException
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.context.ContextConfiguration
@@ -44,7 +50,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.slf4j.LoggerFactory
 import org.springframework.transaction.TransactionSystemException
+import org.springframework.web.server.ResponseStatusException
+import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.time.Clock
 import java.time.Instant
@@ -169,6 +178,45 @@ class NoteReadStreamHttpTest {
                 content().json("{\"message\":\"요청 형식과 로그인 정보를 확인해 주세요.\"}", JsonCompareMode.STRICT),
             )
         }
+        confirmVerified(members, streams, mutation, clock)
+        cleared()
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["*/*", "text/event-stream"])
+    fun `연결 한도를 넘었을 때__허용 미디어별로 열면__429와 재시도 시각을 주고 처리기 실패 경고를 남기지 않는다`(
+        accept: String,
+    ) {
+        // given
+        val client = TestFaker.uuid()
+
+        every { members.get(any()) } returns active()
+        every { streams.open(any(), any(), any()) } throws ConnectionLimit()
+
+        // when
+        val (result, warnings) = resolverWarnings {
+            mvc.perform(
+                get(STREAM)
+                    .accept(accept)
+                    .param("clientId", client.toString())
+                    .header("Authorization", "Bearer " + token(Instant.now().plusSeconds(120))),
+            )
+        }
+
+        // then
+        result
+            .andExpect(status().isTooManyRequests())
+            .andExpect(header().string("Retry-After", "15"))
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(header().doesNotExist("Set-Cookie"))
+        if (accept == MediaType.TEXT_EVENT_STREAM_VALUE) {
+            result.andExpect(content().string(""))
+        } else {
+            result.andExpect(content().json("{\"message\":\"알림 연결이 너무 많습니다.\"}", JsonCompareMode.STRICT))
+        }
+        assertThat(warnings).isEmpty()
+        verify(exactly = 1) { members.get(7) }
+        verify(exactly = 1) { streams.open(7, any(), client) }
         confirmVerified(members, streams, mutation, clock)
         cleared()
     }
@@ -303,6 +351,25 @@ class NoteReadStreamHttpTest {
                 token.expiration(Date.from(expiry))
             }
             return token.signWith(F3TestInputs.KEY).compact()
+        }
+
+        // 운영의 연결 한도 예외(PrivateNoteStreamRegistry.ConnectionLimitException)와 같은 상태, 사유, 헤더
+        private class ConnectionLimit : ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "알림 연결이 너무 많습니다.") {
+            override fun getHeaders(): HttpHeaders = HttpHeaders().apply { set(HttpHeaders.RETRY_AFTER, "15") }
+        }
+
+        private fun <T> resolverWarnings(block: () -> T): Pair<T, List<ILoggingEvent>> {
+            val logger = LoggerFactory.getLogger(ExceptionHandlerExceptionResolver::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>()
+            appender.start()
+            logger.addAppender(appender)
+            try {
+                val result = block()
+                return result to appender.list.filter { event -> event.level.isGreaterOrEqual(Level.WARN) }
+            } finally {
+                logger.detachAppender(appender)
+                appender.stop()
+            }
         }
 
         private fun cleared() {

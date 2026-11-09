@@ -26,6 +26,8 @@ class PhotoArchiveHttpClient private constructor(
 
     constructor(properties: PhotoArchiveProperties) : this(
         HttpClient.newBuilder()
+            // 기본값 HTTP/2는 평문 http 최적화 서버 호출마다 h2c 업그레이드 헤더를 붙여 uvicorn 경고를 남긴다.
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NEVER)
             .build(),
