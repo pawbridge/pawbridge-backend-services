@@ -256,6 +256,7 @@ class PhotoArchiveHttpClientTest {
         settings.optimizerUrl = URI.create("http://optimizer/internal/photos/optimize")
         settings.internalApiKey = "test-only-key"
 
+        every { builder.version(HttpClient.Version.HTTP_1_1) } returns builder
         every { builder.connectTimeout(any()) } returns builder
         every { builder.followRedirects(HttpClient.Redirect.NEVER) } returns builder
         every { builder.build() } returns transport
@@ -275,5 +276,31 @@ class PhotoArchiveHttpClientTest {
         // then
         verify(exactly = 1) { transport.close() }
         confirmVerified(transport)
+    }
+
+    @Test
+    fun `공개 생성자로 만들 때__전송을 만들면__평문 최적화 서버에 h2c 업그레이드를 보내지 않도록 HTTP 1_1로 고정한다`() {
+        // given
+        val builder = mockk<HttpClient.Builder>()
+        val settings = PhotoArchiveProperties()
+        settings.optimizerUrl = URI.create("http://optimizer/internal/photos/optimize")
+        settings.internalApiKey = "test-only-key"
+
+        every { builder.version(any()) } returns builder
+        every { builder.connectTimeout(any()) } returns builder
+        every { builder.followRedirects(any()) } returns builder
+        every { builder.build() } returns transport
+
+        // when
+        mockkStatic(HttpClient::class)
+        try {
+            every { HttpClient.newBuilder() } returns builder
+            PhotoArchiveHttpClient(settings)
+        } finally {
+            unmockkStatic(HttpClient::class)
+        }
+
+        // then
+        verify(exactly = 1) { builder.version(HttpClient.Version.HTTP_1_1) }
     }
 }

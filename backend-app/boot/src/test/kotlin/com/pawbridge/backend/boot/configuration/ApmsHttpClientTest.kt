@@ -1,5 +1,9 @@
 package com.pawbridge.backend.boot.configuration
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.confirmVerified
 import io.mockk.every
@@ -10,15 +14,19 @@ import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.config.BeanDefinitionCustomizer
 import org.springframework.beans.factory.support.AbstractBeanDefinition
 import org.springframework.context.support.GenericApplicationContext
+import java.net.ConnectException
 import java.net.URI
 import java.net.URLDecoder
 import java.net.http.HttpHeaders
 import java.net.http.HttpClient
+import java.net.http.HttpConnectTimeoutException
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.net.http.HttpTimeoutException
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.Optional
@@ -215,8 +223,64 @@ class ApmsHttpClientTest {
         every { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns pending
 
         // when, then
-        assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client), "fixture-key", 1000) }
+        assertUnavailable(ApmsHttpClient.RESPONSE_WAIT_TIMEOUT) {
+            fetch(ApmsHttpClient(BASE, ObjectMapper(), client), "fixture-key", 1000)
+        }
         assertThat(pending.isCancelled).isTrue()
+    }
+
+    @Test
+    fun `제공자 요청이 여러 이유로 실패할 때__조회하면__실패 종류와 키 없는 조회 범위를 경고 로그 한 줄로 남긴다`() {
+        // given: 실패마다 [응답 또는 예외, 기대 종류, 기대 상태 코드]
+        val secret = "fixture-secret"
+        val leakingUrl = "https://provider.example.test/openapi/abandonmentPublic_v2?serviceKey=$secret"
+        val cases = listOf(
+            Triple(CompletableFuture.completedFuture(response(503, "secret response")), ApmsHttpClient.HTTP_STATUS, "503"),
+            Triple(CompletableFuture.completedFuture(response(200, "not-json serviceKey=$secret")), ApmsHttpClient.INVALID_JSON, "200"),
+            Triple(failed(HttpTimeoutException("request timed out $leakingUrl")), ApmsHttpClient.REQUEST_TIMEOUT, "null"),
+            Triple(failed(HttpConnectTimeoutException("connect timed out $leakingUrl")), ApmsHttpClient.CONNECT_TIMEOUT, "null"),
+            Triple(failed(ConnectException("refused $leakingUrl")), ApmsHttpClient.CONNECT, "null"),
+            Triple(failed(IllegalStateException(leakingUrl)), ApmsHttpClient.OTHER, "null"),
+        )
+        for ((reply, kind, status) in cases) {
+            val client = mockk<HttpClient>()
+
+            every { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns reply
+
+            // when
+            val events = captureLogs {
+                assertUnavailable(kind) {
+                    ApmsHttpClient(BASE, ObjectMapper(), client).getAbandonmentAnimals(
+                        secret, 3, 1000, "20261007", "20261106", null, null, "json", null, null,
+                    )
+                }
+            }
+
+            // then
+            assertThat(events).hasSize(1)
+            assertThat(events[0].level).isEqualTo(Level.WARN)
+            assertThat(events[0].throwableProxy).isNull()
+            val message = events[0].formattedMessage
+            assertThat(message)
+                .startsWith("[BATCH] APMS request failed: kind=$kind, status=$status, cause=")
+                .contains("page=3, rows=1000, intake=20261007..20261106, updated=null..null, elapsedMs=")
+                .doesNotContain(secret).doesNotContain("serviceKey").doesNotContain("https://")
+        }
+    }
+
+    @Test
+    fun `호출 전에 거절할 요청일 때__조회하면__잘못된 요청으로 남긴다`() {
+        // given
+        val client = mockk<HttpClient>()
+
+        // when
+        val events = captureLogs {
+            assertUnavailable(ApmsHttpClient.INVALID_REQUEST) { fetch(ApmsHttpClient(BASE, ObjectMapper(), client), " ", 1000) }
+        }
+
+        // then
+        confirmVerified(client)
+        assertThat(events.map { it.formattedMessage }).singleElement().asString().contains("kind=INVALID_REQUEST")
     }
 
     private fun fetch(transport: ApmsHttpClient, key: String, rows: Int) {
@@ -228,6 +292,35 @@ class ApmsHttpClientTest {
             .isInstanceOf(ApmsHttpClient.Unavailable::class.java)
             .hasMessage("APMS request unavailable")
             .hasNoCause()
+    }
+
+    private fun assertUnavailable(kind: String, action: () -> Unit) {
+        assertThatThrownBy { action() }
+            .isInstanceOf(ApmsHttpClient.Unavailable::class.java)
+            .hasMessage("APMS request unavailable")
+            .hasNoCause()
+            .extracting { (it as ApmsHttpClient.Unavailable).kind }
+            .isEqualTo(kind)
+    }
+
+    private fun failed(failure: Throwable): CompletableFuture<HttpResponse<ByteArray>> {
+        val future = CompletableFuture<HttpResponse<ByteArray>>()
+        future.completeExceptionally(failure)
+        return future
+    }
+
+    private fun captureLogs(action: () -> Unit): List<ILoggingEvent> {
+        val logger = LoggerFactory.getLogger(ApmsHttpClient::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>()
+        appender.start()
+        logger.addAppender(appender)
+        try {
+            action()
+        } finally {
+            logger.detachAppender(appender)
+            appender.stop()
+        }
+        return appender.list.toList()
     }
 
     /** Data builder: only the status code and the body are meaningful, any other accessor fails loudly like a strict mock. */

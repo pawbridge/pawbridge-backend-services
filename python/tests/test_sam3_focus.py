@@ -50,6 +50,24 @@ class Sam3ContractTest(unittest.TestCase):
             finally:
                 result.image.close()
 
+    def test_input_size_384_pads_every_view_to_384_and_uses_its_own_gallery_version(self):
+        from app.vision.sam3_focus import FOCUS_VERSION_CLS, FOCUS_VERSION_CLS_384, focus_version
+        env = {"LOST_SEARCH_VISUAL_PROFILE": "sam3-animal-focus", "LOST_SEARCH_POOLING": "token"}
+        with patch.dict(os.environ, env):
+            self.assertEqual(focus_version(), FOCUS_VERSION_CLS)
+            with patch.dict(os.environ, {"LOST_SEARCH_INPUT_SIZE": "384"}), Image.new("RGB", (120, 120), "red") as image:
+                self.assertEqual(focus_version(), FOCUS_VERSION_CLS_384)
+                mask = np.zeros((1, 120, 120), dtype=bool)
+                mask[0, 20:100, 20:100] = True
+                # 동물 영역과 원본 대체 경로 모두 DINOv3 입력 크기로 바로 패딩해야 한다.
+                for result in (prepare_prediction(image, [[10, 10, 110, 110]], mask, [.9]),
+                               prepare_prediction(image, np.zeros((0, 4)), np.zeros((0, 120, 120)), np.zeros(0))):
+                    with self.subTest(status=result.status):
+                        try:
+                            self.assertEqual(result.image.size, (384, 384))
+                        finally:
+                            result.image.close()
+
     def test_missing_detection_keeps_full_photo_without_color(self):
         with Image.new("RGB", (120, 120), "red") as image:
             result = prepare_prediction(image, np.zeros((0, 4)),
@@ -275,3 +293,71 @@ class Sam3GraphCacheTest(unittest.TestCase):
             self.assertEqual(prepared.status, "original_no_confident_animal")
         finally:
             prepared.image.close()
+
+
+@unittest.skipIf(torch is None, "Requires the dedicated PyTorch runtime")
+class Sam3FocusCacheTest(unittest.TestCase):
+    """SAM 3 출력 저장: 같은 사진은 저장한 출력으로 같은 결과를 내고, 꺼져 있으면 아무것도 쓰지 않는다."""
+
+    def _focus(self, calls):
+        from app.vision.sam3_focus import Sam3Focus
+        focus = object.__new__(Sam3Focus)
+        focus.device = "cpu"
+
+        def set_image(working):
+            calls.append(working.size)
+            return {}
+
+        def species_prompt(_state, _species):
+            height, width = 120, 160
+            masks = torch.zeros((1, 1, height, width), dtype=torch.bool)
+            masks[0, 0, 20:100, 30:130] = True
+            return {"boxes": torch.tensor([[25., 15., 135., 105.]]), "scores": torch.tensor([.93]), "masks": masks}
+
+        focus._set_image, focus._set_species_prompt = set_image, species_prompt
+        return focus
+
+    def test_cached_output_reproduces_the_same_crop_without_running_sam(self):
+        calls = []
+        focus = self._focus(calls)
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"LOST_SEARCH_FOCUS_CACHE_DIR": root}), \
+                Image.effect_noise((160, 120), 64).convert("RGB") as image:
+            first = focus.prepare(image, "DOG")
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(len(list(Path(root).rglob("*.npz"))), 1)
+            # 두 번째는 SAM 3를 부르면 실패하게 해 두고, 저장한 출력만으로 같은 결과가 나오는지 본다.
+            focus._set_image = lambda _working: self.fail("SAM 3 must not run on a cache hit")
+            second = focus.prepare(image, "DOG")
+            try:
+                self.assertEqual(first.status, "animal_mask")
+                self.assertEqual(second.status, first.status)
+                self.assertEqual(second.coat_color, first.coat_color)
+                self.assertEqual(second.image.tobytes(), first.image.tobytes())
+            finally:
+                first.image.close(); second.image.close()
+
+    def test_other_species_or_photo_does_not_reuse_and_unreadable_file_is_recomputed(self):
+        calls = []
+        focus = self._focus(calls)
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"LOST_SEARCH_FOCUS_CACHE_DIR": root}), \
+                Image.effect_noise((160, 120), 64).convert("RGB") as image, Image.effect_noise((160, 120), 32).convert("RGB") as other:
+            for photo, species in ((image, "DOG"), (image, "CAT"), (other, "DOG")):
+                focus.prepare(photo, species).image.close()
+            self.assertEqual(len(calls), 3)
+            saved = sorted(Path(root).rglob("*.npz"))
+            self.assertEqual(len(saved), 3)
+            for path in saved:
+                path.write_bytes(b"broken")
+            focus.prepare(image, "DOG").image.close()
+            self.assertEqual(len(calls), 4)
+            self.assertFalse(list(Path(root).rglob("*.tmp")))
+
+    def test_disabled_cache_writes_nothing(self):
+        calls = []
+        focus = self._focus(calls)
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"LOST_SEARCH_FOCUS_CACHE_DIR": ""}), \
+                Image.effect_noise((160, 120), 64).convert("RGB") as image:
+            focus.prepare(image, "DOG").image.close()
+            focus.prepare(image, "DOG").image.close()
+            self.assertEqual(len(calls), 2)
+            self.assertFalse(list(Path(root).rglob("*")))
