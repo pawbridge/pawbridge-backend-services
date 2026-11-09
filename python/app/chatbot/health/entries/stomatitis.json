@@ -1,0 +1,87 @@
+{
+  "id": "stomatitis",
+  "title": "구내염(고양이)",
+  "species": [
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "구내염",
+      "만성구내염",
+      "치은구내염",
+      "입 염증",
+      "잇몸 염증",
+      "입안 염증",
+      "stomatitis",
+      "FCGS"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "고양이 구내염은 플라크 같은 자극에 면역 반응이 지나치게 일어나 잇몸에 심한 염증이 생기는 것으로 설명됩니다.",
+      "sources": [
+        "cornell-gingivostomatitis"
+      ]
+    },
+    {
+      "text": "바이러스나 영양, 호르몬 이상 같은 여러 상태와 구내염 사이의 직접적인 인과관계는 아직 확립되지 않았습니다.",
+      "sources": [
+        "cornell-gingivostomatitis"
+      ]
+    },
+    {
+      "text": "Merck 보호자판은 효과적인 치료로 대부분 또는 모든 치아를 뽑는 발치만 소개합니다.",
+      "sources": [
+        "merck-cat-dental"
+      ]
+    },
+    {
+      "text": "발치 뒤에도 대부분의 고양이는 습식 사료부터 먹을 수 있다고 합니다.",
+      "sources": [
+        "merck-cat-dental"
+      ]
+    },
+    {
+      "text": "구내염을 예방하는 방법은 따로 알려져 있지 않습니다.",
+      "sources": [
+        "cornell-gingivostomatitis"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "구내염은 입 안 통증이 심하고 식욕을 잃게 할 수 있으니, 입을 만지기 싫어하거나 침을 흘리거나 먹기를 힘들어하면 수의사에게 알리세요. 이 고양이의 실제 상태와 치료 방법은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-cat-dental"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "구내염 진단과 치료 이력(발치 여부)",
+    "현재 먹는 사료 형태와 식욕",
+    "통증 증상(침, 입 만지기 싫어함)",
+    "치료 중인 약이 있는지"
+  ],
+  "sources": {
+    "cornell-gingivostomatitis": {
+      "org": "Cornell Feline Health Center",
+      "title": "Gingivostomatitis",
+      "url": "https://www.vet.cornell.edu/node/4077",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cat-dental": {
+      "org": "Merck Veterinary Manual",
+      "title": "Dental Disorders of Cats (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/digestive-disorders-of-cats/dental-disorders-of-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

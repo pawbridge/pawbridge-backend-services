@@ -1,0 +1,239 @@
+{
+  "id": "hair-loss",
+  "title": "탈모",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "탈모",
+      "털빠짐",
+      "털 빠짐",
+      "털이 빠짐",
+      "털빠짐 심함",
+      "alopecia",
+      "그루밍"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "탈모의 원인을 정확히 알려면 자세한 병력과 진찰이 필요합니다.",
+      "sources": [
+        "merck-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "임신, 수유 중, 또는 심한 병이나 열이 난 뒤 몇 주 동안 일시적으로 털이 빠질 수 있습니다.",
+      "sources": [
+        "merck-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "가려움이 동반된 털 빠짐은 기생충, 감염, 알레르기가 흔한 원인입니다.",
+      "sources": [
+        "merck-itching",
+        "merck-cat-itching"
+      ]
+    },
+    {
+      "text": "개는 털이 빠지면서 그 부위를 심하게 긁으면 가려움의 원인부터 조사합니다.",
+      "sources": [
+        "merck-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "개의 털 성장을 막는 원인에는 단백질 같은 영양 결핍과 갑상선 기능 저하 같은 호르몬 불균형이 있습니다.",
+      "sources": [
+        "merck-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "서울대 동물병원 피부과는 알레르기성 피부염에서 탈모, 구진, 비듬, 딱지가 함께 나타나는 경우가 흔하다고 안내합니다.",
+      "sources": [
+        "snu-derm"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이도 털이 빠지면서 그 부위를 심하게 긁으면 가려움의 원인부터 조사합니다.",
+      "sources": [
+        "merck-cat-hairloss"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "스트레스로 생긴 과도한 그루밍이 일부 고양이에서 털 빠짐을 일으킬 수 있습니다.",
+      "sources": [
+        "merck-cat-hairloss"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이는 가려움을 숨기는 경우가 많아서 가려운지 알기 어렵습니다.",
+      "sources": [
+        "merck-cat-hairloss"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 털 빠짐은 가려운 피부 때문에 스스로 지나치게 핥는 것이 원인인 경우가 많습니다.",
+      "sources": [
+        "icc-itchy"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이는 호흡기 감염 뒤에도 털이 많이 빠질 수 있습니다.",
+      "sources": [
+        "merck-cat-hairloss"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "털이 빠진 이유가 일시적인 것인지 질병인지는 겉모습만으로 알기 어렵습니다. 이 동물의 실제 원인은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "약국에서 산 연고로 임의로 처치하다 오히려 악화된 사례가 국내 보도에 있으므로, 원인을 모른 채 직접 처치하지 말고 수의사와 먼저 상의하세요.",
+      "sources": [
+        "dailyvet-hairloss"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이의 털 빠짐은 스트레스, 가려움, 호흡기 감염 뒤 등 원인이 여러 가지라 겉모습만으로 알기 어렵습니다. 이 동물의 실제 원인은 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-cat-hairloss"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "국내 강연 보도는 알레르기가 있는 고양이에서 나타나는 특징적인 피부 병변으로 좁쌀피부염과 자발성 탈모를 들었습니다.",
+      "sources": [
+        "dailyvet-cat-itch"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "탈모 부위와 시작 시점",
+    "가려움이 있는지, 피부 검사를 했는지",
+    "최근 출산이나 수유, 큰 병이 있었는지"
+  ],
+  "sources": {
+    "merck-hairloss": {
+      "org": "Merck Veterinary Manual",
+      "title": "Hair Loss (Alopecia) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/hair-loss-alopecia-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-itching": {
+      "org": "Merck Veterinary Manual",
+      "title": "Itching (Pruritus) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/itching-pruritus-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "dailyvet-hairloss": {
+      "org": "데일리벳",
+      "title": "반려견 탈모에 약국에서 산 스테로이드 연고로 자가처치‥더 심해져",
+      "url": "https://www.dailyvet.co.kr/news/practice/companion-animal/130345",
+      "tier": "B",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cat-hairloss": {
+      "org": "Merck Veterinary Manual",
+      "title": "Hair Loss (Alopecia) in Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/skin-disorders-of-cats/hair-loss-alopecia-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-itchy": {
+      "org": "International Cat Care",
+      "title": "Itchy cat, when it is not fleas",
+      "url": "https://icatcare.org/articles/itchy-cat-when-it-is-not-fleas",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "dailyvet-cat-itch": {
+      "org": "데일리벳(황철용 서울대 수의대 교수 KSFM 2024 강연 보도)",
+      "title": "고양이 피부 가려움증, 어떻게 관리해야 할까",
+      "url": "https://www.dailyvet.co.kr/news/academy/209061",
+      "tier": "B",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cat-itching": {
+      "org": "Merck Veterinary Manual",
+      "title": "Itching (Pruritus) in Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/skin-disorders-of-cats/itching-pruritus-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-cushing": {
+      "org": "Cornell Riney Canine Health Center",
+      "title": "Cushing's syndrome",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/riney-canine-health-center/canine-health-information/cushings-syndrome",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "snu-derm": {
+      "org": "서울대학교 수의과대학 동물병원",
+      "title": "피부과 진료 안내",
+      "url": "https://vmth.snu.ac.kr/subject/dermatology.do",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

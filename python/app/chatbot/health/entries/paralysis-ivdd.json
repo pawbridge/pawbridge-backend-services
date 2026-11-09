@@ -1,0 +1,110 @@
+{
+  "id": "paralysis-ivdd",
+  "title": "마비, 디스크(추간판 질환)",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "마비",
+      "하반신 마비",
+      "후지마비",
+      "디스크",
+      "추간판",
+      "IVDD",
+      "척추",
+      "뒷다리 마비",
+      "휠체어"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "추간판 질환은 특히 작은 품종의 개에서 척수 질환의 흔한 원인입니다.",
+      "sources": [
+        "merck-spine"
+      ]
+    },
+    {
+      "text": "증상은 목이나 등의 통증에서 뒷다리 운동 기능의 완전한 소실까지 단계가 있습니다.",
+      "sources": [
+        "acvs-ivdd"
+      ]
+    },
+    {
+      "text": "신경 증상이 심한 개는 수술을 빨리 해야 합니다.",
+      "sources": [
+        "merck-spine"
+      ]
+    },
+    {
+      "text": "ACVS는 척추관 위의 뼈를 제거해 척수를 감압하는 수술이 거의 항상 권고된다고 설명합니다.",
+      "sources": [
+        "acvs-ivdd"
+      ]
+    },
+    {
+      "text": "신경이 마비된 다리는 가볍지만 조이지 않는 붕대로 끌림에 따른 발의 손상을 막을 수 있습니다.",
+      "sources": [
+        "merck-legpar"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "마비된 동물은 스스로 배뇨가 어려울 수 있고 피부 상처가 생기기 쉬워, 수의사에게 관리 방법을 배워야 합니다. 보조 기구(슬링, 하네스, 휠체어)가 도움이 될 수 있습니다.",
+      "sources": [
+        "vca-paralyzed"
+      ]
+    },
+    {
+      "text": "추간판 파열은 수술이 필요한 응급으로 여겨지며 예후는 평가와 수술 시점의 남은 기능 정도에 따라 크게 달라진다고 합니다. 이 동물의 실제 상태는 신경학적 검사와 영상 검사로 확인해야 합니다.",
+      "sources": [
+        "acvs-ivdd"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "마비의 정도와 시작 시점, 통증 감각이 있는지",
+    "배뇨와 배변을 스스로 하는지",
+    "수술이나 치료 이력",
+    "재활과 돌봄에 필요한 준비"
+  ],
+  "sources": {
+    "merck-spine": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Spinal Column and Cord in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/brain-spinal-cord-and-nerve-disorders-of-dogs/disorders-of-the-spinal-column-and-cord-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "acvs-ivdd": {
+      "org": "American College of Veterinary Surgeons (ACVS)",
+      "title": "Intervertebral Disc Disease",
+      "url": "https://www.acvs.org/small-animal/intervertebral-disc-disease/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-legpar": {
+      "org": "Merck Veterinary Manual",
+      "title": "Leg Paralysis in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/brain-spinal-cord-and-nerve-disorders-of-dogs/leg-paralysis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "vca-paralyzed": {
+      "org": "VCA Animal Hospitals",
+      "title": "Homecare for Paralyzed Pets",
+      "url": "https://vcahospitals.com/know-your-pet/homecare-for-paralyzed-pets",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

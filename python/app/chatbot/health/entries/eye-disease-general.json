@@ -1,0 +1,115 @@
+{
+  "id": "eye-disease-general",
+  "title": "눈 질환 일반",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "안질환",
+      "눈병",
+      "눈 질환",
+      "눈이 안좋",
+      "안구 혼탁",
+      "눈 혼탁",
+      "안구질환",
+      "안구 질환",
+      "안구염증",
+      "안구 염증",
+      "눈 고름",
+      "눈 치료",
+      "눈에 염증",
+      "눈 염증"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "눈이 흐리거나 찡그리거나 보지 못하는 것은 Merck 보호자용 표에서 수의사 진료가 필요한 징후로 올라 있습니다.",
+      "sources": [
+        "merck-when-vet"
+      ]
+    },
+    {
+      "text": "눈, 귀 등에서 나오는 분비물도 같은 표에서 수의사 진료가 필요한 징후로 올라 있습니다.",
+      "sources": [
+        "merck-when-vet"
+      ]
+    },
+    {
+      "text": "개는 눈을 찡그림, 붉어짐, 부음, 눈을 비빔, 갑작스러운 혼탁이나 분비물이 있으면 빨리 진료를 받아야 합니다.",
+      "sources": [
+        "cornell-er"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "서울대 동물병원은 각막 궤양이나 각막염이 여러 원인으로 생길 수 있다고 안내합니다.",
+      "sources": [
+        "snu-dental"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "눈이 뿌옇거나 찡그리거나 잘 보지 못하는지, 눈 분비물이 있는지 살피고, 이 동물의 실제 눈 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-when-vet"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "눈 증상이 언제부터인지, 한쪽인지 양쪽인지",
+    "안과 검사나 치료를 받았는지, 지금 치료 중인지",
+    "시력이 어느 정도인지 확인했는지",
+    "눈을 찡그리거나 비비는 모습, 분비물이 있었는지"
+  ],
+  "sources": {
+    "acvo-ulcer": {
+      "org": "American College of Veterinary Ophthalmologists (ACVO)",
+      "title": "Corneal Ulcers",
+      "url": "https://www.acvo.org/tips-treatments-tricks/corneal-ulcers",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-when-vet": {
+      "org": "Merck Veterinary Manual",
+      "title": "Table: When to See a Veterinarian (보호자판 표)",
+      "url": "https://www.merckvetmanual.com/multimedia/table/when-to-see-a-veterinarian",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-er": {
+      "org": "Cornell Riney Canine Health Center",
+      "title": "When to go to the ER (June 2025)",
+      "url": "https://riney.vet.cornell.edu/member-benefits-health-tips/when-to-go-to-the-er-june-2025",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cornea-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Cornea in Dogs (보호자판)",
+      "url": "https://www.merckvetmanual.com/dog-owners/eye-disorders-of-dogs/disorders-of-the-cornea-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "snu-dental": {
+      "org": "서울대학교 수의과대학 동물병원",
+      "title": "안과, 치과 진료 안내",
+      "url": "https://vmth.snu.ac.kr/subject/ophthalmologyDentistry.do",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "id": "cat-upper-respiratory",
+  "title": "고양이 상부호흡기 감염(허피스, 칼리시, 눈곱, 콧물)",
+  "species": [
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "허피스",
+      "칼리시",
+      "눈곱",
+      "콧물",
+      "재채기",
+      "고양이 감기",
+      "감기",
+      "상부호흡기",
+      "호흡기",
+      "허피스바이러스",
+      "칼리시바이러스",
+      "herpes",
+      "헤르페스"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "고양이 허피스와 칼리시바이러스 감염은 증상만으로 구분하기 어려운 경우가 많습니다.",
+      "sources": [
+        "merck-cat-uri"
+      ]
+    },
+    {
+      "text": "허피스에 한번 감염되면 평생 몸에 지니고 있고, 눈과 상부 호흡기 증상이 되풀이될 수 있습니다.",
+      "sources": [
+        "cornell-uri"
+      ]
+    },
+    {
+      "text": "회복 중인 고양이도 몇 달 동안 바이러스를 퍼뜨릴 수 있습니다.",
+      "sources": [
+        "merck-cat-uri"
+      ]
+    },
+    {
+      "text": "현재 백신은 모든 경우에 감염 자체를 막지는 못합니다.",
+      "sources": [
+        "cornell-uri"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "콧물과 눈곱은 닦아 주면 고양이가 편안해진다고 합니다. 다만 식욕이 떨어지거나 탈수가 보이면 수의사 진료가 필요합니다.",
+      "sources": [
+        "merck-cat-uri"
+      ]
+    },
+    {
+      "text": "바이러스를 퍼뜨릴 수 있으므로, 이미 고양이를 키운다면 입양 직후 분리해서 지내게 하고 수의사 검진을 먼저 받으세요. 이 고양이의 실제 상태는 동물병원 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-cat-uri"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "눈곱, 콧물, 재채기가 언제부터이고 지금도 있는지",
+    "밥을 잘 먹는지",
+    "어떤 병인지 검사했는지(허피스, 칼리시 등)",
+    "백신 접종 날짜",
+    "집에 고양이가 있다면, 지금도 다른 고양이에게 옮길 수 있는 상태인지"
+  ],
+  "sources": {
+    "merck-cat-uri": {
+      "org": "Merck Veterinary Manual",
+      "title": "Feline Respiratory Disease Complex (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/lung-and-airway-disorders-of-cats/feline-respiratory-disease-complex-feline-viral-rhinotracheitis-feline-calicivirus",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-uri": {
+      "org": "Cornell Feline Health Center",
+      "title": "Respiratory Infections",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/respiratory-infections",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "kr-vsfcv": {
+      "org": "한국임상수의학회지 32(5), 박종인 외",
+      "title": "새끼고양이에서 발생한 고독성 칼리시바이러스(VS-FCV) 감염증",
+      "url": "https://koreascience.kr/article/JAKO201533678910657.pub?lang=ko",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

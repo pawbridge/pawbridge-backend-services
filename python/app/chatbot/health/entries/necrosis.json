@@ -1,0 +1,95 @@
+{
+  "id": "necrosis",
+  "title": "괴사(죽은 조직)",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "괴사"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "피부가 벗겨지는 심한 손상(박리 손상)에서는 일부 피부가 느슨해졌다가 나중에 죽을 수 있습니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "죽은 조직은 제거해야 하고, 살아 있는 조직은 보존합니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "이런 박리 손상에서는 감염이 가장 큰 걱정거리입니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "심한 압박 상처는 수술이나 피부 이식이 필요할 수 있습니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "서울대 동물병원은 외상으로 피부가 넓게 손상되면 오랜 감염 관리와 피부 성형술이 필요한 경우도 있다고 안내합니다.",
+      "sources": [
+        "snu-surgery"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "죽은 조직이 어디까지인지, 제거나 수술이 필요한지는 겉모습만으로 알 수 없고 수의사가 판단합니다. 이 동물의 실제 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-wound"
+      ]
+    },
+    {
+      "text": "상처 부위가 감염되지 않도록 관리해야 하므로, 입양 전후 소독과 드레싱, 통원 계획을 확인하세요.",
+      "sources": [
+        "merck-wound"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "괴사 부위와 범위, 원인(외상, 압박, 물림 등)을 알고 있는지",
+    "수술이나 처치를 이미 받았는지, 앞으로 계획이 있는지",
+    "감염 관리와 드레싱, 통원이 얼마나 필요한지",
+    "진료 기록과 수의사 소견을 받을 수 있는지"
+  ],
+  "sources": {
+    "merck-wound": {
+      "org": "Merck Veterinary Manual",
+      "title": "Wound Management (보호자판)",
+      "url": "https://www.merckvetmanual.com/special-pet-topics/emergencies/wound-management",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-snakebite": {
+      "org": "Merck Veterinary Manual (전문가판)",
+      "title": "Snakebites in Animals",
+      "url": "https://www.merckvetmanual.com/toxicology/snakebite/snakebites-in-animals",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "snu-surgery": {
+      "org": "서울대학교 수의과대학 동물병원",
+      "title": "일반외과 진료 안내",
+      "url": "https://vmth.snu.ac.kr/subject/generalSurgery.do",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

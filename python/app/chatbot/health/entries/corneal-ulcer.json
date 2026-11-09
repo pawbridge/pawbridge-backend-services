@@ -1,0 +1,86 @@
+{
+  "id": "corneal-ulcer",
+  "title": "각막궤양, 각막 손상",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "각막궤양",
+      "각막 궤양",
+      "각막염",
+      "각막 손상",
+      "눈 상처",
+      "눈 찡그림",
+      "corneal ulcer"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "고양이의 궤양성 각막염은 흔히 고양이 허피스바이러스 1형 감염이 원인입니다.",
+      "sources": [
+        "merck-cornea-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "허피스에 의한 각막 궤양은 낫는 데 오래 걸리고 고양이의 평생에 걸쳐 재발할 수 있습니다.",
+      "sources": [
+        "merck-cornea-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "각막의 장애나 손상은 빨리 다루는 것이 중요합니다.",
+      "sources": [
+        "merck-cornea-cat"
+      ]
+    },
+    {
+      "text": "잘 낫지 않는 경우에는 새 막이 자라도록 돕는 수술이 필요할 수 있습니다.",
+      "sources": [
+        "merck-cornea-dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "각막은 시력에 중요하므로 눈의 이상이나 상처는 되도록 빨리 수의사에게 보여야 합니다. 이 동물의 실제 눈 상태는 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-cornea-cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "눈 상처의 원인과 시작 시점",
+    "치료 중인지, 수술이 계획되어 있는지",
+    "눈을 비비거나 뜨지 못하는 증상"
+  ],
+  "sources": {
+    "merck-cornea-cat": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Cornea in Cats (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/eye-disorders-of-cats/disorders-of-the-cornea-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cornea-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Cornea in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/eye-disorders-of-dogs/disorders-of-the-cornea-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

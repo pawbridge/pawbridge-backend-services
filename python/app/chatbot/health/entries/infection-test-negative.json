@@ -1,0 +1,187 @@
+{
+  "id": "infection-test-negative",
+  "title": "파보, 홍역, 코로나, 지알디아 키트 음성",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "파보",
+      "홍역",
+      "디스템퍼",
+      "코로나",
+      "지알디아",
+      "키트",
+      "범백",
+      "FeLV",
+      "FIV",
+      "백혈병",
+      "에이즈",
+      "파보장염"
+    ],
+    "context": "negative"
+  },
+  "summary": [
+    {
+      "text": "파보 대변 키트는 병 초기에 대변에 바이러스가 충분히 나오기 전이면 감염되어 있어도 음성으로 나올 수 있습니다.",
+      "sources": [
+        "msd-parvo"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "국내 한 연구에서 파보와 코로나를 함께 보는 키트 한 종의 민감도는 90.0%, 특이도는 100.0%였습니다. 제품 한 종, 한 연구의 결과라 키트와 검사 시기에 따라 다르지만, 감염된 개도 음성으로 나오는 경우가 있다는 뜻입니다.",
+      "sources": [
+        "kit-journal"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "지알디아는 균이 대변으로 나오는 시기가 간헐적이고 찾기도 어려워, 한 번의 음성만으로 없다고 말하기 어렵습니다.",
+      "sources": [
+        "capc-giardia"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이 백혈병 바이러스(FeLV) 항원검사의 음성은 노출이 없었다는 뜻일 수 있지만, 회복성 감염, 유산성 감염, 아주 초기 감염일 수도 있습니다.",
+      "sources": [
+        "abcd-felv"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "ABCD 지침은 위험이 높은 고양이의 FeLV 음성 결과는 즉시 재검사하라고 권고합니다.",
+      "sources": [
+        "abcd-felv"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "어미가 FeLV 항원검사에서 음성이어도, 일부는 젖을 먹이거나 핥는 과정에서 새끼에게 감염을 옮길 수 있습니다.",
+      "sources": [
+        "abcd-felv"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이 면역결핍 바이러스(FIV, 흔히 고양이 에이즈) 항체는 보통 감염 후 2에서 4주부터 검출되며, 더 늦어질 수도 있습니다.",
+      "sources": [
+        "abcd-fiv"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "범백(고양이 파보) 신속검사는 대변으로 바이러스가 나오는 것이 간헐적일 수 있어, 음성이어도 감염을 배제하지 못합니다.",
+      "sources": [
+        "abcd-fpv"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "범백 신속검사는 바이러스량이 많지 않으면 음성으로 나올 수 있습니다.",
+      "sources": [
+        "abcd-fpv"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "공고의 '음성'은 그 검사에서 잡히지 않았다는 뜻이고, 이후 증상이 없다는 보증은 아닙니다. 입양 뒤 구토나 설사가 생기면 음성이었다는 사실을 수의사에게 알리세요.",
+      "sources": [
+        "msd-parvo"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이 공고의 음성도 그 검사에서 잡히지 않았다는 뜻이며, 이후 증상이 없다는 보증은 아닙니다. 입양 뒤 설사나 구토, 기운 저하가 생기면 음성이었다는 사실을 수의사에게 알리고, 이 동물의 실제 상태는 수의사 검사로 확인해야 합니다.",
+      "sources": [
+        "abcd-fpv"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "어떤 키트로 언제 검사했는지",
+    "음성 이후 증상이 있었는지",
+    "백신 접종 날짜",
+    "검사 대상 항목이 무엇인지(개는 파보, 홍역, 코로나, 지알디아, 고양이는 범백, 백혈병 바이러스, 면역결핍 바이러스)"
+  ],
+  "sources": {
+    "msd-parvo": {
+      "org": "MSD Veterinary Manual",
+      "title": "Canine Parvovirus Infection (전문가판)",
+      "url": "https://www.msdvetmanual.com/digestive-system/infectious-diseases-of-the-gastrointestinal-tract-in-small-animals/canine-parvovirus-infection-parvoviral-enteritis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "kit-journal": {
+      "org": "대한임상검사과학회지 55(1), 민채영 외",
+      "title": "개 파보바이러스와 코로나바이러스 진단을 위한 신속진단키트의 임상적 유용성",
+      "url": "https://koreascience.kr/article/JAKO202313737940341.page?lang=ko",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "capc-giardia": {
+      "org": "Companion Animal Parasite Council (CAPC)",
+      "title": "Giardia 가이드라인",
+      "url": "https://capcvet.org/guidelines/giardia/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "abcd-felv": {
+      "org": "ABCD (European Advisory Board on Cat Diseases)",
+      "title": "GUIDELINE for Feline Leukaemia Virus Infection",
+      "url": "https://www.abcdcatsvets.org/guideline-for-feline-leukaemia/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "abcd-fiv": {
+      "org": "ABCD (European Advisory Board on Cat Diseases)",
+      "title": "GUIDELINE for Feline immunodeficiency virus",
+      "url": "https://www.abcdcatsvets.org/guideline-for-feline-immunodeficiency/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "abcd-fpv": {
+      "org": "ABCD (European Advisory Board on Cat Diseases)",
+      "title": "GUIDELINE for Feline Panleukopenia",
+      "url": "https://www.abcdcatsvets.org/guideline-for-feline-panleukopenia/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

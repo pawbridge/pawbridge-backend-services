@@ -1,0 +1,111 @@
+{
+  "id": "amputation",
+  "title": "사지 절단, 세 다리 생활",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "다리 절단",
+      "지절단",
+      "다리절단",
+      "다리 한쪽 절단",
+      "다리 한쪽이 절단",
+      "절단된 다리",
+      "세 다리",
+      "세발",
+      "다리 없음",
+      "amputation",
+      "tripod"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "절단은 암, 심한 외상, 쓸 수 없게 된 선천 기형 다리 등의 이유로 권고될 수 있습니다.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    },
+    {
+      "text": "ACVS는 절단 뒤 기능 예후를 일반적으로 매우 좋은 편으로 보며, 대부분 회복기가 지나면 나이에 맞는 높은 활동 수준으로 돌아간다고 합니다.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    },
+    {
+      "text": "뒷다리 절단은 거의 정상적인 이동성으로 돌아오는 경향이 있고, 앞다리 절단은 걸음걸이를 더 많이 조정해야 합니다.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    },
+    {
+      "text": "나이 든 동물은 절단 뒤 움직이는 법을 익히는 데 시간이 더 걸릴 수 있습니다.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    },
+    {
+      "text": "남은 다리의 관절 부담을 줄이도록 평생 체중을 날씬한 쪽으로 유지하라고 권합니다.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "회복기에는 격한 활동을 제한하는 것이 안내되며 기간과 방법은 수의사 지시를 따라야 합니다.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    },
+    {
+      "text": "절단 부위의 통증은 동물에서 흔하지 않다고 하지만, 절단의 원인이 된 병의 검사와 치료 상태는 보호소와 수의사에게 확인하세요.",
+      "sources": [
+        "acvs-amputation"
+      ]
+    },
+    {
+      "text": "이동이 불편한 동물의 생활 환경은 보호자가 맞춰 조정할 수 있다고 하지만, 이 동물의 절단 이유와 현재 통증, 적응 상태는 보호소와 수의사에게 확인해야 합니다.",
+      "sources": [
+        "vca-disabilities"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "절단한 이유와 날짜",
+    "현재 통증이 있는지, 걷고 뛰는 모습",
+    "남은 다리와 관절 검사를 했는지",
+    "체중과 계단 같은 집 환경 준비"
+  ],
+  "sources": {
+    "acvs-amputation": {
+      "org": "American College of Veterinary Surgeons (ACVS)",
+      "title": "Limb Amputation",
+      "url": "https://www.acvs.org/small-animal/limb-amputation/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "bmc-cat-amputation": {
+      "org": "BMC Veterinary Research",
+      "title": "Complications and owner satisfaction associated with limb amputation in cats: 59 cases (2007-2017)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9034555",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "vca-disabilities": {
+      "org": "VCA Animal Hospitals",
+      "title": "Pets with Disabilities",
+      "url": "https://vcahospitals.com/know-your-pet/pets-with-disabilities-overview",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}
