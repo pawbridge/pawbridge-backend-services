@@ -31,6 +31,21 @@ class SettingsTest(unittest.TestCase):
         self.assertNotIn("unrelated-secret", repr(validation_error.errors()))
         self.assertNotIn("feed-secret", str(validation_error))
 
+    def test_input_size_384_is_limited_to_the_validated_sam3_cls_profile(self):
+        from app.settings import VisionSettings
+        base = {"LOST_SEARCH_VISUAL_PROFILE": "sam3-animal-focus", "LOST_SEARCH_POOLING": "token"}
+        with patch.dict(os.environ, base, clear=True):
+            self.assertEqual(VisionSettings.load().input_size, 256)
+        with patch.dict(os.environ, {**base, "LOST_SEARCH_INPUT_SIZE": "384"}, clear=True):
+            self.assertEqual(VisionSettings.load().input_size, 384)
+        # 검증하지 않은 크기와 조합은 시작할 때 막는다(다른 경로의 버전 문자열이 256 그대로 남지 않게).
+        for environment in ({**base, "LOST_SEARCH_INPUT_SIZE": "512"},
+                            {**base, "LOST_SEARCH_INPUT_SIZE": "384", "LOST_SEARCH_POOLING": "avg"},
+                            {"LOST_SEARCH_INPUT_SIZE": "384", "LOST_SEARCH_POOLING": "token"}):
+            with self.subTest(environment=environment), patch.dict(os.environ, environment, clear=True):
+                with self.assertRaisesRegex(RuntimeError, "LOST_SEARCH_INPUT_SIZE"):
+                    VisionSettings.load()
+
     def test_every_setting_names_its_environment_variable(self):
         # load() reads only aliases, so a field without one would silently keep its default.
         for model in _Settings.__subclasses__():

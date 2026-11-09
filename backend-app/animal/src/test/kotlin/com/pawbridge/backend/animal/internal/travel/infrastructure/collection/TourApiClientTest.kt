@@ -12,9 +12,13 @@ import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
+import java.io.IOException
+import java.net.ConnectException
 import java.net.http.HttpClient
+import java.net.http.HttpConnectTimeoutException
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.net.http.HttpTimeoutException
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -369,7 +373,76 @@ class TourApiClientTest {
 
         // then
         assertThat(failure).hasMessage("UNAVAILABLE")
+        assertThat((failure as PetTravelException).reason).isEqualTo(TourApiClient.RESPONSE_WAIT_TIMEOUT)
         verify(exactly = 1) { future.cancel(true) }
+    }
+
+    @Test
+    fun `응답 상태나 본문이 실패일 때__조회하면__키 없는 실패 종류와 호출 이름과 상태를 예외에 담는다`() {
+        // given
+        val cases = listOf(
+            Triple(503, KEY, TourApiClient.HTTP_STATUS),
+            Triple(
+                200,
+                "<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</returnAuthMsg>" +
+                    "<returnReasonCode>22</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>",
+                "XML_ERROR_22",
+            ),
+            Triple(200, "\uFEFF  <html>" + KEY + "</html>", TourApiClient.XML_ERROR),
+            Triple(200, "{\"response\":{\"header\":{\"resultCode\":\"30\",\"resultMsg\":\"" + KEY + "\"}}}", "RESULT_CODE_30"),
+            Triple(200, "{\"response\":{\"header\":{\"resultCode\":\"" + KEY + "\"}}}", TourApiClient.RESULT_CODE),
+            Triple(200, "not-json " + KEY, TourApiClient.INVALID_JSON),
+            Triple(200, "{\"response\":{\"header\":{\"resultCode\":\"0000\"},\"body\":[]}}", TourApiClient.INVALID_BODY),
+        )
+
+        for ((status, body, kind) in cases) {
+            val response = mockk<HttpResponse<ByteArray>>()
+
+            clearMocks(http)
+            every { response.statusCode() } returns status
+            every { response.body() } returns body.toByteArray(StandardCharsets.UTF_8)
+            every { http.sendAsync(any(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns
+                CompletableFuture.completedFuture(response)
+
+            // when
+            val failure = catchThrowable { client.fetch(TourApiClient.Operation.REGIONS, "") }
+
+            // then
+            assertThat(failure).isInstanceOf(PetTravelException::class.java).hasMessage("UNAVAILABLE").hasNoCause()
+            val travel = failure as PetTravelException
+            assertThat(travel.reason).describedAs(body).isEqualTo(kind)
+            assertThat(travel.reason).doesNotContain(KEY)
+            assertThat(travel.operation).isEqualTo("REGIONS")
+            assertThat(travel.status).isEqualTo(status)
+        }
+    }
+
+    @Test
+    fun `전송이 실패할 때__조회하면__원인 클래스로 실패 종류를 나누고 원인은 버린다`() {
+        // given
+        val cases = listOf(
+            HttpConnectTimeoutException("https://apis.data.go.kr/x?serviceKey=" + KEY) to TourApiClient.CONNECT_TIMEOUT,
+            HttpTimeoutException("https://apis.data.go.kr/x?serviceKey=" + KEY) to TourApiClient.REQUEST_TIMEOUT,
+            ConnectException(KEY) to TourApiClient.CONNECT,
+            IOException(KEY) to TourApiClient.IO,
+            IllegalStateException(KEY) to TourApiClient.OTHER,
+        )
+
+        for ((cause, kind) in cases) {
+            clearMocks(http)
+            every { http.sendAsync(any(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns
+                CompletableFuture.failedFuture<HttpResponse<ByteArray>>(cause)
+
+            // when
+            val failure = catchThrowable { client.fetch(TourApiClient.Operation.SYNC, "1") }
+
+            // then
+            assertThat(failure).hasMessage("UNAVAILABLE").hasNoCause()
+            val travel = failure as PetTravelException
+            assertThat(travel.reason).isEqualTo(kind)
+            assertThat(travel.operation).isEqualTo("SYNC")
+            assertThat(travel.status).isNull()
+        }
     }
 
     @Test
