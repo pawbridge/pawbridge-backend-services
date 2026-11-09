@@ -10,6 +10,7 @@ from app.chatbot.health.answer import (
     check_plain_answer,
     health_cards,
     sources_for,
+    strip_citations,
 )
 from app.chatbot.health.knowledge import entries_version, load_entries
 from app.chatbot.health.retriever import HealthMatch, RuleHealthRetriever
@@ -83,7 +84,7 @@ class ChatbotService:
                 detail=str(exc),
             ) from exc
         except ChatbotProviderTruncatedError as exc:
-            # 근거 답변이 잘렸으면 오류 대신 대체 답변과 검수된 해설을 보여 준다.
+            # 근거 답변이 잘렸으면 오류 대신 대체 답변을 보낸다.
             if not evidence:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
             answer = None
@@ -101,6 +102,7 @@ class ChatbotService:
             sources = sources_for(checked.used, evidence) if checked else []
             cards = health_cards(matches, animal.species)
             log_health_answer(matches, checked.used if checked else [], checked.fallback if checked else True)
+            answer = strip_citations(answer)
         elif evidence is not None:
             # 설정은 켜졌지만 근거를 찾지 못한 답도 의학 표현을 검사한다.
             plain = check_plain_answer(answer)

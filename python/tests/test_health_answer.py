@@ -9,6 +9,7 @@ from app.chatbot.health.answer import (
     check_plain_answer,
     health_cards,
     sources_for,
+    strip_citations,
 )
 from app.chatbot.health.knowledge import HealthEntry
 from app.chatbot.health.retriever import HealthMatch
@@ -190,6 +191,22 @@ class PromptTest(unittest.TestCase):
         no_evidence = build_prompt(context, [], "털이 빠져요", [])
         self.assertNotIn("검수된 건강 근거를 찾지 못했습니다", old_prompt)
         self.assertIn("검수된 건강 근거를 찾지 못했습니다", no_evidence)
+
+
+class StripCitationsTest(unittest.TestCase):
+    def test_removes_numbers_and_the_space_before_them(self):
+        self.assertEqual(strip_citations("운동을 제한해야 합니다 [2]."), "운동을 제한해야 합니다.")
+        self.assertEqual(strip_citations("모기가 옮깁니다[1]. 검사가 필요합니다 [1, 3]."), "모기가 옮깁니다. 검사가 필요합니다.")
+        self.assertEqual(strip_citations("[1] 모기가 옮깁니다 [2][3]"), "모기가 옮깁니다")
+
+    def test_keeps_line_breaks_and_plain_brackets(self):
+        self.assertEqual(strip_citations("첫 줄입니다 [1].\n둘째 줄입니다 [2]."), "첫 줄입니다.\n둘째 줄입니다.")
+        self.assertEqual(strip_citations("보호소 [문의] 번호를 확인하세요."), "보호소 [문의] 번호를 확인하세요.")
+
+    def test_fallback_texts_do_not_point_to_missing_screen_parts(self):
+        for text in (FALLBACK_ANSWER, NO_EVIDENCE_FALLBACK):
+            self.assertNotIn("검수된", text)
+            self.assertNotIn("아래", text)
 
 
 if __name__ == "__main__":
