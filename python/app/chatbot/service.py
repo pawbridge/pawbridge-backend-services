@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 
 from fastapi import HTTPException, status
@@ -10,8 +11,8 @@ from app.chatbot.health.answer import (
     health_cards,
     sources_for,
 )
-from app.chatbot.health.knowledge import load_entries
-from app.chatbot.health.retriever import RuleHealthRetriever
+from app.chatbot.health.knowledge import entries_version, load_entries
+from app.chatbot.health.retriever import HealthMatch, RuleHealthRetriever
 from app.chatbot.prompt_builder import build_prompt
 from app.chatbot.provider import (
     ChatbotProviderConfigurationError,
@@ -26,6 +27,9 @@ SAFETY_NOTICE = (
     "동물병원 또는 수의사에게 확인해 주세요."
 )
 
+# uvicorn 로그와 같은 출력으로 나가야 운영 로그(Loki)에 모인다(gemini_provider와 같은 로거).
+logger = logging.getLogger("uvicorn.error")
+
 
 @lru_cache(maxsize=1)
 def health_retriever() -> RuleHealthRetriever:
@@ -34,6 +38,22 @@ def health_retriever() -> RuleHealthRetriever:
     if not entries:
         raise RuntimeError("HEALTH_RAG_ENABLED인데 승인된 건강 해설이 하나도 없습니다")
     return RuleHealthRetriever(entries)
+
+
+@lru_cache(maxsize=1)
+def health_knowledge_version() -> str:
+    return entries_version()
+
+
+def log_health_answer(matches: list[HealthMatch], used: list[int], fallback: bool) -> None:
+    """어떤 해설을 찾았고 그중 몇 번 근거를 썼는지 남긴다. 질문과 답 내용은 대화 기록에 있으므로 넣지 않는다."""
+    logger.info(
+        "Health RAG answer: entries=%s used=%s fallback=%s knowledge=%s",
+        ",".join(f"{match.entry.id}:{match.basis}" for match in matches) or "-",
+        ",".join(str(number) for number in used) or "-",
+        str(fallback).lower(),
+        health_knowledge_version(),
+    )
 
 
 def load_health_retriever_if_enabled() -> None:
@@ -80,9 +100,12 @@ class ChatbotService:
             answer = checked.answer if checked else FALLBACK_ANSWER
             sources = sources_for(checked.used, evidence) if checked else []
             cards = health_cards(matches, animal.species)
+            log_health_answer(matches, checked.used if checked else [], checked.fallback if checked else True)
         elif evidence is not None:
             # 설정은 켜졌지만 근거를 찾지 못한 답도 의학 표현을 검사한다.
-            answer = check_plain_answer(answer).answer
+            plain = check_plain_answer(answer)
+            answer = plain.answer
+            log_health_answer([], [], plain.fallback)
 
         return {
             "answer": answer,

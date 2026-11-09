@@ -4,6 +4,7 @@
 형식이 틀리거나 금지 표현이 있으면 바로 실패시켜 잘못된 해설이 운영에 나가지 않게 한다.
 """
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -107,3 +108,17 @@ def load_entries(entries_dir: Path = DEFAULT_ENTRIES_DIR, include_drafts: bool =
         if entry.review.status == "approved" or include_drafts:
             entries.append(entry)
     return entries
+
+
+def entries_version(entries_dir: Path = DEFAULT_ENTRIES_DIR) -> str:
+    """해설 파일 묶음의 버전(파일 이름과 내용의 해시 앞 12자리). 해설이 하나라도 바뀌면 달라진다.
+
+    답변 기록에 남겨, 해설을 고친 뒤 어느 답이 고치기 전 해설로 나갔는지 가를 수 있게 한다.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(entries_dir.glob("*.json")):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
