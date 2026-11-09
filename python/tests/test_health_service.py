@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app.chatbot import service
 from app.chatbot.health.answer import FALLBACK_ANSWER, NO_EVIDENCE_FALLBACK
-from app.chatbot.health.knowledge import HealthEntry, load_entries
+from app.chatbot.health.knowledge import HealthEntry, entries_version, load_entries
 from app.chatbot.health.retriever import RuleHealthRetriever
 from app.chatbot.provider import ChatbotProviderTruncatedError
 from app.entrypoints.chatbot_api import app
@@ -147,6 +147,28 @@ class HealthRagServiceTest(unittest.TestCase):
         response, _ = self.post({"HEALTH_RAG_ENABLED": "true"}, "아파트에서 키워도 괜찮습니다. 산책은 하루 두 번이 좋아요.")
         self.assertEqual(response.json()["answer"], "아파트에서 키워도 괜찮습니다. 산책은 하루 두 번이 좋아요.")
 
+    def test_enabled_logs_entries_used_numbers_and_version_but_not_question(self):
+        answer = json.dumps({"answer": "치료 중에는 운동을 제한해야 합니다 [2].", "used": [2]}, ensure_ascii=False)
+        with self.assertLogs("uvicorn.error", level="INFO") as logs:
+            self.post({"HEALTH_RAG_ENABLED": "true"}, answer)
+        line = next(message for message in logs.output if "Health RAG answer" in message)
+        self.assertIn("entries=heartworm-positive:notice used=2 fallback=false knowledge=", line)
+        self.assertIn(service.health_knowledge_version(), line)
+        self.assertNotIn("산책", line)
+
+    def test_enabled_fallback_and_no_match_are_logged(self):
+        with self.assertLogs("uvicorn.error", level="INFO") as logs:
+            self.post({"HEALTH_RAG_ENABLED": "true"}, '{"answer": "운동을 줄이세요 [9].", "used": [9]}')
+        self.assertTrue(any("entries=heartworm-positive:notice used=- fallback=true" in message for message in logs.output))
+        self.payload["animalContext"]["specialMark"] = "순함"
+        with self.assertLogs("uvicorn.error", level="INFO") as logs:
+            self.post({"HEALTH_RAG_ENABLED": "true"}, "보호소에 확인해 보세요.")
+        self.assertTrue(any("entries=- used=- fallback=false" in message for message in logs.output))
+
+    def test_disabled_does_not_log_health_answer(self):
+        with self.assertNoLogs("uvicorn.error", level="INFO"):
+            self.post({"HEALTH_RAG_ENABLED": "false"}, "보호소에 확인해 보세요.")
+
     def test_enabled_without_match_adds_no_evidence_rules(self):
         self.payload["animalContext"]["specialMark"] = "순함"
         response, mock = self.post({"HEALTH_RAG_ENABLED": "true"}, "보호소에 확인해 보세요.")
@@ -154,6 +176,19 @@ class HealthRagServiceTest(unittest.TestCase):
         self.assertEqual(body["healthCards"], [])
         self.assertIn("검수된 건강 근거를 찾지 못했습니다", mock.await_args.args[0])
         self.assertFalse(mock.await_args.kwargs["json_output"])
+
+
+class EntriesVersionTest(unittest.TestCase):
+    def test_version_changes_when_any_entry_file_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, "a.json").write_text('{"id": "a"}', encoding="utf-8")
+            first = entries_version(Path(folder))
+            self.assertEqual(first, entries_version(Path(folder)))
+            Path(folder, "a.json").write_text('{"id": "a", "x": 1}', encoding="utf-8")
+            self.assertNotEqual(first, entries_version(Path(folder)))
+
+    def test_shipped_entries_have_a_version(self):
+        self.assertRegex(entries_version(), r"^[0-9a-f]{12}$")
 
 
 if __name__ == "__main__":
