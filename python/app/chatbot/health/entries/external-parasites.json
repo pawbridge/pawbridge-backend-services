@@ -1,0 +1,215 @@
+{
+  "id": "external-parasites",
+  "title": "외부기생충(진드기, 옴, 모낭충)",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "진드기",
+      "개선충",
+      "모낭충",
+      "외부기생충",
+      "demodex",
+      "scabies",
+      "(옴)",
+      "옴진드기",
+      "옴 진드기",
+      "옴 감염",
+      "옴감염",
+      "옴 치료",
+      "옴치료",
+      "옴 의심"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "옴은 전염성이 매우 높아 다른 동물과 사람에게도 쉽게 옮을 수 있습니다.",
+      "sources": [
+        "merck-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "함께 지낸 동물이 있으면 접촉한 동물도 함께 치료 대상에 포함된다고 합니다.",
+      "sources": [
+        "merck-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "옴은 피부를 긁어 하는 검사가 음성이어도 감염을 배제하기 어려울 때가 있습니다.",
+      "sources": [
+        "msd-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "모낭충은 모든 개의 털구멍과 피지샘에 소수가 살고 있습니다.",
+      "sources": [
+        "merck-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "모낭충증은 전염성 질환으로 보지 않습니다.",
+      "sources": [
+        "msd-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "진드기는 평생 연중 예방이 권고됩니다.",
+      "sources": [
+        "capc-ticks"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이는 개옴, 고양이옴, 귀진드기 같은 여러 종류의 옴에 걸릴 수 있습니다.",
+      "sources": [
+        "merck-cat-mange"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이옴은 흔하지는 않지만 전염성이 매우 높은 피부병이며, 건강한 고양이에게도 생깁니다.",
+      "sources": [
+        "merck-cat-mange"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "모낭충증은 옴으로 분류하지 않지만, 역시 진드기가 원인입니다.",
+      "sources": [
+        "merck-cat-mange"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 진드기는 병과 피부 손상을 줄이기 위해 가능한 한 빨리 제거해야 한다고 합니다.",
+      "sources": [
+        "merck-cat-ticks"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "고양이의 가려움과 털 빠짐은 벼룩 외에 진드기나 이 같은 다른 피부 기생충 때문일 수도 있습니다.",
+      "sources": [
+        "icc-itchy"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "진드기를 직접 제거할 때는 피부에서 짓누르거나 비틀거나 잡아채지 않도록 주의해야 합니다. 직접 제거가 어렵다면 수의사에게 맡기세요.",
+      "sources": [
+        "capc-ticks"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "옴은 사람에게도 옮을 수 있으므로, 가려움이나 피부 증상이 있는 동물을 만진 뒤에는 손을 씻고 증상이 생기면 병원에 문의하세요. 이 동물의 실제 감염 여부는 수의사 검사로 확인해야 합니다.",
+      "sources": [
+        "merck-mange"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이옴은 전염성이 매우 높으므로, 여러 마리가 함께 지냈다면 같이 지낸 고양이의 상태도 확인하세요. 이 동물의 실제 감염 여부는 수의사 검사로 확인해야 합니다.",
+      "sources": [
+        "merck-cat-mange"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "어떤 외부기생충인지 검사로 확인했는지",
+    "구충이나 치료를 받았고 마지막 날짜가 언제인지",
+    "같은 공간의 다른 동물도 처치했는지"
+  ],
+  "sources": {
+    "merck-mange": {
+      "org": "Merck Veterinary Manual",
+      "title": "Mite Infestation (Mange, Acariasis, Scabies) in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/skin-disorders-of-dogs/mite-infestation-mange-acariasis-scabies-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "msd-mange": {
+      "org": "MSD Veterinary Manual",
+      "title": "Mange in Dogs and Cats (전문가판)",
+      "url": "https://www.msdvetmanual.com/integumentary-system/mange/mange-in-dogs-and-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "capc-ticks": {
+      "org": "Companion Animal Parasite Council (CAPC)",
+      "title": "Ticks (Dog)",
+      "url": "https://capcvet.org/guidelines/ticks/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cat-mange": {
+      "org": "Merck Veterinary Manual",
+      "title": "Mite Infestation (Mange, Acariasis, Scabies) of Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/skin-disorders-of-cats/mite-infestation-mange-acariasis-scabies-of-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cat-ticks": {
+      "org": "Merck Veterinary Manual",
+      "title": "Ticks of Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/skin-disorders-of-cats/ticks-of-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-itchy": {
+      "org": "International Cat Care",
+      "title": "Itchy cat, when it is not fleas",
+      "url": "https://icatcare.org/articles/itchy-cat-when-it-is-not-fleas",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

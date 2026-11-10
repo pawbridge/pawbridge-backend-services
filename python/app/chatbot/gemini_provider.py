@@ -5,6 +5,8 @@ import httpx
 from app.chatbot.provider import (
     ChatbotProvider,
     ChatbotProviderConfigurationError,
+    ChatbotProviderTimeoutError,
+    ChatbotProviderTruncatedError,
     ChatbotProviderUpstreamError,
 )
 from app.settings import ChatbotSettings
@@ -21,11 +23,7 @@ class GeminiChatbotProvider(ChatbotProvider):
         self.model = settings.gemini_model.strip() or ChatbotSettings.model_fields["gemini_model"].default
         self.timeout_seconds = settings.gemini_timeout_seconds
 
-    async def generate_answer(self, prompt: str) -> str:
-        if not self.api_key:
-            raise ChatbotProviderConfigurationError("GEMINI_API_KEY is not configured")
-
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+    async def generate_answer(self, prompt: str, json_output: bool = False, timeout: float | None = None) -> str:
         payload = {
             "contents": [
                 {
@@ -38,9 +36,23 @@ class GeminiChatbotProvider(ChatbotProvider):
                 "maxOutputTokens": 1024,
             },
         }
+        if json_output:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
 
+        response_body = await self._post(payload, timeout)
+        answer = self._extract_answer(response_body)
+        if not answer:
+            raise ChatbotProviderUpstreamError("Gemini response did not include answer text")
+        return answer
+
+    async def _post(self, payload: dict, timeout: float | None) -> dict:
+        if not self.api_key:
+            raise ChatbotProviderConfigurationError("GEMINI_API_KEY is not configured")
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        timeout_seconds = self.timeout_seconds if timeout is None else max(0.1, min(self.timeout_seconds, timeout))
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 response = await client.post(
                     url,
                     headers={
@@ -51,7 +63,7 @@ class GeminiChatbotProvider(ChatbotProvider):
                 )
                 response.raise_for_status()
         except httpx.TimeoutException as exc:
-            raise ChatbotProviderUpstreamError("Gemini request timed out") from exc
+            raise ChatbotProviderTimeoutError("Gemini request timed out") from exc
         except httpx.HTTPStatusError as exc:
             raise ChatbotProviderUpstreamError(
                 f"Gemini request failed with status {exc.response.status_code}"
@@ -66,11 +78,7 @@ class GeminiChatbotProvider(ChatbotProvider):
 
         self._log_response_metadata(response_body)
         self._raise_if_response_truncated(response_body)
-
-        answer = self._extract_answer(response_body)
-        if not answer:
-            raise ChatbotProviderUpstreamError("Gemini response did not include answer text")
-        return answer
+        return response_body
 
     @staticmethod
     def _raise_if_response_truncated(response_body: dict) -> None:
@@ -80,7 +88,7 @@ class GeminiChatbotProvider(ChatbotProvider):
 
         finish_reason = candidates[0].get("finishReason")
         if finish_reason == "MAX_TOKENS":
-            raise ChatbotProviderUpstreamError("Gemini response was truncated by token limit")
+            raise ChatbotProviderTruncatedError("Gemini response was truncated by token limit")
 
     @staticmethod
     def _log_response_metadata(response_body: dict) -> None:

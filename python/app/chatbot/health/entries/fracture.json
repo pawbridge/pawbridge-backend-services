@@ -1,0 +1,68 @@
+{
+  "id": "fracture",
+  "title": "골절",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "골절",
+      "뼈 부러짐",
+      "뼈가 부러",
+      "fracture",
+      "핀 삽입",
+      "철심"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "골절은 교통사고, 싸움, 낙상 등으로 흔히 생깁니다.",
+      "sources": [
+        "merck-bone-dog"
+      ]
+    },
+    {
+      "text": "불완전 골절은 어리고 건강한 개에서 부목이나 깁스로 치료할 수 있습니다.",
+      "sources": [
+        "merck-bone-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "수술 뒤의 물리치료와 재활이 치유 과정에서 매우 중요합니다.",
+      "sources": [
+        "merck-bone-dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "수술 뒤의 물리치료나 재활이 회복에 매우 중요하다고 합니다. 회복 기간과 활동 제한은 수의사 지시를 따르고, 이 동물의 실제 골절 상태는 엑스레이 등 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-bone-dog"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "골절 부위와 수술 여부, 날짜",
+    "현재 통증과 걷는 상태",
+    "활동 제한 지시와 다음 검진 일정"
+  ],
+  "sources": {
+    "merck-bone-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Bone Disorders in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/bone-joint-and-muscle-disorders-of-dogs/bone-disorders-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

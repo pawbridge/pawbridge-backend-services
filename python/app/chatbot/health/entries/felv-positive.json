@@ -1,0 +1,101 @@
+{
+  "id": "felv-positive",
+  "title": "고양이 백혈병 바이러스(FeLV) 양성",
+  "species": [
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "FeLV",
+      "고양이 백혈병",
+      "고양이백혈병",
+      "백혈병",
+      "백혈병 바이러스",
+      "백혈병바이러스"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "FeLV는 주로 침과 가까운 접촉으로 퍼집니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "면역이 바이러스를 억누르지 못하면 바이러스가 계속 나오는 진행성 감염이 됩니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "진행성 감염 고양이는 수명이 짧아지지만, 몇 년 동안 증상 없이 지낼 수도 있습니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "면역이 바이러스를 부분적으로 억누른 회복성 감염 고양이는 대체로 예후가 좋고, 다시 활성화되지 않으면 다른 고양이에게 옮기지 않습니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "새끼 고양이는 진행성 감염이 되기 가장 쉽습니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "진행성 감염인지는 항원검사 양성이 계속되는지를 반복 검사로 확인해 회복성 감염과 구분합니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "실내에서 한 마리만 키우며 적절한 진료를 받는 고양이는 생존율이 더 높습니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "젖은 환경에서는 바이러스가 최대 48시간까지 감염력을 유지해, 침이 묻은 밥그릇을 같이 쓰면 다른 고양이가 감염될 수 있습니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "엄격한 실내 생활은 수명을 늘리고 감염이 퍼지는 것을 막는다고 ABCD 지침은 설명합니다. 이미 고양이를 키운다면 기존 고양이의 검사, 접종, 합사 여부를 수의사와 먼저 상의하세요.",
+      "sources": [
+        "abcd-felv"
+      ]
+    },
+    {
+      "text": "FeLV 상태는 예후와 장기 관리에 영향을 주므로, 이 고양이가 어떤 감염인지와 관리 계획은 수의사의 반복 검사와 진료로 확인해야 합니다.",
+      "sources": [
+        "abcd-felv"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "FeLV 검사를 언제, 몇 번 했는지(반복 검사로 확인했는지)",
+    "검사 당시 나이와 현재 증상",
+    "보호소에서 다른 고양이와 밥그릇이나 공간을 같이 썼는지",
+    "FIV 같은 다른 검사 결과"
+  ],
+  "sources": {
+    "abcd-felv": {
+      "org": "ABCD (European Advisory Board on Cat Diseases)",
+      "title": "GUIDELINE for Feline Leukaemia Virus Infection",
+      "url": "https://www.abcdcatsvets.org/guideline-for-feline-leukaemia/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

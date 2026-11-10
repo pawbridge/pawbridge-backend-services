@@ -31,6 +31,47 @@ class FeignPythonChatbotClientTest {
     )
 
     @Test
+    fun `건강 해설 출처와 카드가 있는 응답일 때__호출하면__두 목록을 해석한다`() {
+        // given
+        val transport = Client { request, _ ->
+            response(
+                request,
+                200,
+                "{\"answer\":\"답변 [1]\",\"safetyNotice\":\"주의\",\"provider\":\"gemini\"," +
+                    "\"sources\":[{\"org\":\"기관\",\"title\":\"문서\",\"url\":\"https://example.org/a\"," +
+                    "\"checkedAt\":\"2026-11-06\",\"language\":\"ko\"}]," +
+                    "\"healthCards\":[{\"id\":\"heartworm-positive\",\"title\":\"심장사상충 양성\"," +
+                    "\"summary\":[\"요약\"],\"cautions\":[\"주의\"],\"askShelter\":[\"치료 단계\"]}]}",
+            )
+        }
+        val client = FeignPythonChatbotClient("http://python.example.invalid", json, transport, Request.Options())
+
+        // when
+        val result = client.createChatbotMessage("synthetic-key", input)!!
+
+        // then
+        assertEquals("https://example.org/a", result.sources!!.single().url)
+        assertEquals("heartworm-positive", result.healthCards!!.single().id)
+        assertEquals(listOf("치료 단계"), result.healthCards!!.single().askShelter)
+    }
+
+    @Test
+    fun `건강 해설 칸이 없는 이전 응답일 때__호출하면__두 목록은 비어 있다`() {
+        // given
+        val transport = Client { request, _ ->
+            response(request, 200, "{\"answer\":\"답변\",\"safetyNotice\":\"주의\",\"provider\":\"stub\"}")
+        }
+        val client = FeignPythonChatbotClient("http://python.example.invalid", json, transport, Request.Options())
+
+        // when
+        val result = client.createChatbotMessage("synthetic-key", input)!!
+
+        // then
+        assertEquals(null, result.sources)
+        assertEquals(null, result.healthCards)
+    }
+
+    @Test
     fun `명시한 전송 옵션과 키와 원래 DTO가 있을 때__호출하면__정확한 경로와 헤더와 본문을 보내고 응답 필드 세 개를 해석한다`() {
         // given
         val captured = AtomicReference<Request>()

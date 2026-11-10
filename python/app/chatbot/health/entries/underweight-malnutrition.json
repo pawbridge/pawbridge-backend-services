@@ -1,0 +1,198 @@
+{
+  "id": "underweight-malnutrition",
+  "title": "영양불량, 마름",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "영양불량",
+      "마름",
+      "저체중",
+      "말랐음",
+      "야윔",
+      "수척",
+      "BCS",
+      "저체중견",
+      "영양상태 불량",
+      "영양상태불량",
+      "영양상태 부족",
+      "영양상태부족",
+      "영양 불량",
+      "영양부족",
+      "영양 부족",
+      "영양실조",
+      "매우 마름",
+      "심하게마름",
+      "심하게 마름",
+      "많이 마름",
+      "많이 말라",
+      "영양상태가 불량",
+      "영양상태가 부족"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "국내 농촌진흥청 자료는 소화기관이 덜 발달한 어린 강아지에게 한 번에 많은 양을 주기보다 하루 먹이를 여러 번으로 나누어 주는 것이 좋다고 설명합니다.",
+      "sources": [
+        "rda-nutrition"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "식욕 부진이 24시간만 이어져도 성묘의 건강에 큰 영향을 줄 수 있다고 합니다.",
+      "sources": [
+        "cornell-anorexia"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "새끼 고양이가 작게 태어나는 원인에는 질병, 선천 결함, 감염, 어미의 영양 부족이 있습니다.",
+      "sources": [
+        "icc-fading-kittens"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "WSAVA 영양 선별 점검표는 체형점수(9점 척도)가 4 미만이거나 5를 넘는 것을 위험 요인으로 둡니다.",
+      "sources": [
+        "wsava-nutrition"
+      ]
+    },
+    {
+      "text": "같은 점검표는 근육이 줄어든 상태(근육 소실)도 영양 위험 요인으로 둡니다.",
+      "sources": [
+        "wsava-nutrition"
+      ]
+    },
+    {
+      "text": "질병이 있는 동물은 단순히 굶은 동물보다 근육 손실이 커서, 체형점수와 별도로 근육 상태를 평가합니다.",
+      "sources": [
+        "wsava-nutrition"
+      ]
+    },
+    {
+      "text": "서울대 동물병원 수의영양학은 영양 상태 평가에서 체중, 체형점수, 근육 상태 등을 확인한다고 안내합니다.",
+      "sources": [
+        "snu-nutrition"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "오래 굶은 동물에게 갑자기 많은 양을 주면 위험할 수 있어, 서서히 다시 시작하는 편이 안전하다고 보호소 의학 자료는 설명합니다. 급여 방법은 수의사의 계획에 따라야 합니다.",
+      "sources": [
+        "aspca-starvation"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "굶어서 마른 동물은 면역이 약해질 수 있어, 아픈 동물이나 새로 들어온 동물과 분리해 두는 것이 이상적이라고 합니다.",
+      "sources": [
+        "aspca-starvation"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "전해질 이상은 재급식 증후군의 징후로 알려져 있습니다. 이 동물의 실제 영양 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "aspca-emaciated"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "오래 굶은 동물은 급식을 소량에서 시작해 단계적으로 늘려야 재급식 증후군을 피할 수 있다고 합니다. 구체적인 방법은 입원 환자 기준 자료이므로, 이 동물에게는 수의사의 계획에 따라야 합니다.",
+      "sources": [
+        "merck-rule20"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "지금 밥을 잘 먹는지, 어떤 식사를 하고 있는지",
+    "입소한 뒤 체중이 늘고 있는지",
+    "마른 원인을 확인했는지(오래 굶었는지, 기생충이나 다른 병이 있는지)"
+  ],
+  "sources": {
+    "rda-nutrition": {
+      "org": "농촌진흥청 국립축산과학원",
+      "title": "반려견, 생애주기별 영양관리로 더 건강하게 키워요",
+      "url": "https://www.rda.go.kr/board/board.do?mode=view&prgId=day_farmprmninfoEntry&dataNo=100000786057",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "aspca-starvation": {
+      "org": "ASPCA Pro",
+      "title": "Starvation and Re-Feeding Animals",
+      "url": "https://www.aspcapro.org/sites/default/files/2024-12/starvation-and-re-feeding-animals.pdf",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "aspca-emaciated": {
+      "org": "ASPCA Pro",
+      "title": "Feeding Protocol & Nutrition Best Practices for Emaciated Dogs",
+      "url": "https://www.aspcapro.org/resource/feeding-protocol-nutrition-best-practices-emaciated-dogs",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "wsava-nutrition": {
+      "org": "WSAVA Global Nutrition Committee",
+      "title": "WSAVA Nutritional Assessment Guidelines (J Small Anim Pract 2011)",
+      "url": "https://wsava.org/wp-content/uploads/2020/01/WSAVA-Nutrition-Assessment-Guidelines-2011-JSAP.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-rule20": {
+      "org": "Merck Veterinary Manual (전문가판)",
+      "title": "Monitoring the Critically Ill Small Animal Using the Rule of 20",
+      "url": "https://www.merckvetmanual.com/emergency-medicine-and-critical-care/monitoring-the-critically-ill-small-animal/monitoring-the-critically-ill-small-animal-using-the-rule-of-20",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "snu-nutrition": {
+      "org": "서울대학교 수의과대학 동물병원",
+      "title": "수의영양학 진료 안내",
+      "url": "https://vmth.snu.ac.kr/subject/clinicalNutrition.do",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-07"
+    },
+    "cornell-anorexia": {
+      "org": "Cornell Feline Health Center",
+      "title": "Anorexia",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/anorexia",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "icc-fading-kittens": {
+      "org": "International Cat Care",
+      "title": "Fading Kittens",
+      "url": "https://icatcare.org/articles/kitten-deaths-fading-kittens",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

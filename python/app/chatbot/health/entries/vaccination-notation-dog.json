@@ -1,0 +1,109 @@
+{
+  "id": "vaccination-notation-dog",
+  "title": "개 접종 표기(종합백신, DHPPL, 코로나장염, 켄넬코프)",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "종합백신",
+      "DHPPL",
+      "DHPP",
+      "코로나장염",
+      "코로나 장염",
+      "켄넬코프",
+      "접종",
+      "예방접종",
+      "접종완료"
+    ],
+    "context": "vaccination"
+  },
+  "summary": [
+    {
+      "text": "WSAVA 지침은 전 세계 모든 개의 핵심 백신을 홍역(디스템퍼), 아데노바이러스 1형, 파보바이러스 2형을 막는 백신으로 봅니다.",
+      "sources": [
+        "wsava-2024"
+      ]
+    },
+    {
+      "text": "렙토스피라증이 유행하는 지역에서는 모든 개의 렙토스피라 백신 접종이 강하게 권고됩니다.",
+      "sources": [
+        "wsava-2024"
+      ]
+    },
+    {
+      "text": "코로나장염 백신은 WSAVA 2016년 지침에서 개를 보호한다는 근거가 충분하지 않아 권장하지 않는 백신으로 분류됩니다. 공고에 이 표기가 있어도 핵심 백신(홍역, 아데노바이러스, 파보) 접종 여부는 따로 확인하는 것이 좋습니다.",
+      "sources": [
+        "wsava-2016"
+      ]
+    },
+    {
+      "text": "켄넬코프(개 호흡기 질환 복합체)는 여러 원인이 겹치는 병이라 WSAVA 2016년 지침은 백신으로 완전히 막을 수는 없고 증상을 가볍게 하는 데 도움이 된다고 봅니다.",
+      "sources": [
+        "wsava-2016"
+      ]
+    },
+    {
+      "text": "WSAVA 2024년 지침은 호흡기 백신을 일반 가정의 개에게는 비핵심으로, 보호소에 있는 개에게는 핵심으로 봅니다. 보호소 공고에 호흡기 백신 접종 표기가 있는 것은 이 권고에 맞는 일입니다.",
+      "sources": [
+        "wsava-2024"
+      ]
+    },
+    {
+      "text": "강아지는 6~8주령부터 2~4주 간격으로 여러 번, 마지막은 16주령 이후에 접종합니다.",
+      "sources": [
+        "wsava-2016"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "필요한 백신은 사는 지역과 개의 생활 방식에 따라 수의사가 정합니다. 공고의 접종 표기는 항목과 날짜를 접종 기록으로 확인하세요. 공고에 '코로나'처럼 병 이름만 적혀 있으면 접종 항목을 적은 것인지 감염 이력을 적은 것인지 공고만으로는 알 수 없으니 보호소에 확인하세요.",
+      "sources": [
+        "merck-routine-dog"
+      ]
+    },
+    {
+      "text": "접종 표기는 면역이 완성되었다는 보증이 아닙니다. 어린 강아지는 여러 번 접종해야 하므로 횟수와 마지막 날짜를 확인해야 합니다.",
+      "sources": [
+        "wsava-2016"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "접종 기록(종합백신 몇 차까지, 날짜)",
+    "'코로나'처럼 병 이름만 적힌 표기가 접종 항목인지, 감염이나 검사 결과인지",
+    "코로나장염이나 켄넬코프 접종이 실제로 이루어졌는지",
+    "광견병 접종 날짜",
+    "나이를 모르는 경우 접종 시작 시점을 어떻게 정했는지"
+  ],
+  "sources": {
+    "wsava-2024": {
+      "org": "WSAVA Vaccination Guidelines Group",
+      "title": "2024 Guidelines for the Vaccination of Dogs and Cats (Executive Summary)",
+      "url": "https://wsava.org/wp-content/uploads/2024/05/2024-Guidelines-for-the-Vaccination-of-Dogs-and-Cats.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "wsava-2016": {
+      "org": "WSAVA Vaccination Guidelines Group",
+      "title": "Guidelines for the Vaccination of Dogs and Cats (2015 판, 2016 게재)",
+      "url": "https://wsava.org/wp-content/uploads/2020/01/WSAVA-Vaccination-Guidelines-2015.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-routine-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Routine Health Care of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/routine-care-of-dogs/routine-health-care-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

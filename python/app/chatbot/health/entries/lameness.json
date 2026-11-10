@@ -1,0 +1,89 @@
+{
+  "id": "lameness",
+  "title": "파행, 절뚝임",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "파행",
+      "절뚝",
+      "절뚝임",
+      "다리를 절",
+      "다리 절음",
+      "걸음 이상",
+      "lameness",
+      "limping"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "개의 파행은 병 이름이 아니라 병의 징후입니다.",
+      "sources": [
+        "merck-lame-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이의 파행도 병이 아니며 근골격계 이상을 시사할 수 있습니다.",
+      "sources": [
+        "merck-lame-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "수의사는 걸음과 몸 전체를 진찰해 파행이 있는 정확한 위치를 찾습니다.",
+      "sources": [
+        "merck-lame-cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "절뚝거림의 원인은 다양해서 겉모습만으로 알 수 없습니다. 이 동물의 원인은 수의사 진찰과 영상 검사로 확인해야 합니다.",
+      "sources": [
+        "merck-lame-cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "절뚝거림이 언제부터이고 어느 다리인지",
+    "엑스레이 등 검사를 했는지",
+    "치료나 활동 제한 지시가 있는지"
+  ],
+  "sources": {
+    "merck-lame-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Lameness in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/bone-joint-and-muscle-disorders-of-dogs/lameness-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-lame-cat": {
+      "org": "Merck Veterinary Manual",
+      "title": "Lameness in Cats (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/bone-joint-and-muscle-disorders-of-cats/lameness-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-cat-uri": {
+      "org": "Merck Veterinary Manual",
+      "title": "Feline Respiratory Disease Complex (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/lung-and-airway-disorders-of-cats/feline-respiratory-disease-complex-feline-viral-rhinotracheitis-feline-calicivirus",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

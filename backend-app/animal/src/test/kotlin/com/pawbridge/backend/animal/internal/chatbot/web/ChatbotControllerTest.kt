@@ -53,7 +53,7 @@ class ChatbotControllerTest {
     }
 
     @Test
-    fun `익명 요청에 유효한 본문과 UUID가 아닌 세션 문자열이 있을 때__전송하면__원래 요청을 넘기고 필드 네 개의 응답을 그대로 돌려준다`() {
+    fun `익명 요청에 유효한 본문과 UUID가 아닌 세션 문자열이 있을 때__전송하면__원래 요청을 넘기고 필드 여섯 개의 응답을 그대로 돌려준다`() {
         // given
         val input = ChatbotMessageRequest("not-a-uuid", "입양 문의")
         val result = ChatbotMessageResponse("owned-session", "답변", "주의", "fixture")
@@ -72,7 +72,10 @@ class ChatbotControllerTest {
 
         // then
         assertEquals(json.readTree(json.writeValueAsBytes(result)), body)
-        assertEquals(4, body.size())
+        // 기존 네 칸 + 건강 해설 RAG의 sources, healthCards(없으면 빈 목록)
+        assertEquals(6, body.size())
+        assertEquals(0, body.get("sources").size())
+        assertEquals(0, body.get("healthCards").size())
         assertFalse(body.has("data"))
         assertFalse(body.has("code"))
         verify(exactly = 1) { service.createMessage(41L, input, any(), any()) }
@@ -154,7 +157,10 @@ class ChatbotControllerTest {
 
         // then
         assertEquals(json.readTree(json.writeValueAsBytes(result)), body)
-        assertEquals(4, body.size())
+        // 기존 네 칸 + 건강 해설 RAG의 sources, healthCards(없으면 빈 목록)
+        assertEquals(6, body.size())
+        assertEquals(0, body.get("sources").size())
+        assertEquals(0, body.get("healthCards").size())
         verify(exactly = 1) { service.createMessage(41L, any(), any(), any()) }
     }
 

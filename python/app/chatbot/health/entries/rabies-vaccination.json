@@ -1,0 +1,149 @@
+{
+  "id": "rabies-vaccination",
+  "title": "광견병 접종 표기와 국내 제도",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "광견병",
+      "광견",
+      "광견병 접종",
+      "광견병 예방접종",
+      "공수병",
+      "rabies"
+    ],
+    "context": "vaccination"
+  },
+  "summary": [
+    {
+      "text": "개는 가축전염병 예방법에서 가축에 해당합니다.",
+      "sources": [
+        "law-gachuk"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이는 가축전염병 예방법 시행령에서 가축의 범위에 포함됩니다.",
+      "sources": [
+        "law-gachuk"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "광견병은 가축전염병 예방법이 정한 제2종 가축전염병입니다.",
+      "sources": [
+        "law-gachuk"
+      ]
+    },
+    {
+      "text": "가축전염병이 퍼지는 것을 막기 위해 필요하면 농림축산식품부장관, 시도지사, 시장 군수 구청장이 가축 소유자에게 정해진 조치를 받으라고 명할 수 있습니다.",
+      "sources": [
+        "law-gachuk"
+      ]
+    },
+    {
+      "text": "그 조치에는 검사, 주사, 약물목욕, 면역요법, 투약이 들어 있습니다.",
+      "sources": [
+        "law-gachuk"
+      ]
+    },
+    {
+      "text": "이 명령을 지키지 않으면 1천만원 이하의 과태료 대상이 될 수 있습니다.",
+      "sources": [
+        "law-gachuk"
+      ]
+    },
+    {
+      "text": "광견병 예방주사를 맞지 않은 개와 고양이가 건물 밖에서 배회하면 시장 군수 구청장이 소유자 부담으로 억류하는 등 필요한 조치를 할 수 있습니다.",
+      "sources": [
+        "law-gachuk"
+      ]
+    },
+    {
+      "text": "강원특별자치도 동물위생시험소는 광견병 예방주사를 3개월령 이상 동물에게 접종한다고 안내합니다.",
+      "sources": [
+        "gwd-rabies"
+      ]
+    },
+    {
+      "text": "같은 안내에서 3개월령 미만에 접종했다면 12개월 뒤 2차 접종을 하고, 그 후 매년 1회 보강접종을 한다고 합니다.",
+      "sources": [
+        "gwd-rabies"
+      ]
+    },
+    {
+      "text": "서울시는 국내 광견병 표준 방역지침에서 매년 1회 반려동물에게 예방접종을 하도록 권고한다고 밝힙니다.",
+      "sources": [
+        "seoul-rabies"
+      ]
+    },
+    {
+      "text": "WSAVA 지침은 광견병이 풍토병인 지역에서는 법적 의무가 없어도 개와 고양이의 광견병 접종을 필수로 봅니다.",
+      "sources": [
+        "wsava-2024"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "공고에 '광견병 접종'이 적혀 있어도 마지막 접종일에 따라 다음 접종 시기가 달라집니다. 접종 증명 기록을 받고, 다음 접종 시기는 지역 지침과 수의사 안내에 따르세요.",
+      "sources": [
+        "gwd-rabies"
+      ]
+    },
+    {
+      "text": "접종 의무와 과태료 같은 법적 사항은 조문이 바뀔 수 있으므로 입양 지역의 지자체나 수의사에게 확인하세요.",
+      "sources": [
+        "law-gachuk"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "광견병 접종을 몇 월 며칠에 했는지, 접종 증명서를 받을 수 있는지",
+    "3개월령 미만이라 추가 접종이 필요한지",
+    "입양 지역에서 접종을 지원하는 사업이 있는지"
+  ],
+  "sources": {
+    "law-gachuk": {
+      "org": "국가법령정보센터",
+      "title": "가축전염병 예방법(시행 2026-10-01)",
+      "url": "https://www.law.go.kr/법령/가축전염병예방법",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "gwd-rabies": {
+      "org": "강원특별자치도 동물위생시험소",
+      "title": "광견병",
+      "url": "https://state.gwd.go.kr/veterinary/veterinary/cow/hydrophobia",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "seoul-rabies": {
+      "org": "서울특별시",
+      "title": "광견병 안심하세요! 서울시, 예방접종 지원 및 미끼예방약 살포",
+      "url": "https://news.seoul.go.kr/env/archives/564925",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "wsava-2024": {
+      "org": "WSAVA Vaccination Guidelines Group",
+      "title": "2024 Guidelines for the Vaccination of Dogs and Cats (Executive Summary)",
+      "url": "https://wsava.org/wp-content/uploads/2024/05/2024-Guidelines-for-the-Vaccination-of-Dogs-and-Cats.pdf",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

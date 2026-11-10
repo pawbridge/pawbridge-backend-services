@@ -1,0 +1,106 @@
+{
+  "id": "panleukopenia",
+  "title": "범백혈구감소증(범백)",
+  "species": [
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "범백",
+      "범백혈구감소증",
+      "고양이 파보",
+      "고양이 장염",
+      "panleukopenia",
+      "FPV"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "고양이 범백혈구감소증은 전염성이 매우 높고 치명적인 바이러스병으로, 모든 고양잇과 동물에 감염됩니다.",
+      "sources": [
+        "cornell-panleuk"
+      ]
+    },
+    {
+      "text": "5개월 미만의 새끼 고양이가 이 감염으로 가장 위험합니다.",
+      "sources": [
+        "merck-panleuk"
+      ]
+    },
+    {
+      "text": "병을 이겨낸 고양이도 회복한 뒤 최대 6주까지 변으로 바이러스를 내보낼 수 있습니다.",
+      "sources": [
+        "merck-panleuk"
+      ]
+    },
+    {
+      "text": "바이러스는 강한 소독제를 쓰지 않으면 환경에서 1년 넘게 남을 수 있습니다.",
+      "sources": [
+        "merck-panleuk"
+      ]
+    },
+    {
+      "text": "예방의 기본은 백신입니다.",
+      "sources": [
+        "cornell-panleuk"
+      ]
+    },
+    {
+      "text": "2013년 서울의 길고양이와 집고양이를 조사한 국내 연구에서 이 바이러스의 전체 유병률은 2%였습니다. 보호소 자료는 아닙니다.",
+      "sources": [
+        "kr-panleuk"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "환경에서 오래 남는 바이러스라 이미 고양이를 키운다면 입양 전 접종 상태와 소독 방법을 수의사와 상의하세요. 새끼 고양이는 특히 빨리 나빠질 수 있어 이상이 있으면 바로 병원에 가세요.",
+      "sources": [
+        "merck-panleuk"
+      ]
+    },
+    {
+      "text": "공고의 범백 표기는 검사 양성, 의심, 치료 중, 회복 뒤 등 뜻이 다를 수 있으므로, 이 고양이의 실제 감염 여부와 현재 상태는 보호소 확인과 검사, 진료로 확인해야 합니다.",
+      "sources": [
+        "cornell-panleuk"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "범백 검사를 했는지, 결과와 시기",
+    "치료를 받았는지, 지금 치료 중인지 회복했는지",
+    "백신 접종 날짜",
+    "같은 공간에서 아픈 고양이가 있었는지",
+    "구토, 설사, 식욕 저하 증상"
+  ],
+  "sources": {
+    "cornell-panleuk": {
+      "org": "Cornell Feline Health Center",
+      "title": "Feline Panleukopenia Virus",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/feline-panleukopenia-virus",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-panleuk": {
+      "org": "Merck Veterinary Manual",
+      "title": "Feline Panleukopenia (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/disorders-affecting-multiple-body-systems-of-cats/feline-panleukopenia",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "kr-panleuk": {
+      "org": "한국임상수의학회지 30(5), 김승곤 외",
+      "title": "한국의 서울에 사는 길 고양이와 집 고양이에서 고양이 범백혈구감소증 바이러스의 유병률",
+      "url": "https://koreascience.kr/article/JAKO201333959964485.pub?lang=ko",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "id": "conjunctivitis",
+  "title": "결막염",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "결막염",
+      "눈 충혈",
+      "눈곱",
+      "눈 충혈됨",
+      "눈 분비물",
+      "눈 붉음",
+      "conjunctivitis"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "고양이 결막염은 흔히 고양이 허피스바이러스 1형 감염의 결과로 생깁니다.",
+      "sources": [
+        "merck-conj-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "그 밖의 원인으로 여러 세균 감염, 이물, 환경 자극물이 있습니다.",
+      "sources": [
+        "merck-conj-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "개에서 양쪽 눈에 결막염이 생기면 바이러스나 세균 감염이 흔한 원인입니다.",
+      "sources": [
+        "merck-conj-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "결막염은 원인이 여러 가지라 수의사가 여러 치료를 함께 처방할 수 있습니다.",
+      "sources": [
+        "merck-conj-cat",
+        "merck-conj-dog"
+      ]
+    },
+    {
+      "text": "고양이의 클라미디아 감염은 고양이끼리 가까이 접촉해야 전파됩니다.",
+      "sources": [
+        "cornell-uri"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "눈곱과 충혈은 여러 원인의 신호라서 겉모습만으로는 수의사도 원인을 알기 어렵고, 원인을 찾으려면 진찰과 검사가 필요합니다. 입양 후 먼저 수의사 진료를 받으세요.",
+      "sources": [
+        "merck-conj-dog"
+      ]
+    },
+    {
+      "text": "고양이 결막염의 흔한 원인인 허피스는 고양이 사이에 매우 널리 퍼져 있어, 이미 고양이를 키운다면 다른 고양이에게 옮을 수 있다는 점도 수의사와 상의하세요.",
+      "sources": [
+        "merck-conj-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "눈 증상이 한쪽인지 양쪽인지",
+    "치료나 검사를 했는지",
+    "재채기, 콧물 같은 호흡기 증상이 같이 있는지"
+  ],
+  "sources": {
+    "merck-conj-cat": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Conjunctiva in Cats (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/eye-disorders-of-cats/disorders-of-the-conjunctiva-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-conj-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Conjunctiva in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/eye-disorders-of-dogs/disorders-of-the-conjunctiva-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-uri": {
+      "org": "Cornell Feline Health Center",
+      "title": "Respiratory Infections",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/respiratory-infections",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

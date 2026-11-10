@@ -1,0 +1,142 @@
+{
+  "id": "diarrhea-vomiting",
+  "title": "설사, 구토",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "설사",
+      "구토",
+      "묽은 변",
+      "물설사",
+      "혈변",
+      "토함",
+      "장염",
+      "diarrhea",
+      "vomiting"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "개의 구토는 소화기 질환 외에 신장이나 간 기능 부전, 췌장염 등 여러 질환 때문에 생길 수 있습니다.",
+      "sources": [
+        "merck-vomit-dog"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이의 구토도 원인이 많고, 심하거나 오래가는 구토의 일부 원인은 생명을 위협합니다.",
+      "sources": [
+        "merck-vomit-cat"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "피, 복통, 무기력, 탈수, 쇠약, 열, 체중 감소가 함께 있는 구토는 더 자세한 검사가 필요합니다.",
+      "sources": [
+        "merck-vomit-dog"
+      ]
+    },
+    {
+      "text": "변의 색, 굳기, 횟수가 달라지는 것도 소화기 문제의 신호입니다.",
+      "sources": [
+        "merck-digestive-intro"
+      ]
+    },
+    {
+      "text": "어린 강아지의 구토와 피가 섞인 설사는 파보바이러스 장염에서 24~48시간 안에 진행할 수 있습니다.",
+      "sources": [
+        "msd-parvo"
+      ],
+      "species": [
+        "dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "강아지가 무기력하거나 먹지 않거나 토하거나 변에 피가 섞이면 집에서 해결하려 하지 말고 바로 진료를 받으라고 안내됩니다.",
+      "sources": [
+        "vca-puppy-diarrhea"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "새끼 고양이는 심한 감염에서 심한 탈수가 빠르게 진행할 수 있어, 구토나 설사가 있으면 바로 수의사에게 알려야 합니다. 이 동물의 원인과 상태는 동물병원 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-panleuk"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "설사나 구토가 언제부터이고 하루 몇 번인지",
+    "피나 점액이 섞였는지",
+    "검사(파보 키트, 기생충 검사)를 했는지",
+    "현재 식욕과 물 마시는 상태"
+  ],
+  "sources": {
+    "merck-vomit-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Vomiting in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/digestive-disorders-of-dogs/vomiting-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-vomit-cat": {
+      "org": "Merck Veterinary Manual",
+      "title": "Vomiting in Cats (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/digestive-disorders-of-cats/vomiting-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-digestive-intro": {
+      "org": "Merck Veterinary Manual",
+      "title": "Introduction to Digestive Disorders of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/digestive-disorders-of-dogs/introduction-to-digestive-disorders-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "msd-parvo": {
+      "org": "MSD Veterinary Manual",
+      "title": "Canine Parvovirus Infection (전문가판)",
+      "url": "https://www.msdvetmanual.com/digestive-system/infectious-diseases-of-the-gastrointestinal-tract-in-small-animals/canine-parvovirus-infection-parvoviral-enteritis-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "vca-puppy-diarrhea": {
+      "org": "VCA Animal Hospitals",
+      "title": "What to do when your puppy has diarrhea",
+      "url": "https://vcahospitals.com/pediatric/puppy/health-wellness/puppy-has-diarrhea",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-panleuk": {
+      "org": "Merck Veterinary Manual",
+      "title": "Feline Panleukopenia (보호자용)",
+      "url": "https://www.merckvetmanual.com/cat-owners/disorders-affecting-multiple-body-systems-of-cats/feline-panleukopenia",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

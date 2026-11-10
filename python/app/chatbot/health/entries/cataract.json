@@ -1,0 +1,78 @@
+{
+  "id": "cataract",
+  "title": "백내장",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "백내장",
+      "수정체 혼탁",
+      "눈 뿌옇",
+      "눈이 하얗게",
+      "cataract"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "개의 백내장은 유전인 경우가 많습니다.",
+      "sources": [
+        "acvo-cataracts"
+      ]
+    },
+    {
+      "text": "당뇨는 개의 백내장과 가장 흔히 연관된 질환입니다.",
+      "sources": [
+        "acvo-cataracts"
+      ]
+    },
+    {
+      "text": "백내장은 가벼운 시력 저하에서 실명까지 영향을 줄 수 있습니다.",
+      "sources": [
+        "merck-lens-dog"
+      ]
+    },
+    {
+      "text": "수술이 동물에서 유일하게 알려진 치료입니다.",
+      "sources": [
+        "acvo-cataracts"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "눈이 뿌옇다고 모두 백내장은 아니며, 나이에 따른 수정체 변화와 구분해야 해 수의사 눈 검사가 필요합니다. 이 동물의 시력 상태는 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-lens-dog"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "백내장 진단 시기와 진행 정도",
+    "당뇨 검사를 했는지",
+    "현재 시력(장애물 피하기)",
+    "수술 여부와 계획"
+  ],
+  "sources": {
+    "acvo-cataracts": {
+      "org": "American College of Veterinary Ophthalmologists (ACVO)",
+      "title": "Cataracts",
+      "url": "https://www.acvo.org/common-conditions-1/2018/3/1/cataracts",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-lens-dog": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders of the Lens in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/eye-disorders-of-dogs/disorders-of-the-lens-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

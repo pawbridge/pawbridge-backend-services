@@ -1,0 +1,124 @@
+{
+  "id": "mammary-tumor",
+  "title": "유선종양",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "유선종양",
+      "유방종양",
+      "유선 종양",
+      "유선암",
+      "유선 혹",
+      "유방암",
+      "mammary"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "유선에 덩어리가 만져진다고 해서 모두 악성인 것은 아니며, 양성과 악성은 조직검사로 구분합니다. 종양이 다른 곳으로 퍼졌는지는 엑스레이 같은 추가 검사로 봅니다.",
+      "sources": [
+        "merck-mammary"
+      ]
+    },
+    {
+      "text": "개 유선종양은 Merck 기준 약 45%가 악성(암)이므로, 덩어리를 발견하면 미루지 말고 검사해야 합니다.",
+      "sources": [
+        "merck-mammary"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "국내 연구를 정리한 리뷰에서는 개 유선종양의 47.5%가 악성으로 진단되었습니다.",
+      "sources": [
+        "kr-mammary-review"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이 유선암의 약 85%는 악성 선암으로 보고됩니다.",
+      "sources": [
+        "cornell-mammary"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "첫 발정 전에 중성화하면 개의 이 병 위험이 크게 줄 수 있다고 Merck는 설명합니다.",
+      "sources": [
+        "merck-mammary"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "그러나 사춘기 전 중성화의 보호 효과는 연구 결과가 엇갈려, 체계적 고찰은 결론이 확정적인 연구가 없었다고 평가합니다.",
+      "sources": [
+        "guirguis-2025"
+      ],
+      "species": [
+        "dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "유선종양의 치료는 수술이며, 회복 전망은 종양의 종류, 크기, 다른 곳으로 퍼졌는지에 따라 다릅니다. 이 동물의 검사 결과와 수술 계획, 수술 뒤 관리가 필요한지는 보호소와 수의사에게 확인해야 합니다.",
+      "sources": [
+        "merck-mammary"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "덩어리의 크기, 개수, 변화 속도",
+    "검사(세침, 조직검사)를 했는지",
+    "중성화 여부와 수술 계획",
+    "다른 장기 전이 검사 여부"
+  ],
+  "sources": {
+    "merck-mammary": {
+      "org": "Merck Veterinary Manual",
+      "title": "Mammary (Breast) Tumors in Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/en-ca/dog-owners/reproductive-disorders-of-dogs/mammary-breast-tumors-in-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "guirguis-2025": {
+      "org": "Animals 15(3):436, Guirguis & Beggs",
+      "title": "Systematic Review: Does Pre-Pubertal Spaying Reduce the Risk of Canine Mammary Tumours?",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11815721/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "kr-mammary-review": {
+      "org": "생명과학회지 34(6), Lee CH 외",
+      "title": "반려견 유선종양 바이오 마커",
+      "url": "https://koreascience.kr/article/JAKO202419443227907.pub",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "cornell-mammary": {
+      "org": "Cornell Feline Health Center",
+      "title": "Mammary Tumors",
+      "url": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/mammary-tumors",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

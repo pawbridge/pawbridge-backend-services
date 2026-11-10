@@ -1,0 +1,74 @@
+{
+  "id": "patellar-luxation",
+  "title": "슬개골 탈구",
+  "species": [
+    "dog"
+  ],
+  "match": {
+    "aliases": [
+      "슬개골",
+      "슬개골 탈구",
+      "파텔라",
+      "무릎뼈",
+      "슬개골탈구",
+      "patella",
+      "patellar luxation"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "슬개골 탈구는 심한 정도와 정복 가능성에 따라 1~4등급으로 나눕니다.",
+      "sources": [
+        "merck-patella"
+      ]
+    },
+    {
+      "text": "중등도에서 중증인 2~4등급은 일반적으로 수술이 권고됩니다.",
+      "sources": [
+        "merck-patella"
+      ]
+    },
+    {
+      "text": "이 병은 주로 작은 개에서 생깁니다.",
+      "sources": [
+        "acvs-patella"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "등급에 따라 관리와 치료가 달라지므로, 이 동물의 등급과 수술 필요 여부는 수의사의 진찰과 영상 검사로 확인해야 합니다. 걸음이 이상하거나 다리를 들고 다니면 병원에 알리세요.",
+      "sources": [
+        "merck-patella"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "슬개골 탈구 등급과 어느 쪽 다리인지",
+    "수술 여부와 날짜",
+    "걸음걸이와 통증 징후",
+    "재활이나 운동 제한 지시"
+  ],
+  "sources": {
+    "merck-patella": {
+      "org": "Merck Veterinary Manual",
+      "title": "Patellar Luxation in Small Animals (전문가판)",
+      "url": "https://www.merckvetmanual.com/en-ca/musculoskeletal-system/arthropathies-and-related-disorders-in-small-animals/patellar-luxation-in-small-animals",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "acvs-patella": {
+      "org": "American College of Veterinary Surgeons (ACVS)",
+      "title": "Patellar Luxations",
+      "url": "https://www.acvs.org/small-animal/patellar-luxations/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

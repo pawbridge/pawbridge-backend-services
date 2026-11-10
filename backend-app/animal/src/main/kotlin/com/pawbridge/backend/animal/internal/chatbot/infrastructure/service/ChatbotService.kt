@@ -2,6 +2,7 @@ package com.pawbridge.backend.animal.internal.chatbot.infrastructure.service
 
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.client.PythonChatbotClient
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.client.dto.PythonChatbotMessageRequest
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.client.dto.PythonChatbotMessageResponse
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.AnimalChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotGuardResult
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageRequest
@@ -88,7 +89,7 @@ class ChatbotService(
                     ChatbotMessage.user(session, guardResult.questionForLlm),
                     ChatbotMessage.assistant(
                         session,
-                        aiResponse!!.answer,
+                        answerToSave(aiResponse!!),
                         aiResponse.provider,
                         aiResponse.safetyNotice,
                     ),
@@ -101,6 +102,8 @@ class ChatbotService(
             aiResponse!!.answer,
             aiResponse.safetyNotice,
             aiResponse.provider,
+            aiResponse.sources.orEmpty(),
+            aiResponse.healthCards.orEmpty(),
         )
     }
 
@@ -187,6 +190,9 @@ class ChatbotService(
         )
     }
 
+    // 건강 해설 근거 번호([1])는 그 응답에서만 뜻이 있다. 저장된 답은 다음 질문의 최근 대화로 다시 쓰이고
+    // 그때는 근거 번호가 새로 매겨지므로, 저장할 때만 지운다(화면으로 가는 답에는 남긴다).
+    // 가드가 넣은 [PHONE], [EMAIL] 같은 표시는 숫자가 아니라 지우지 않는다.
     // Java String.isBlank(): empty or only Character.isWhitespace characters (Kotlin isBlank also accepts NBSP).
     private fun isBlank(value: String): Boolean = value.all { Character.isWhitespace(it) }
 
@@ -199,4 +205,22 @@ class ChatbotService(
         private const val SAFETY_NOTICE =
             "이 답변은 일반적인 참고 정보이며, 정확한 건강 상태나 치료 판단은 동물병원 또는 수의사에게 확인해 주세요."
     }
+}
+
+// 근거 번호는 한두 자리이고 [1, 3]처럼 묶이기도 하며, 앞의 공백 하나만 함께 지운다(줄바꿈은 남긴다).
+private val CITATION = Regex("""[ \t]?\[\d{1,2}(,\s*\d{1,2})*]""")
+
+/**
+ * 대화 기록에 저장할 답. 건강 해설 근거 번호([1])는 그 응답에서만 뜻이 있고, 저장된 답은 다음 질문의
+ * 최근 대화로 다시 쓰여 번호가 엇갈리므로 지운다. 출처가 붙은 답(건강 해설 RAG)만 지우고, 일반 답의
+ * "[1] 건강" 같은 목록과 가드의 [PHONE] 표시는 그대로 둔다. 지워서 빈 글이 되면 원문을 둔다
+ * (다음 질문의 최근 대화 검증이 빈 내용을 거부하므로).
+ */
+internal fun answerToSave(response: PythonChatbotMessageResponse): String? {
+    val answer = response.answer
+    if (answer == null || response.sources.isNullOrEmpty()) {
+        return answer
+    }
+    val stripped = answer.replace(CITATION, "")
+    return if (stripped.all { Character.isWhitespace(it) }) answer else stripped
 }

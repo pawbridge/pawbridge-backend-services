@@ -1,3 +1,5 @@
+from app.chatbot.health.answer import EVIDENCE_USE_RULES, HEALTH_RULES, NO_EVIDENCE_RULES, format_evidence
+
 UNKNOWN_VALUES = {"", "UNKNOWN", "NONE", "NULL", "N/A", "미상", "모름", "알수없음", "알 수 없음"}
 
 SPECIES_LABELS = {
@@ -77,19 +79,108 @@ def _format_animal_summary(animal_data: dict) -> str:
     return " ".join(summary_parts) if summary_parts else "제공된 보호동물 상세 정보가 없습니다."
 
 
-def build_prompt(animal_context, recent_messages, question: str) -> str:
+def _neutralize_brackets(value):
+    if isinstance(value, str):
+        return value.replace("[", "(").replace("]", ")")
+    return value
+
+
+def build_prompt(animal_context, recent_messages, question: str, health_evidence=None) -> str:
+    """챗봇 프롬프트.
+
+    health_evidence가 None이면 건강 해설 RAG를 쓰지 않는 기존 동작이다.
+    목록이 있으면 근거 규칙과 근거를 더하고, 빈 목록(찾았지만 근거 없음)이면 의학 정보를 삼가는 규칙을 더한다.
+    """
     animal_data = animal_context.model_dump()
+    if health_evidence is not None:
+        # 공고(보호소 입력)와 질문에 "[1]"이나 "[검수된 건강 근거]"를 넣어 가짜 근거처럼 보이게 하는 것을 막는다.
+        animal_data = {key: _neutralize_brackets(value) for key, value in animal_data.items()}
+        question = _neutralize_brackets(question)
+
+    sections = _intro_sections(animal_data)
+    if health_evidence:
+        sections.extend(["\n".join(HEALTH_RULES), "[검수된 건강 근거]", format_evidence(health_evidence)])
+    elif health_evidence is not None:
+        sections.append("\n".join(NO_EVIDENCE_RULES))
+    sections.extend(_conversation_sections(recent_messages, question))
+    return "\n\n".join(sections)
+
+
+# 보호소가 자유롭게 쓴 칸(입양 절차, 운영시간)이 길어도 프롬프트가 한없이 늘지 않게 자른다.
+MAX_SHELTER_FIELD_CHARS = 400
+
+SHELTER_LABELS = {
+    "shelterName": "보호소 이름",
+    "shelterPhone": "전화번호",
+    "shelterAddress": "주소",
+    "noticeEndDate": "공고 종료일",
+    "operatingHours": "운영시간",
+    "adoptionProcedure": "보호소가 적은 입양 절차",
+}
+
+AGENT_TOOL_RULES = [
+    "search_health 도구는 출처가 확인된 건강 해설을 병명이나 증상 낱말로 찾습니다.",
+    "질문이 병, 증상, 검사, 접종, 건강 관리에 관한데 아래 [검수된 건강 근거]에 맞는 내용이 없으면, 답하기 전에 이 도구를 부르세요.",
+    "검색어는 질문 속 표현을 병명이나 증상 낱말로 바꿔 짧게 쓰세요. 예: '콜록거려요'는 '기침'.",
+    "근거가 이미 질문에 맞거나 건강과 관계없는 질문이면 도구를 부르지 말고 바로 답하세요.",
+    "질문이 모호해 답이 크게 달라질 때만 한 문장으로 되물으세요.",
+]
+
+AGENT_EVIDENCE_RULES = [
+    "[검수된 건강 근거]와 search_health 결과는 출처가 확인된 일반 정보입니다.",
+    *EVIDENCE_USE_RULES,
+    "도구로도 근거를 찾지 못한 건강 질문에는 병명, 증상의 원인, 치료 방법, 약, 수치, 회복 가능성을 말하지 말고, 공고에 적힌 내용과 보호소에 물어볼 것, 동물병원 진료가 필요하다는 점을 안내하세요.",
+    "건강과 관계없는 질문(입양 절차, 성격, 준비물 등)은 평소처럼 답하세요.",
+]
+
+SHELTER_RULES = [
+    "보호소 이름, 전화번호, 주소, 운영시간, 입양 절차는 [보호소 정보]에 적힌 그대로만 쓰세요.",
+    "[보호소 정보]에 없는 내용은 지어내지 말고 보호소에 문의하라고 안내하세요.",
+]
+
+AGENT_ANSWER_FORMAT = (
+    '최종 답은 다음 JSON 하나로만 하세요: {"answer": "답변", "used": [쓴 근거 번호]}. '
+    "되묻거나 근거를 쓰지 않은 답이면 used는 빈 목록으로 두세요."
+)
+
+
+def build_agent_prompt(animal_context, recent_messages, question: str, health_evidence, shelter_context=None) -> str:
+    """입양 상담 에이전트의 첫 프롬프트. 공고에서 찾은 근거는 처음부터 넣고, 더 필요하면 모델이 도구로 찾는다."""
+    animal_data = {key: _neutralize_brackets(value) for key, value in animal_context.model_dump().items()}
+    question = _neutralize_brackets(question)
+
+    sections = _intro_sections(animal_data)
+    sections.extend(["[보호소 정보]", _format_shelter(shelter_context), "\n".join(SHELTER_RULES)])
+    sections.extend(["[도구 사용]", "\n".join(AGENT_TOOL_RULES), "\n".join(AGENT_EVIDENCE_RULES)])
+    sections.append("[검수된 건강 근거]")
+    sections.append(format_evidence(health_evidence) if health_evidence else "공고와 질문에서 바로 찾은 건강 근거는 없습니다.")
+    sections.extend(_conversation_sections(recent_messages, question))
+    sections.append(AGENT_ANSWER_FORMAT)
+    return "\n\n".join(sections)
+
+
+def _format_shelter(shelter_context) -> str:
+    if shelter_context is None:
+        return "제공된 보호소 정보가 없습니다."
+    lines = []
+    for key, label in SHELTER_LABELS.items():
+        value = _clean_value(getattr(shelter_context, key))
+        if value is None:
+            continue
+        if len(value) > MAX_SHELTER_FIELD_CHARS:
+            value = value[:MAX_SHELTER_FIELD_CHARS].rstrip() + "…"
+        lines.append(f"{label}: {_neutralize_brackets(value)}")
+    return "\n".join(lines) if lines else "제공된 보호소 정보가 없습니다."
+
+
+def _intro_sections(animal_data: dict) -> list[str]:
+    """역할, 답변 가이드, 공고 정보. 고정 흐름과 에이전트가 같이 쓴다."""
     context_lines = [
         f"{key}: {value}"
         for key, value in animal_data.items()
         if _clean_value(value) is not None
     ]
-    message_lines = [
-        f"{message.role}: {message.content}"
-        for message in recent_messages
-    ]
-
-    sections = [
+    return [
         "당신은 PawBridge의 AI 입양 준비 도우미입니다.",
         "반드시 한국어로 답변하세요.",
         "인사말이나 서비스 이름으로 답변을 시작하지 마세요.",
@@ -120,7 +211,15 @@ def build_prompt(animal_context, recent_messages, question: str) -> str:
         "보호동물 공고 원문 정보:",
         "\n".join(context_lines) if context_lines else "제공된 보호동물 공고 원문 정보가 없습니다.",
     ]
+
+
+def _conversation_sections(recent_messages, question: str) -> list[str]:
+    message_lines = [
+        f"{message.role}: {message.content}"
+        for message in recent_messages
+    ]
+    sections = []
     if message_lines:
         sections.extend(["최근 대화:", "\n".join(message_lines)])
     sections.extend(["사용자 질문:", question.strip()])
-    return "\n\n".join(sections)
+    return sections

@@ -1,0 +1,142 @@
+{
+  "id": "neonatal-young",
+  "title": "포유기 새끼(강아지, 고양이), 저체중",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "새끼",
+      "포유기",
+      "젖먹이",
+      "아깽이",
+      "어린 새끼",
+      "저체중",
+      "신생",
+      "갓 태어난",
+      "인공포유",
+      "젖병",
+      "새끼 강아지",
+      "새끼강아지",
+      "새끼 고양이",
+      "새끼고양이",
+      "아기 고양이",
+      "아기고양이",
+      "새끼만",
+      "수유필요",
+      "수유 필요",
+      "수유가 필요",
+      "인공수유",
+      "어미없이",
+      "어미 없이",
+      "어미분리"
+    ],
+    "context": "any",
+    "exclude": [
+      "새끼들때문",
+      "새끼들 때문",
+      "새끼를 낳",
+      "새끼 낳",
+      "새끼를낳",
+      "새끼와 함께 입소한 어미",
+      "새끼를 돌보"
+    ]
+  },
+  "summary": [
+    {
+      "text": "갓 태어난 새끼 고양이에게 저체온은 질병과 사망의 흔한 원인입니다.",
+      "sources": [
+        "little-orphan"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "정상 출생 체중은 새끼 고양이 평균 약 100 g입니다.",
+      "sources": [
+        "little-orphan"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "새끼 고양이의 젖떼기는 보통 생후 6~9주에 끝납니다.",
+      "sources": [
+        "little-orphan"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "어린 강아지는 어미에게서 온 장내 기생충이 흔해 생후 몇 주부터 구충을 하고, 대변 검사를 반복합니다.",
+      "sources": [
+        "merck-puppy"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "어린 강아지는 어미에게서 받은 항체가 백신 효과를 방해하기 때문에 약 4개월령까지 2~3주마다 여러 번 접종합니다.",
+      "sources": [
+        "merck-puppy"
+      ],
+      "species": [
+        "dog"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "어미 없이 자란 새끼의 대체 급여 방법과 간격은 수의사가 알려 주며, 새끼의 건강에 이상이 있으면 바로 수의사에게 문의해야 합니다.",
+      "sources": [
+        "vca-orphan"
+      ]
+    },
+    {
+      "text": "갓 태어난 새끼에게 저체온은 질병과 사망의 흔한 원인이라 보온이 중요합니다. 이 새끼의 실제 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "little-orphan"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "새끼의 현재 체중과 일령(추정)",
+    "어미와 함께 있는지, 스스로 먹는지",
+    "체온 유지와 급여를 어떻게 하고 있는지",
+    "구충과 접종 기록"
+  ],
+  "sources": {
+    "little-orphan": {
+      "org": "Journal of Feline Medicine and Surgery (ISFM, AAFP), Susan Little",
+      "title": "Playing Mum: Successful management of orphaned kittens",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11383068",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-puppy": {
+      "org": "Merck Veterinary Manual",
+      "title": "Puppy Care (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/routine-care-of-dogs/puppy-care",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "vca-orphan": {
+      "org": "VCA Animal Hospitals",
+      "title": "Feeding Orphaned Kittens",
+      "url": "https://vcahospitals.com/know-your-pet/feeding-orphaned-kittens",
+      "tier": "B",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

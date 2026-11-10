@@ -1,36 +1,156 @@
+import logging
+from functools import lru_cache
+
 from fastapi import HTTPException, status
 
+from app.chatbot.health.answer import (
+    FALLBACK_ANSWER,
+    build_evidence,
+    check_answer,
+    check_plain_answer,
+    health_cards,
+    sources_for,
+    strip_citations,
+)
+from app.chatbot.health.knowledge import entries_version, load_entries
+from app.chatbot.health.retriever import HealthMatch, RuleHealthRetriever
 from app.chatbot.prompt_builder import build_prompt
 from app.chatbot.provider import (
     ChatbotProviderConfigurationError,
+    ChatbotProviderTruncatedError,
     ChatbotProviderUpstreamError,
     get_chatbot_provider,
 )
+from app.settings import ChatbotSettings
 
 SAFETY_NOTICE = (
     "이 답변은 일반적인 참고 정보이며, 정확한 건강 상태나 치료 판단은 "
     "동물병원 또는 수의사에게 확인해 주세요."
 )
 
+# uvicorn 로그와 같은 출력으로 나가야 운영 로그(Loki)에 모인다(gemini_provider와 같은 로거).
+logger = logging.getLogger("uvicorn.error")
+
+
+@lru_cache(maxsize=1)
+def health_retriever() -> RuleHealthRetriever:
+    """승인된 해설로 규칙 검색기를 한 번만 만든다. 해설이 잘못됐거나 하나도 없으면 실패한다."""
+    entries = load_entries()
+    if not entries:
+        raise RuntimeError("HEALTH_RAG_ENABLED인데 승인된 건강 해설이 하나도 없습니다")
+    return RuleHealthRetriever(entries)
+
+
+@lru_cache(maxsize=1)
+def health_knowledge_version() -> str:
+    return entries_version()
+
+
+def log_health_answer(matches: list[HealthMatch], used: list[int], fallback: bool) -> None:
+    """어떤 해설을 찾았고 그중 몇 번 근거를 썼는지 남긴다. 질문과 답 내용은 대화 기록에 있으므로 넣지 않는다."""
+    logger.info(
+        "Health RAG answer: entries=%s used=%s fallback=%s knowledge=%s",
+        ",".join(f"{match.entry.id}:{match.basis}" for match in matches) or "-",
+        ",".join(str(number) for number in used) or "-",
+        str(fallback).lower(),
+        health_knowledge_version(),
+    )
+
+
+def load_health_retriever_if_enabled() -> None:
+    """기동 때 부른다. 설정이 켜져 있으면 해설을 미리 읽어 잘못된 상태를 요청 전에 드러낸다.
+
+    에이전트 모드면 그래프와 모델도 미리 만든다. 설정이 잘못됐으면(agent인데 해설 RAG 꺼짐, 키 없음,
+    에이전트를 지원하지 않는 제공자) 여기서 멈춘다.
+    """
+    settings = ChatbotSettings.load()
+    if settings.health_rag_enabled:
+        health_retriever()
+    if settings.chatbot_mode == "agent":
+        from app.chatbot.agent.graph import agent_graph
+        from app.chatbot.agent.models import chat_model
+
+        agent_graph()
+        chat_model()
+
+
+def find_health_evidence(animal, question: str) -> tuple[list[HealthMatch], list]:
+    """공고 특이사항과 질문으로 해설을 찾고 번호 붙은 근거로 묶는다."""
+    matches = health_retriever().search(animal.specialMark, question, animal.species)
+    return matches, build_evidence(matches, animal.species)
+
+
+def chatbot_response(provider_name: str, answer: str, sources: list, cards: list) -> dict:
+    return {
+        "answer": answer,
+        "safetyNotice": SAFETY_NOTICE,
+        "provider": provider_name,
+        "sources": sources,
+        "healthCards": cards,
+    }
+
+
+async def answer_fixed(provider, req, matches, evidence, timeout: float | None = None) -> dict:
+    """고정 흐름: 모델을 한 번 불러 답하고 검사한다. 에이전트가 실패했을 때의 비상 경로로도 쓴다.
+
+    evidence가 None이면 건강 해설 RAG를 끈 기존 동작, 빈 목록이면 켰지만 근거를 못 찾은 경우다.
+    """
+    animal = req.animalContext
+    try:
+        prompt = build_prompt(animal, req.recentMessages, req.question, evidence)
+        answer = await provider.generate_answer(prompt, json_output=bool(evidence), timeout=timeout)
+    except ChatbotProviderConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    except ChatbotProviderTruncatedError as exc:
+        # 근거 답변이 잘렸으면 오류 대신 대체 답변을 보낸다.
+        if not evidence:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        answer = None
+    except ChatbotProviderUpstreamError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    sources = []
+    cards = []
+    if evidence:
+        checked = check_answer(answer, evidence, expect_json=True) if answer is not None else None
+        answer = checked.answer if checked else FALLBACK_ANSWER
+        sources = sources_for(checked.used, evidence) if checked else []
+        cards = health_cards(matches, animal.species)
+        log_health_answer(matches, checked.used if checked else [], checked.fallback if checked else True)
+        answer = strip_citations(answer)
+    elif evidence is not None:
+        # 설정은 켜졌지만 근거를 찾지 못한 답도 의학 표현을 검사한다.
+        plain = check_plain_answer(answer)
+        answer = plain.answer
+        log_health_answer([], [], plain.fallback)
+
+    return chatbot_response(provider.name, answer, sources, cards)
+
+
+def provider_or_500():
+    try:
+        return get_chatbot_provider()
+    except ChatbotProviderConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
 
 class ChatbotService:
     async def create_message(self, req):
-        try:
-            provider = get_chatbot_provider()
-            prompt = build_prompt(req.animalContext, req.recentMessages, req.question)
-            answer = await provider.generate_answer(prompt)
-        except ChatbotProviderConfigurationError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(exc),
-            ) from exc
-        except ChatbotProviderUpstreamError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=str(exc),
-            ) from exc
-        return {
-            "answer": answer,
-            "safetyNotice": SAFETY_NOTICE,
-            "provider": provider.name,
-        }
+        settings = ChatbotSettings.load()
+        if settings.chatbot_mode == "agent":
+            # 에이전트 모드에서만 LangChain을 불러 고정 흐름의 기동 메모리를 늘리지 않는다.
+            from app.chatbot.agent.service import create_agent_message
+
+            return await create_agent_message(req)
+
+        matches = []
+        evidence = None
+        if settings.health_rag_enabled:
+            matches, evidence = find_health_evidence(req.animalContext, req.question)
+        return await answer_fixed(provider_or_500(), req, matches, evidence)

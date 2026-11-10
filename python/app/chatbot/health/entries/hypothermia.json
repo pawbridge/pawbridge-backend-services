@@ -1,0 +1,77 @@
+{
+  "id": "hypothermia",
+  "title": "저체온증",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "저체온",
+      "저체온증",
+      "체온 낮음",
+      "몸이 차가움",
+      "hypothermia"
+    ],
+    "context": "any"
+  },
+  "summary": [
+    {
+      "text": "강아지와 새끼 고양이는 생후 4주까지 스스로 체온을 조절하는 기능이 없어 주변 환경이 따뜻해야 합니다.",
+      "sources": [
+        "merck-neonate"
+      ]
+    },
+    {
+      "text": "저체온은 면역, 젖 먹기, 소화에 나쁜 영향을 줍니다.",
+      "sources": [
+        "merck-neonate"
+      ]
+    },
+    {
+      "text": "저체온은 장 운동을 멈추게 해 역류와 흡인이 생길 수 있습니다.",
+      "sources": [
+        "merck-neonate"
+      ]
+    },
+    {
+      "text": "체온이 떨어진 새끼는 말초 혈관 확장과 탈수를 피하기 위해 서서히 따뜻하게 해야 합니다.",
+      "sources": [
+        "merck-neonate"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "전기 패드 같은 열원은 움직이지 못하는 신생 새끼에게 화상을 입힐 수 있습니다.",
+      "sources": [
+        "merck-neonate"
+      ]
+    },
+    {
+      "text": "차가워진 새끼의 체온을 올리는 속도와 방법, 이후 급여 시기는 수의사 지시에 따라야 합니다. 이 동물의 실제 체온과 상태는 진료로 확인해야 합니다.",
+      "sources": [
+        "merck-neonate"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "체온을 재었는지, 어떻게 보온했는지",
+    "새끼의 일령과 체중",
+    "스스로 먹는지",
+    "임시보호나 시설 안에서 보온 방법"
+  ],
+  "sources": {
+    "merck-neonate": {
+      "org": "Merck Veterinary Manual",
+      "title": "Management of the Neonate in Dogs and Cats (전문가판)",
+      "url": "https://www.merckvetmanual.com/management-and-nutrition/management-of-the-neonate/management-of-the-neonate-in-dogs-and-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}

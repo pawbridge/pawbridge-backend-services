@@ -1,0 +1,179 @@
+{
+  "id": "giardia-positive",
+  "title": "지알디아 양성",
+  "species": [
+    "dog",
+    "cat"
+  ],
+  "match": {
+    "aliases": [
+      "지알디아",
+      "자이아디아",
+      "지아디아",
+      "giardia"
+    ],
+    "context": "positive"
+  },
+  "summary": [
+    {
+      "text": "지알디아에 감염되어도 증상이 없는 경우가 많습니다.",
+      "sources": [
+        "capc-giardia"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "증상이 있는 개는 체중이 줄고 설사가 길게 이어지거나 오락가락하며, 특히 강아지에서 그렇습니다.",
+      "sources": [
+        "merck-protozoa"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "개가 사람에게도 감염되는 유형의 지알디아에 드물게 감염될 수 있습니다.",
+      "sources": [
+        "merck-protozoa"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "검사는 대변으로 하는데 균이 간헐적으로 나오고 찾기 어려워, 한 번의 음성으로 배제하기 어렵습니다.",
+      "sources": [
+        "capc-giardia"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "대전과 충남 지역 개를 조사한 국내 연구에서 지알디아 양성률은 12.00%였습니다. 한 지역과 한 시기의 표본이라 전국 비율은 아닙니다.",
+      "sources": [
+        "kr-giardia-2015"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "고양이에서는 젊은 고양이, 특히 여러 마리가 함께 지낸 배경에서 가장 흔합니다.",
+      "sources": [
+        "abcd-giardia"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "증상이 생긴 고양이는 소장성 설사를 보이고 체중이 줄 수 있습니다.",
+      "sources": [
+        "abcd-giardia"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "보호소와 번식장 고양이의 감염률은 집에서 키우는 고양이보다 훨씬 높을 수 있습니다.",
+      "sources": [
+        "abcd-giardia"
+      ],
+      "species": [
+        "cat"
+      ]
+    },
+    {
+      "text": "지알디아 낭포는 환경에서 오래 살아남고, 적은 수만으로도 감염을 일으킬 수 있습니다.",
+      "sources": [
+        "merck-cat-protozoa"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "cautions": [
+    {
+      "text": "개는 사람에게도 감염되는 유형의 지알디아에 드물게 감염될 수 있다고 합니다. 대변은 바로 치우고 만진 뒤 손을 씻고, 면역이 약한 사람이 함께 산다면 수의사와 먼저 상의하세요.",
+      "sources": [
+        "merck-protozoa"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "지알디아 감염은 증상이 없는 경우가 흔하며, 증상이 없는 동물에게 치료가 필요한지는 수의사가 판단해야 합니다.",
+      "sources": [
+        "capc-giardia"
+      ],
+      "species": [
+        "dog"
+      ]
+    },
+    {
+      "text": "증상이 없는 건강한 고양이에게서도 지알디아가 검출될 수 있어, 설사가 있는 고양이의 양성 결과는 신중하게 해석해야 합니다. 이 동물의 실제 상태는 수의사 진료로 확인해야 합니다.",
+      "sources": [
+        "abcd-giardia"
+      ],
+      "species": [
+        "cat"
+      ]
+    }
+  ],
+  "ask_shelter": [
+    "지알디아 검사를 언제 했는지",
+    "설사나 체중 감소 같은 증상이 있었는지",
+    "치료를 받았는지, 다른 동물과 분리했는지"
+  ],
+  "sources": {
+    "capc-giardia": {
+      "org": "Companion Animal Parasite Council (CAPC)",
+      "title": "Giardia 가이드라인",
+      "url": "https://capcvet.org/guidelines/giardia/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "merck-protozoa": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders Caused by Protozoa in the Digestive System of Dogs (보호자용)",
+      "url": "https://www.merckvetmanual.com/dog-owners/digestive-disorders-of-dogs/disorders-caused-by-protozoa-in-the-digestive-system-of-dogs",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-06"
+    },
+    "kr-giardia-2015": {
+      "org": "한국임상수의학회지 32(6), 정대욱 외",
+      "title": "대전 충남지역 개에서 지알디아증 유병률",
+      "url": "https://koreascience.kr/article/JAKO201503340352894.page?lang=ko",
+      "tier": "A",
+      "language": "ko",
+      "checked_at": "2026-11-06"
+    },
+    "abcd-giardia": {
+      "org": "ABCD (European Advisory Board on Cat Diseases)",
+      "title": "GUIDELINE for Giardiasis",
+      "url": "https://www.abcdcatsvets.org/guideline-for-giardiasis/",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    },
+    "merck-cat-protozoa": {
+      "org": "Merck Veterinary Manual",
+      "title": "Disorders Caused by Protozoa of the Digestive System in Cats (보호자판)",
+      "url": "https://www.merckvetmanual.com/cat-owners/digestive-disorders-of-cats/disorders-caused-by-protozoa-of-the-digestive-system-in-cats",
+      "tier": "A",
+      "language": "en",
+      "checked_at": "2026-11-07"
+    }
+  },
+  "review": {
+    "status": "approved"
+  }
+}
