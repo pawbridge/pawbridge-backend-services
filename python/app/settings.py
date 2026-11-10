@@ -95,12 +95,18 @@ class ChatbotSettings(_Settings):
     gemini_timeout_seconds: float = Field(15, alias="GEMINI_TIMEOUT_SECONDS")
     # 공고 건강 해설 RAG. 기본은 꺼짐이고, 켜면 승인된 해설을 근거로 답한다.
     health_rag_enabled: bool = Field(False, alias="HEALTH_RAG_ENABLED")
+    # 끌 해설 id를 쉼표로 적는다(예: heartworm-positive,cough). 틀린 해설 하나를 배포 없이 내리고 재시작한다.
+    # 승인된 해설에 없는 id를 적으면 기동에서 멈춘다(오타로 끄지 못한 채 도는 일을 막는다).
+    health_rag_disabled_ids: str = Field("", alias="HEALTH_RAG_DISABLED_IDS")
     # 답을 만드는 방식. rag는 모델을 한 번 부르는 고정 흐름, agent는 모델이 건강 해설 검색 도구를
     # 골라 부르는 입양 상담 에이전트다. agent는 해설 검색을 도구로 쓰므로 HEALTH_RAG_ENABLED가 켜져 있어야 한다.
     chatbot_mode: Literal["rag", "agent"] = Field("rag", alias="CHATBOT_MODE")
     # 에이전트 모델의 추론(생각) 단계. 제공자마다 이름이 달라 agent/models.py가 바꿔 넘긴다.
     # 단계가 높을수록 생각 토큰(출력 요금)이 늘어난다. 기본 minimal은 고정 흐름과 같은 수준이다.
     chatbot_reasoning: Literal["minimal", "low", "medium", "high"] = Field("minimal", alias="CHATBOT_REASONING")
+
+    def disabled_health_entry_ids(self) -> frozenset[str]:
+        return frozenset(item.strip() for item in self.health_rag_disabled_ids.split(",") if item.strip())
 
     @model_validator(mode="after")
     def agent_needs_health_rag(self):

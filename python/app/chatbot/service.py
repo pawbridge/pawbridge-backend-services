@@ -34,10 +34,20 @@ logger = logging.getLogger("uvicorn.error")
 
 @lru_cache(maxsize=1)
 def health_retriever() -> RuleHealthRetriever:
-    """승인된 해설로 규칙 검색기를 한 번만 만든다. 해설이 잘못됐거나 하나도 없으면 실패한다."""
+    """승인된 해설로 규칙 검색기를 한 번만 만든다. HEALTH_RAG_DISABLED_IDS의 해설은 뺀다.
+
+    고정 흐름과 에이전트 도구가 모두 이 검색기를 쓰므로, 뺀 해설은 근거, 출처, 카드 어디에도 나오지 않는다.
+    해설이 잘못됐거나, 끄라는 id가 승인된 해설에 없거나(오타), 남는 해설이 없으면 실패한다.
+    """
     entries = load_entries()
+    disabled = ChatbotSettings.load().disabled_health_entry_ids()
+    unknown = sorted(disabled - {entry.id for entry in entries})
+    if unknown:
+        raise RuntimeError(f"HEALTH_RAG_DISABLED_IDS에 승인된 해설에 없는 id가 있습니다: {', '.join(unknown)}")
+    entries = [entry for entry in entries if entry.id not in disabled]
     if not entries:
-        raise RuntimeError("HEALTH_RAG_ENABLED인데 승인된 건강 해설이 하나도 없습니다")
+        raise RuntimeError("HEALTH_RAG_ENABLED인데 쓸 수 있는 승인된 건강 해설이 하나도 없습니다")
+    logger.info("Health RAG entries: loaded=%d disabled=%s", len(entries), ",".join(sorted(disabled)) or "-")
     return RuleHealthRetriever(entries)
 
 
