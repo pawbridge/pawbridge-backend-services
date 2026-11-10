@@ -166,20 +166,31 @@ def mismatch(first, second):
 
 
 def mismatch_against(source):
-    """기준 털색 하나를 여러 후보와 비교하는 함수를 돌려준다. 돌려준 함수의 값은 mismatch(source, 후보)와 같다.
+    """기준 털색 하나를 갤러리 후보 여러 개와 비교하는 함수를 돌려준다.
 
-    후보 수백 개를 비교할 때 같은 기준 털색을 매번 다시 검사하지 않도록, 기준 털색은 여기서 한 번만 검사한다.
-    후보 털색은 지금처럼 비교할 때마다 검사한다.
+    기준 털색은 여기서 한 번만 전체 검사(valid)한다. 후보는 갤러리에 저장된 털색이라 저장할 때
+    (gallery builder, PostgresqlGalleryStore.write_page) 이미 전체 검사를 통과했다. 그래서 비교할 때는
+    값 608개를 다시 훑지 않고 형식만 확인한다(stored_descriptor). 저장 때 검사를 통과한 후보라면
+    값은 mismatch(source, 후보)와 같다.
     """
     if not valid(source):
         return lambda candidate: None
 
     def distance_to(candidate):
-        if not valid(candidate):
+        if not stored_descriptor(candidate):
             return None
         return _distance(source, candidate)
 
     return distance_to
+
+
+def stored_descriptor(value):
+    """저장할 때 valid()를 통과한 털색인지 형식만 본다. 빈 값, 다른 버전, 개수가 다른 값은 비교하지 않는다."""
+    return (isinstance(value, dict) and value.get("version") == VERSION
+            and value.get("source") in SOURCES
+            and type(value.get("pixels")) is int and MIN_PIXELS <= value["pixels"] <= 1024 * 1024
+            and isinstance(value.get("marginal"), list) and len(value["marginal"]) == 3 * MARGINAL_BINS
+            and isinstance(value.get("joint"), list) and len(value["joint"]) == JOINT_BINS ** 3)
 
 
 def _distance(first, second):
