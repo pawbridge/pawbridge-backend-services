@@ -1,6 +1,8 @@
 import copy
 import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import tracemalloc
 import unittest
@@ -195,22 +197,41 @@ class GalleryPagesTest(unittest.TestCase):
             encoder.encode_with_metadata.assert_not_called(); source.close()
 
     def test_generated_large_feeds_keep_page_memory_bounded(self):
-        peaks = []
-        for count in (5000, 37605, 100000):
-            with self.subTest(count=count), tempfile.TemporaryDirectory() as root:
-                feed = Feed(count)
-                source = feed.source(root); source.fetch(None, STOPPED)
-                tracemalloc.start()
-                max_inventory = 0
-                for rows in source.pages(STOPPED):
-                    max_inventory = max(max_inventory, len(source.inventory))
-                    source.acknowledge(source.processed + len(rows))
-                    # The fixture request audit must not become the full-run memory accumulation.
-                    feed.requests.clear()
-                _, peak = tracemalloc.get_traced_memory(); tracemalloc.stop()
-                peaks.append(peak)
-                self.assertEqual(source.processed, count); self.assertLessEqual(max_inventory, 100)
-                self.assertLess(peak, 8 * 1024 * 1024)
-                print(f'PAGED_MEMORY count={count} peak_python_bytes={peak} max_inventory={max_inventory}')
-                source.close()
+        # 측정은 새 파이썬 프로세스에서 한다. 같은 프로세스에서 앞선 시험이 해석기 전역 표(문자열 intern 표 등)를
+        # 채워 두면, 그 표가 커지는 순간(한 번에 약 2MB)이 측정 구간에 걸려 갤러리 코드와 무관하게 실패한다.
+        code = ('import json; from tests.test_gallery_pages import measure_page_memory; '
+                f'print(json.dumps([measure_page_memory(count) for count in {PAGED_MEMORY_COUNTS!r}]))')
+        result = subprocess.run([sys.executable, '-c', code], cwd=Path(__file__).resolve().parents[1],
+                                capture_output=True, text=True, timeout=300)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        measurements = json.loads(result.stdout.strip().splitlines()[-1])
+        for measured in measurements:
+            with self.subTest(count=measured['count']):
+                self.assertEqual(measured['processed'], measured['count'])
+                self.assertLessEqual(measured['max_inventory'], 100)
+                self.assertLess(measured['peak'], 8 * 1024 * 1024)
+                print(f"PAGED_MEMORY count={measured['count']} peak_python_bytes={measured['peak']} "
+                      f"max_inventory={measured['max_inventory']}")
+        peaks = [measured['peak'] for measured in measurements]
         self.assertLess(max(peaks)-min(peaks), 2*1024*1024)
+
+
+PAGED_MEMORY_COUNTS = (5000, 37605, 100000)
+
+
+def measure_page_memory(count):
+    """count건 목록을 페이지로 받아 처리하는 동안 파이썬 할당 최대값을 잰다. 시험이 새 프로세스에서 부른다."""
+    with tempfile.TemporaryDirectory() as root:
+        feed = Feed(count)
+        source = feed.source(root); source.fetch(None, STOPPED)
+        tracemalloc.start()
+        max_inventory = 0
+        for rows in source.pages(STOPPED):
+            max_inventory = max(max_inventory, len(source.inventory))
+            source.acknowledge(source.processed + len(rows))
+            # The fixture request audit must not become the full-run memory accumulation.
+            feed.requests.clear()
+        _, peak = tracemalloc.get_traced_memory(); tracemalloc.stop()
+        processed = source.processed
+        source.close()
+    return {'count': count, 'processed': processed, 'max_inventory': max_inventory, 'peak': peak}
