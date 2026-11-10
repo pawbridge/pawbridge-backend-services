@@ -1,6 +1,12 @@
 fastapi==0.115.0
 uvicorn==0.32.0
 httpx==0.28.1
+# 입양 상담 에이전트(CHATBOT_MODE=agent). 루프는 langchain create_agent(LangGraph 위),
+# 모델 연결은 LangChain 채팅 모델. 1.x는 LTS다.
+langchain==1.4.7
+langgraph==1.2.16
+langchain-core==1.6.13
+langchain-google-genai==4.4.2
 # Pillow, numpy, python-multipart: the chatbot does not use them; README "로컬 시험" runs
 # the vision and photo tests in this image.
 Pillow==10.4.0
