@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import time
 
 import httpx
 
@@ -12,6 +14,39 @@ from app.chatbot.provider import (
 from app.settings import ChatbotSettings
 
 logger = logging.getLogger("uvicorn.error")
+
+# Gemini 일시 오류(5xx, 연결 실패)는 한 번만 다시 시도한다. 과부하는 몰려서 오므로 두 번째부터는 효과가 작고,
+# 호출당 시간 제한(기본 15초)이 있어 두 번이면 백엔드가 기다리는 60초에 가까워진다.
+# 429(요청 한도), 시간 초과, 400(요청 잘못)은 다시 보내도 같거나 한도만 깎으므로 바로 실패한다.
+MAX_ATTEMPTS = 2
+RETRY_DELAY_SECONDS = 1.0
+
+
+def _is_transient(exc: httpx.HTTPError) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code >= 500
+    return isinstance(exc, (httpx.ConnectError, httpx.RemoteProtocolError))
+
+
+def _log_failure(exc: httpx.HTTPError, attempt: int, started: float, retry: bool) -> None:
+    """실패를 숫자로 남긴다. 상류 장애와 우리 문제를 로그에서 가르려는 것이고, 질문과 응답 내용은 넣지 않는다."""
+    status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else "-"
+    logger.warning(
+        "Gemini request failed: attempt=%d status=%s error=%s elapsed_ms=%d retry=%s",
+        attempt,
+        status,
+        type(exc).__name__,
+        (time.monotonic() - started) * 1000,
+        str(retry).lower(),
+    )
+
+
+def _provider_error(exc: httpx.HTTPError) -> Exception:
+    if isinstance(exc, httpx.TimeoutException):
+        return ChatbotProviderTimeoutError("Gemini request timed out")
+    if isinstance(exc, httpx.HTTPStatusError):
+        return ChatbotProviderUpstreamError(f"Gemini request failed with status {exc.response.status_code}")
+    return ChatbotProviderUpstreamError("Gemini request failed")
 
 
 class GeminiChatbotProvider(ChatbotProvider):
@@ -51,25 +86,29 @@ class GeminiChatbotProvider(ChatbotProvider):
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         timeout_seconds = self.timeout_seconds if timeout is None else max(0.1, min(self.timeout_seconds, timeout))
-        try:
-            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-                response = await client.post(
-                    url,
-                    headers={
-                        "x-goog-api-key": self.api_key,
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-                response.raise_for_status()
-        except httpx.TimeoutException as exc:
-            raise ChatbotProviderTimeoutError("Gemini request timed out") from exc
-        except httpx.HTTPStatusError as exc:
-            raise ChatbotProviderUpstreamError(
-                f"Gemini request failed with status {exc.response.status_code}"
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise ChatbotProviderUpstreamError("Gemini request failed") from exc
+        # 남은 시간을 받은 호출(에이전트의 비상 경로)은 시간이 정해져 있어 다시 시도하지 않는다.
+        attempts = 1 if timeout is not None else MAX_ATTEMPTS
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+            for attempt in range(1, attempts + 1):
+                started = time.monotonic()
+                try:
+                    response = await client.post(
+                        url,
+                        headers={
+                            "x-goog-api-key": self.api_key,
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    break
+                except httpx.HTTPError as exc:
+                    retry = attempt < attempts and _is_transient(exc)
+                    _log_failure(exc, attempt, started, retry)
+                    if retry:
+                        await asyncio.sleep(RETRY_DELAY_SECONDS)
+                        continue
+                    raise _provider_error(exc) from exc
 
         try:
             response_body = response.json()
