@@ -21,5 +21,7 @@ def recommend_animals(animal_id, species):
         gallery_index(), animal_id, species, version, COLOR_VERSION if weight else None)
     # Connection returned before color reranking. No remote image, GPU or full-gallery cache.
     eligible = [hit for hit in hits if float(hit['_score']) - 1.0 >= floor]
-    ranked = rank_candidates(eligible, coat_color=source.get('coat_color'), color_weight=weight)
-    return [candidate['animalId'] for candidate in ranked][:MAX_RECOMMENDATIONS]
+    # 결과 수를 넘기면 6위 안에 들 수 없는 후보의 털색 계산을 건너뛴다. 결과는 20개를 받아 자르던 때와 같다.
+    ranked = rank_candidates(eligible, coat_color=source.get('coat_color'), color_weight=weight,
+                             limit=MAX_RECOMMENDATIONS)
+    return [candidate['animalId'] for candidate in ranked]

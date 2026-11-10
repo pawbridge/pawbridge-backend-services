@@ -123,3 +123,95 @@ class CoatColorTest(unittest.TestCase):
         for value in ("nan", "inf", "-0.1", "0.3", "typo"):
             with self.subTest(value=value), patch.dict(os.environ, {"LOST_SEARCH_COAT_COLOR_WEIGHT": value}):
                 with self.assertRaises(RuntimeError): ranking_weight()
+
+
+def reference_rank_candidates(hits, lost_date=None, region=None, description=None, *, coat_color=None,
+                              color_weight=0., limit=20):
+    """털색 계산을 건너뛰기 전의 정렬(2026-11-10 dev 6dd42e16)을 그대로 옮긴 기준 구현이다."""
+    from app.lost_search.service import AUXILIARY_BOOST, auxiliary_evidence
+    import math
+    candidates = []
+    penalties = {}
+    for hit in hits:
+        src = hit["_source"]
+        score = float(hit["_score"])
+        if not math.isfinite(score):
+            continue
+        distance = mismatch(coat_color, src.get("coat_color")) if color_weight else None
+        penalties[src["id"]] = color_weight * distance if distance is not None else 0.
+        evidence = auxiliary_evidence(src, lost_date, region, description)
+        candidates.append({"animalId": src["id"], "imageScore": score - 1.0, "matchedEvidence": evidence})
+    candidates.sort(key=lambda c: (-(c["imageScore"] + AUXILIARY_BOOST * len(c["matchedEvidence"])
+                                     - penalties[c["animalId"]]), -c["imageScore"], c["animalId"]))
+    return candidates[:limit]
+
+
+class CoatColorRankingShortcutTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        rng = np.random.default_rng(20261110)
+        colors = [tuple(int(v) for v in rng.integers(0, 256, 3)) for _ in range(12)]
+        cls.descriptors = [descriptor(color) for color in colors]
+
+    def test_shared_source_comparison_equals_pairwise_mismatch_for_stored_candidates(self):
+        # 후보는 저장할 때 valid()를 통과한 값만 DB에 있다. 그런 후보와 빈 값, 다른 버전, 개수가 다른 값에서
+        # mismatch와 같아야 한다. 기준 털색은 값이 깨진 경우까지 전체 검사한다.
+        from app.vision.coat_color import mismatch_against
+        good = self.descriptors[0]
+        corrupt = copy.deepcopy(good); corrupt["joint"][0] = float("nan")
+        short = dict(good, joint=good["joint"][:-1])
+        for source in (good, self.descriptors[1], None, corrupt, dict(good, version="old")):
+            distance_to = mismatch_against(source)
+            for candidate in (*self.descriptors[:4], None, {}, dict(good, version="old"), short,
+                              dict(good, pixels=10)):
+                self.assertEqual(distance_to(candidate), mismatch(source, candidate))
+
+    def test_gallery_write_rejects_color_values_that_comparison_no_longer_rescans(self):
+        # 비교할 때 값을 다시 훑지 않아도 되는 근거: 깨진 털색은 갤러리에 저장되지 않는다.
+        from unittest.mock import Mock
+        from app.gallery.pg_store import PostgresqlGalleryStore
+        from app.vision.dinov3 import DIMENSIONS
+        corrupt = copy.deepcopy(self.descriptors[0]); corrupt["joint"][0] = float("nan")
+        pool = Mock()
+        document = {"id": 1, "species": "DOG", "status": "PROTECT", "source_sha256": "a" * 64,
+                    "focus_status": "single_mask", "model_version": "test", "coat_color": corrupt,
+                    "image_vector": [1.0] + [0.0] * (DIMENSIONS - 1)}
+        with self.assertRaisesRegex(ValueError, "Invalid gallery document"):
+            PostgresqlGalleryStore(pool).write_page("build", [document])
+        pool.connection.assert_not_called()
+
+    def test_skipping_unreachable_candidates_keeps_the_same_ranking(self):
+        # 점수 동률, 털색 없음, 다른 버전 털색, 보조 근거 가산, 결과 수보다 적은 후보를 섞어 기준 구현과 순서까지 비교한다.
+        rng = np.random.default_rng(7)
+        corrupt = copy.deepcopy(self.descriptors[0]); corrupt["joint"][0] = float("nan")
+        # 후보 털색은 갤러리에 저장될 수 있는 값(정상, 빈 값, 다른 버전)만, 기준 털색은 깨진 값까지 섞는다.
+        palette = [*self.descriptors, None, dict(self.descriptors[1], version="old")]
+        sources = [*palette, corrupt]
+        for case in range(300):
+            count = int(rng.integers(0, 60))
+            scores = rng.choice([1.40, 1.55, 1.62, 1.62, 1.7, 1.71], count) + rng.normal(0, .05, count) * (case % 3 > 0)
+            hits = [{"_score": float(score),
+                     "_source": {"id": index + 1, "coat_color": palette[int(rng.integers(0, len(palette)))],
+                                 "happen_place": "서울 마포구" if rng.random() < .2 else "부산",
+                                 "color": "갈색" if rng.random() < .3 else "흰색"}}
+                    for index, score in enumerate(scores)]
+            source = sources[int(rng.integers(0, len(sources)))]
+            options = {"region": "마포구", "description": "갈색 강아지"} if case % 2 else {}
+            for weight in (0., .05, .1, .2):
+                for limit in (1, 6, 20):
+                    with self.subTest(case=case, weight=weight, limit=limit):
+                        expected = reference_rank_candidates(hits, coat_color=source, color_weight=weight,
+                                                             limit=limit, **options)
+                        actual = rank_candidates(hits, coat_color=source, color_weight=weight, limit=limit, **options)
+                        self.assertEqual(actual, expected)
+
+    def test_candidates_that_cannot_reach_the_result_are_not_color_compared(self):
+        import app.vision.coat_color as coat_color
+        source = self.descriptors[0]
+        # 상위 6마리는 0.9점, 나머지는 0.7점이라 털색 벌점(최대 0.1)으로 순위가 바뀔 수 없다.
+        hits = [{"_score": 1.9, "_source": {"id": i, "coat_color": self.descriptors[i % 12]}} for i in range(1, 7)]
+        hits += [{"_score": 1.7, "_source": {"id": i, "coat_color": self.descriptors[i % 12]}} for i in range(7, 200)]
+        with patch.object(coat_color, "_distance", wraps=coat_color._distance) as distance:
+            ranked = rank_candidates(hits, coat_color=source, color_weight=.1, limit=6)
+        self.assertEqual(sorted(r["animalId"] for r in ranked), [1, 2, 3, 4, 5, 6])
+        self.assertEqual(distance.call_count, 6)
