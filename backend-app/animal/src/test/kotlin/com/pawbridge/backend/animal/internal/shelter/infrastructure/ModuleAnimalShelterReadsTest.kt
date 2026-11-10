@@ -2,6 +2,7 @@ package com.pawbridge.backend.animal.internal.shelter.infrastructure
 
 import com.pawbridge.backend.animal.api.AnimalShelterReadUnavailableException
 import com.pawbridge.backend.animal.api.AnimalShelterReads
+import com.pawbridge.backend.animal.internal.shelter.application.ShelterNotFoundException
 import com.pawbridge.backend.animal.internal.shelter.application.ShelterReads
 import io.mockk.confirmVerified
 import io.mockk.every
@@ -67,7 +68,7 @@ class ModuleAnimalShelterReadsTest {
     @Test
     fun `현재 원본이 등록번호 없음으로 실패할 때__위임하면__404나 빈 결과를 지어내지 않고 이용 불가를 유지한다`() {
         // given
-        val failure = IllegalStateException("Shelter not found: r")
+        val failure = ShelterNotFoundException()
 
         every { manager.getTransaction(any()) } answers { SimpleTransactionStatus() }
         justRun { manager.rollback(any()) }

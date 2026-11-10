@@ -342,6 +342,22 @@ class ShelterReadControllerTest {
         confirmVerified(shelters)
     }
 
+    @Test
+    fun `등록번호로 찾은 보호소가 없을 때__조회하면__404 봉투를 준다`() {
+        // given
+        every { shelters.findByCareRegNo(any()) } returns null
+
+        // when
+        val result = mvc.perform(get("/api/v1/shelters/by-care-reg-no/reg-none"))
+            .andExpect(status().isNotFound()).andReturn().response
+
+        // then
+        assertThat(mapper.readTree(result.getContentAsString(StandardCharsets.UTF_8))).isEqualTo(
+            mapper.createObjectNode().put("code", 404).put("message", "보호소를 찾을 수 없습니다").putNull("data"),
+        )
+        verify(exactly = 1) { shelters.findByCareRegNo("reg-none") }
+    }
+
     private fun response(route: String): JsonNode {
         val result = mvc.perform(get(route)).andExpect(status().isOk()).andReturn().response
         return mapper.readTree(result.getContentAsString(StandardCharsets.UTF_8))

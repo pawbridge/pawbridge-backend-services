@@ -118,8 +118,9 @@ class JdbcShelterReads : ShelterReads {
                 MapSqlParameterSource("value", value),
                 RowMapper { row, index -> details(row, index) },
             ).firstOrNull()
-                // Original ShelterQueryService's EntityNotFoundException reaches catch-all500.
-                ?: throw IllegalStateException("Shelter not found: $value")
+                // 없는 보호소는 404로 답한다. 500이면 화면이 일시 오류로 보고 검색 제외(noindex)를 넣지 못한다.
+                // 다른 모듈의 조회(ModuleAnimalShelterReads)는 RuntimeException을 그대로 이용 불가로 감싸므로 영향이 없다.
+                ?: throw ShelterNotFoundException()
             val information = jdbc.query(
                 "SELECT details,collected_at FROM pawbridge_animal.shelter_public_information WHERE shelter_id=:id",
                 MapSqlParameterSource("id", shelter.id),
