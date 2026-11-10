@@ -2,6 +2,7 @@
 
 package com.pawbridge.backend.animal.internal.shelter.web
 
+import com.pawbridge.backend.animal.internal.shelter.application.ShelterNotFoundException
 import com.pawbridge.backend.animal.internal.shelter.application.ShelterReads
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -53,7 +54,7 @@ class ShelterReadController(
 
     @GetMapping("/api/v1/shelters/by-care-reg-no/{careRegNo}")
     fun byCareRegNo(@PathVariable("careRegNo") careRegNo: String): ShelterResponses.Details {
-        return ShelterResponses.Details.from(shelters.findByCareRegNo(careRegNo)!!)
+        return ShelterResponses.Details.from(shelters.findByCareRegNo(careRegNo) ?: throw ShelterNotFoundException())
     }
 
     @GetMapping("/api/v1/shelters/count")

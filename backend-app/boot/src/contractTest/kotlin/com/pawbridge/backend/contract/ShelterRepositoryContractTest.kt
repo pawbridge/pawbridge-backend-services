@@ -112,8 +112,8 @@ class ShelterRepositoryContractTest : AnimalRepositoryContractBase() {
         assertThat(byNumber!!.id).isEqualTo(2)
         assertThat(byNumber.publicInformation).isNull()
         assertThat(shelters.count()).isEqualTo(3)
-        assertThatThrownBy { shelters.findById(999) }.isInstanceOf(IllegalStateException::class.java)
-        assertThatThrownBy { shelters.findByCareRegNo("none") }.isInstanceOf(IllegalStateException::class.java)
+        assertThatThrownBy { shelters.findById(999) }.isInstanceOf(ShelterNotFoundException::class.java)
+        assertThatThrownBy { shelters.findByCareRegNo("none") }.isInstanceOf(ShelterNotFoundException::class.java)
     }
 
     @Test
