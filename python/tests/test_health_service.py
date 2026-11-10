@@ -57,6 +57,53 @@ class StartupLoadTest(unittest.TestCase):
                     with TestClient(app):
                         pass
 
+    def write_entries(self, folder, *ids):
+        for entry_id in ids:
+            data = ENTRY.model_dump(mode="json")
+            data["id"] = entry_id
+            Path(folder, f"{entry_id}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    def retriever_with(self, folder, disabled):
+        env = {"INTERNAL_API_KEY": "k", "HEALTH_RAG_ENABLED": "true", "HEALTH_RAG_DISABLED_IDS": disabled}
+        with self.load_from(folder), patch.dict(os.environ, env):
+            return service.health_retriever()
+
+    def test_disabled_ids_are_left_out_of_search(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.write_entries(folder, "heartworm-positive", "heartworm-copy")
+            with self.assertLogs("uvicorn.error", level="INFO") as logs:
+                retriever = self.retriever_with(folder, " heartworm-positive , ")
+            found = [match.entry.id for match in retriever.search("심장사상충 양성", None, "DOG")]
+        self.assertEqual(found, ["heartworm-copy"])
+        self.assertIn("Health RAG entries: loaded=1 disabled=heartworm-positive", logs.output[0])
+
+    def test_no_disabled_ids_keeps_every_entry(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.write_entries(folder, "heartworm-positive", "heartworm-copy")
+            with self.assertLogs("uvicorn.error", level="INFO") as logs:
+                retriever = self.retriever_with(folder, "")
+            found = sorted(match.entry.id for match in retriever.search("심장사상충 양성", None, "DOG"))
+        self.assertEqual(found, ["heartworm-copy", "heartworm-positive"])
+        self.assertIn("loaded=2 disabled=-", logs.output[0])
+
+    def test_unknown_disabled_id_stops_startup(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.write_entries(folder, "heartworm-positive")
+            env = {"INTERNAL_API_KEY": "k", "HEALTH_RAG_ENABLED": "true", "HEALTH_RAG_DISABLED_IDS": "heartworm-positiv"}
+            with self.load_from(folder), patch.dict(os.environ, env):
+                with self.assertRaisesRegex(RuntimeError, "HEALTH_RAG_DISABLED_IDS.*heartworm-positiv$"):
+                    with TestClient(app):
+                        pass
+
+    def test_disabling_every_entry_stops_startup(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.write_entries(folder, "heartworm-positive")
+            env = {"INTERNAL_API_KEY": "k", "HEALTH_RAG_ENABLED": "true", "HEALTH_RAG_DISABLED_IDS": "heartworm-positive"}
+            with self.load_from(folder), patch.dict(os.environ, env):
+                with self.assertRaisesRegex(RuntimeError, "하나도 없습니다"):
+                    with TestClient(app):
+                        pass
+
     def test_disabled_does_not_read_entries(self):
         with patch("app.chatbot.service.load_entries", side_effect=AssertionError("읽으면 안 됨")):
             with patch.dict(os.environ, {"INTERNAL_API_KEY": "k", "HEALTH_RAG_ENABLED": "false"}):
