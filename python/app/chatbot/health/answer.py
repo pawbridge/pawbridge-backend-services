@@ -54,13 +54,18 @@ REASSURANCE_FORBIDDEN = [
     re.compile(r"(먹이|먹여)\s?(주)?세요"),
 ]
 
-HEALTH_RULES = [
-    "아래 [검수된 건강 근거]는 출처가 확인된 일반 정보입니다.",
+# 근거를 쓰는 규칙. 고정 흐름(HEALTH_RULES)과 에이전트 프롬프트가 함께 쓴다.
+EVIDENCE_USE_RULES = [
     "건강에 관한 사실은 이 근거에 있는 것만 말하세요. 근거에 없는 병명, 약, 용량, 수치, 예후는 말하지 마세요.",
     "근거를 쓴 문장 끝에 그 근거 번호를 [1]처럼 붙이세요.",
     "질문과 관련 없는 근거는 쓰지 마세요.",
     "근거로 답할 수 없으면 모른다고 하고 보호소나 동물병원 확인을 권하세요.",
     "'공고에는 없는 질문 관련 일반 정보'라고 표시된 근거는 이 동물이 그 병이 있다는 뜻이 아니니, 일반 정보로만 말하세요.",
+]
+
+HEALTH_RULES = [
+    "아래 [검수된 건강 근거]는 출처가 확인된 일반 정보입니다.",
+    *EVIDENCE_USE_RULES,
     '다음 JSON 하나로만 답하세요: {"answer": "답변", "used": [쓴 근거 번호]}',
 ]
 
@@ -95,10 +100,12 @@ def build_evidence(
     matches: list[HealthMatch],
     species: str | None,
     max_summary_per_entry: int | None = None,
+    start: int = 1,
 ) -> list[Evidence]:
     """찾은 해설에서 그 동물에 맞는 문장만 골라 번호를 붙인다.
 
     주의 문장은 모두 넣고, 요약 문장은 해설마다 max_summary_per_entry개까지 넣는다.
+    start는 첫 번호다. 에이전트가 도구로 더 찾은 근거는 앞 근거 다음 번호부터 받는다.
     """
     wanted_species = normalize_species(species)
     evidence: list[Evidence] = []
@@ -108,7 +115,7 @@ def build_evidence(
             summary = summary[:max_summary_per_entry]
         for section, facts in (("summary", summary), ("cautions", cautions)):
             for fact in facts:
-                evidence.append(Evidence(len(evidence) + 1, match.entry, fact, section, match.basis))
+                evidence.append(Evidence(start + len(evidence), match.entry, fact, section, match.basis))
     return evidence
 
 
@@ -203,6 +210,29 @@ def check_plain_answer(raw: str) -> CheckedAnswer:
         answer = answer[:MAX_ANSWER_CHARS].rstrip() + "…"
         problems.append("길이 상한으로 자름")
     return CheckedAnswer(answer, [], problems)
+
+
+def answer_text_from_json(raw: str) -> str | None:
+    """근거 없이 JSON으로 받은 답에서 answer만 꺼낸다(에이전트는 늘 JSON으로 답한다).
+
+    평범한 글이면 그대로, JSON처럼 보이는데 깨졌거나 answer가 글이 아니면 None(원문을 내보내지 않는다).
+    """
+    parsed = _parse_json(raw)
+    if parsed is None:
+        return raw
+    if parsed is BROKEN_JSON or not isinstance(parsed.get("answer"), str):
+        return None
+    return parsed["answer"]
+
+
+# 02-123-4567, 010 1234 5678, 031.123.4567, 1588-1234 같은 국내 전화번호
+PHONE_NUMBER = re.compile(r"(?<!\d)(?:0\d{1,2}[-.\s)]?\d{3,4}[-.\s]?\d{4}|1[5-9]\d{2}-?\d{4})(?!\d)")
+
+
+def unknown_phone_numbers(answer: str, allowed: list[str | None]) -> list[str]:
+    """답에 나온 전화번호 중 보호소 정보에 없는 번호. 모델이 번호를 지어내거나 한 자리라도 틀리면 걸린다."""
+    allowed_digits = {re.sub(r"\D", "", phone) for phone in allowed if phone}
+    return [found for found in PHONE_NUMBER.findall(answer) if re.sub(r"\D", "", found) not in allowed_digits]
 
 
 def _forbidden_in(answer: str) -> list[str]:
