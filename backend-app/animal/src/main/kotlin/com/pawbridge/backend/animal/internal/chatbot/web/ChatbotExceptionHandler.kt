@@ -3,6 +3,8 @@ package com.pawbridge.backend.animal.internal.chatbot.web
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.ChatbotAnimalNotFoundException
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.ChatbotRateLimitExceededException
 import com.pawbridge.backend.animal.internal.command.infrastructure.persistence.PostgresqlRollbackCharsetViolation
+import feign.FeignException
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -11,7 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
-/** Original chatbot envelopes, scoped to this controller; no question/history/key logging. */
+/** Original chatbot envelopes, scoped to this controller; logs only failure types on 500, never question/history/key. */
 @RestControllerAdvice(assignableTypes = [ChatbotController::class])
 class ChatbotExceptionHandler {
 
@@ -52,6 +54,7 @@ class ChatbotExceptionHandler {
         if (PostgresqlRollbackCharsetViolation.matches(failure)) {
             return error(400, PostgresqlRollbackCharsetViolation.MESSAGE)
         }
+        logFailure(failure)
         return error(500, "데이터베이스 오류가 발생했습니다.")
     }
 
@@ -60,6 +63,7 @@ class ChatbotExceptionHandler {
         if (PostgresqlRollbackCharsetViolation.matches(failure)) {
             return error(400, PostgresqlRollbackCharsetViolation.MESSAGE)
         }
+        logFailure(failure)
         return error(500, "서버 내부 오류가 발생했습니다.")
     }
 
@@ -71,6 +75,26 @@ class ChatbotExceptionHandler {
     )
 
     private companion object {
+        private val log = LoggerFactory.getLogger(ChatbotExceptionHandler::class.java)
+
+        /**
+         * 500으로 끝난 실패를 남긴다. 오류 메시지에는 SQL, 질문, 상류 응답이 섞일 수 있어 종류 이름만 남긴다.
+         * Python 챗봇이 오류로 답한 경우(Feign)는 그 상태 코드를 같이 남긴다. 502는 Gemini 같은 상류 장애다.
+         */
+        private fun logFailure(failure: Exception) {
+            var pythonStatus = "-"
+            if (failure is FeignException && failure.status() > 0) {
+                pythonStatus = failure.status().toString()
+            }
+            val cause = failure.cause?.javaClass?.simpleName ?: "-"
+            log.error(
+                "Chatbot request failed: error={} pythonStatus={} cause={}",
+                failure.javaClass.simpleName,
+                pythonStatus,
+                cause,
+            )
+        }
+
         private fun error(code: Int, message: String?): ResponseEntity<Failure> {
             return ResponseEntity.status(code).body(Failure(code, message, null))
         }

@@ -1,15 +1,21 @@
 package com.pawbridge.backend.animal.internal.chatbot.web
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageRequest
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageResponse
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.ChatbotAnimalNotFoundException
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.ChatbotRateLimitExceededException
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.service.ChatbotService
+import feign.FeignException
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.nio.charset.StandardCharsets
+import java.util.stream.Stream
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -20,6 +26,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
@@ -28,8 +35,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean
-import java.nio.charset.StandardCharsets
-import java.util.stream.Stream
 
 class ChatbotControllerTest {
     private val service = mockk<ChatbotService>()
@@ -182,6 +187,60 @@ class ChatbotControllerTest {
         confirmVerified(service)
     }
 
+    @ParameterizedTest
+    @MethodSource("loggedFailures")
+    fun `500으로 끝나는 실패일 때__전송하면__오류 종류만 로그에 남기고 메시지는 남기지 않는다`(
+        failure: RuntimeException,
+        expectedLog: String,
+    ) {
+        // given
+        every { service.createMessage(any(), any(), any(), any()) } throws failure
+        val logger = LoggerFactory.getLogger(ChatbotExceptionHandler::class.java) as Logger
+        val events = ListAppender<ILoggingEvent>()
+        events.start()
+        logger.addAppender(events)
+
+        // when
+        try {
+            mvc.perform(
+                post("/api/v1/animals/41/chat/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\":\"입양 문의\"}"),
+            ).andExpect(status().`is`(500))
+        } finally {
+            logger.detachAppender(events)
+        }
+
+        // then
+        val messages = events.list.map { event -> event.formattedMessage }
+        assertEquals(listOf(expectedLog), messages)
+        assertFalse(messages.any { message -> message.contains("private") || message.contains("입양 문의") })
+    }
+
+    @Test
+    fun `업무 오류나 한도 초과일 때__전송하면__로그를 남기지 않는다`() {
+        // given
+        every { service.createMessage(any(), any(), any(), any()) } throws ChatbotRateLimitExceededException()
+        val logger = LoggerFactory.getLogger(ChatbotExceptionHandler::class.java) as Logger
+        val events = ListAppender<ILoggingEvent>()
+        events.start()
+        logger.addAppender(events)
+
+        // when
+        try {
+            mvc.perform(
+                post("/api/v1/animals/41/chat/messages")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\":\"입양 문의\"}"),
+            ).andExpect(status().`is`(429))
+        } finally {
+            logger.detachAppender(events)
+        }
+
+        // then
+        assertTrue(events.list.isEmpty())
+    }
+
     private fun error(bytes: ByteArray, code: Int, message: String) {
         val body = json.readTree(bytes)
         assertEquals(3, body.size())
@@ -206,6 +265,22 @@ class ChatbotControllerTest {
         )
 
         @JvmStatic
+        fun loggedFailures(): Stream<Arguments> = Stream.of(
+            Arguments.of(
+                IllegalStateException("private upstream and key"),
+                "Chatbot request failed: error=IllegalStateException pythonStatus=- cause=-",
+            ),
+            Arguments.of(
+                PythonFailure(502, "private gemini body"),
+                "Chatbot request failed: error=PythonFailure pythonStatus=502 cause=-",
+            ),
+            Arguments.of(
+                DataAccessResourceFailureException("private SQL and question", IllegalStateException("private")),
+                "Chatbot request failed: error=DataAccessResourceFailureException pythonStatus=- cause=IllegalStateException",
+            ),
+        )
+
+        @JvmStatic
         fun failures(): Stream<Arguments> = Stream.of(
             Arguments.of(ChatbotAnimalNotFoundException(), 404, "동물을 찾을 수 없습니다"),
             Arguments.of(IllegalArgumentException("Invalid chatbot session"), 400, "Invalid chatbot session"),
@@ -219,3 +294,6 @@ class ChatbotControllerTest {
         )
     }
 }
+
+/** Python 챗봇이 오류 상태로 답했을 때 Feign이 던지는 예외와 같은 모양(상태 코드와 응답 본문 메시지). */
+private class PythonFailure(status: Int, message: String) : FeignException(status, message)
