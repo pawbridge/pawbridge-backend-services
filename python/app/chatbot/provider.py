@@ -14,15 +14,6 @@ class ChatbotProvider(ABC):
         """
         raise NotImplementedError
 
-    async def generate_turn(self, messages: list, tools: list, allow_tools: bool, timeout: float):
-        """에이전트의 모델 호출 한 번. 대화(langchain_core 메시지)를 받아 AIMessage 하나를 돌려준다.
-
-        AIMessage.tool_calls가 있으면 도구를 부른 것이고, 없으면 content가 최종 답이다.
-        allow_tools가 거짓이면 도구 선언은 그대로 두고 도구 호출만 막는다(호출 상한에 닿았을 때).
-        도구 호출을 지원하지 않는 제공자는 에이전트 모드에서 설정 오류가 된다.
-        """
-        raise ChatbotProviderConfigurationError(f"LLM provider '{self.name}' does not support agent tool calls")
-
 
 class ChatbotProviderConfigurationError(RuntimeError):
     pass

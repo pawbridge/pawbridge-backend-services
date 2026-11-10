@@ -60,15 +60,18 @@ def log_health_answer(matches: list[HealthMatch], used: list[int], fallback: boo
 def load_health_retriever_if_enabled() -> None:
     """기동 때 부른다. 설정이 켜져 있으면 해설을 미리 읽어 잘못된 상태를 요청 전에 드러낸다.
 
-    에이전트 모드면 그래프도 미리 만든다. 설정이 잘못됐으면(agent인데 해설 RAG 꺼짐) 여기서 멈춘다.
+    에이전트 모드면 그래프와 모델도 미리 만든다. 설정이 잘못됐으면(agent인데 해설 RAG 꺼짐, 키 없음,
+    에이전트를 지원하지 않는 제공자) 여기서 멈춘다.
     """
     settings = ChatbotSettings.load()
     if settings.health_rag_enabled:
         health_retriever()
     if settings.chatbot_mode == "agent":
         from app.chatbot.agent.graph import agent_graph
+        from app.chatbot.agent.models import chat_model
 
         agent_graph()
+        chat_model()
 
 
 def find_health_evidence(animal, question: str) -> tuple[list[HealthMatch], list]:
@@ -141,7 +144,7 @@ class ChatbotService:
     async def create_message(self, req):
         settings = ChatbotSettings.load()
         if settings.chatbot_mode == "agent":
-            # 에이전트 모드에서만 LangGraph를 불러 고정 흐름의 기동 메모리를 늘리지 않는다.
+            # 에이전트 모드에서만 LangChain을 불러 고정 흐름의 기동 메모리를 늘리지 않는다.
             from app.chatbot.agent.service import create_agent_message
 
             return await create_agent_message(req)
