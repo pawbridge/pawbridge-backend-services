@@ -6,7 +6,7 @@ import re
 import warnings
 from datetime import date
 from PIL import Image, ImageOps, UnidentifiedImageError
-from app.vision.coat_color import mismatch, ranking_weight
+from app.vision.coat_color import mismatch_against, ranking_weight
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_PIXELS = 16_000_000
@@ -77,17 +77,33 @@ def auxiliary_evidence(source, lost_date=None, region=None, description=None):
 def rank_candidates(hits, lost_date=None, region=None, description=None, *, coat_color=None, color_weight=0.,
                     limit=MAX_RESULTS):
     candidates = []
-    penalties = {}
+    colors = {}
     for hit in hits:
         src = hit["_source"]
         score = float(hit["_score"])
         if not math.isfinite(score):
             continue
-        distance = mismatch(coat_color, src.get("coat_color")) if color_weight else None
-        penalties[src["id"]] = color_weight * distance if distance is not None else 0.
         evidence = auxiliary_evidence(src, lost_date, region, description)
+        colors[src["id"]] = src.get("coat_color")
         candidates.append({"animalId": src["id"], "imageScore": score - 1.0,
                            "matchedEvidence": evidence})
+    penalties = dict.fromkeys(colors, 0.)
+    if color_weight:
+        # 털색 벌점은 color_weight × 거리(0~1)라서 0과 color_weight 사이다.
+        # 벌점을 최대로 받아도 남는 점수가 cutoff 이상인 후보가 limit개 있다. 벌점 없이도 cutoff에 못 미치는 후보는
+        # 그 limit개보다 뒤라 결과에 들 수 없으므로 털색 계산을 건너뛴다(벌점 0으로 두어도 순위 밖이다).
+        # 1e-9는 소수 계산 오차로 경계 후보를 잘못 건너뛰지 않게 둔 여유다.
+        def base(candidate):
+            return candidate["imageScore"] + AUXILIARY_BOOST * len(candidate["matchedEvidence"])
+        lowest = sorted((base(candidate) - color_weight for candidate in candidates), reverse=True)
+        cutoff = lowest[limit - 1] - 1e-9 if 0 < limit <= len(lowest) else -math.inf
+        distance_to = mismatch_against(coat_color)
+        for candidate in candidates:
+            if base(candidate) < cutoff:
+                continue
+            distance = distance_to(colors[candidate["animalId"]])
+            if distance is not None:
+                penalties[candidate["animalId"]] = color_weight * distance
     # Provisional bounded boost: <= .03, so metadata cannot overturn large visual gaps.
     candidates.sort(key=lambda c: (-(c["imageScore"] + AUXILIARY_BOOST * len(c["matchedEvidence"]) - penalties[c["animalId"]]),
                                    -c["imageScore"], c["animalId"]))

@@ -162,6 +162,28 @@ def mismatch(first, second):
     """
     if not valid(first) or not valid(second):
         return None
+    return _distance(first, second)
+
+
+def mismatch_against(source):
+    """기준 털색 하나를 여러 후보와 비교하는 함수를 돌려준다. 돌려준 함수의 값은 mismatch(source, 후보)와 같다.
+
+    후보 수백 개를 비교할 때 같은 기준 털색을 매번 다시 검사하지 않도록, 기준 털색은 여기서 한 번만 검사한다.
+    후보 털색은 지금처럼 비교할 때마다 검사한다.
+    """
+    if not valid(source):
+        return lambda candidate: None
+
+    def distance_to(candidate):
+        if not valid(candidate):
+            return None
+        return _distance(source, candidate)
+
+    return distance_to
+
+
+def _distance(first, second):
+    # 두 거리 모두 0~1이라 결과도 0~1이다. 정렬에서 털색 벌점의 상한을 이 범위로 잡는다.
     marginal = _marginal_distance(first, second)
     joint = _joint_distance(first, second)
     # v2 adds evidence; it must not dilute a difference that the established
