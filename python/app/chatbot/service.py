@@ -39,6 +39,13 @@ def health_retriever() -> RuleHealthRetriever:
     고정 흐름과 에이전트 도구가 모두 이 검색기를 쓰므로, 뺀 해설은 근거, 출처, 카드 어디에도 나오지 않는다.
     해설이 잘못됐거나, 끄라는 id가 승인된 해설에 없거나(오타), 남는 해설이 없으면 실패한다.
     """
+    entries = approved_entries()
+    logger.info("Health RAG entries: loaded=%d disabled=%s", len(entries), ",".join(sorted(ChatbotSettings.load().disabled_health_entry_ids())) or "-")
+    return RuleHealthRetriever(entries)
+
+
+def approved_entries() -> list:
+    """승인된 해설에서 HEALTH_RAG_DISABLED_IDS를 뺀 목록. 오타 id나 빈 목록이면 실패한다."""
     entries = load_entries()
     disabled = ChatbotSettings.load().disabled_health_entry_ids()
     unknown = sorted(disabled - {entry.id for entry in entries})
@@ -47,8 +54,109 @@ def health_retriever() -> RuleHealthRetriever:
     entries = [entry for entry in entries if entry.id not in disabled]
     if not entries:
         raise RuntimeError("HEALTH_RAG_ENABLED인데 쓸 수 있는 승인된 건강 해설이 하나도 없습니다")
-    logger.info("Health RAG entries: loaded=%d disabled=%s", len(entries), ",".join(sorted(disabled)) or "-")
-    return RuleHealthRetriever(entries)
+    return entries
+
+
+from app.chatbot.health.retriever import MAX_RESULTS, HealthMatch  # noqa: E402
+
+
+class SafeHybridRetriever:
+    """하이브리드 검색. 임베딩 서비스가 실패하면 그 질문은 규칙 검색만으로 답한다(상담 전체를 실패시키지 않는다)."""
+
+    def __init__(self, rule: RuleHealthRetriever, hybrid):
+        self._rule = rule
+        self._hybrid = hybrid
+
+    def search(self, notice_text, question, species):
+        try:
+            return self._hybrid.search(notice_text, question, species)
+        except Exception as exc:  # noqa: BLE001 - 임베딩 서비스 장애는 종류와 관계없이 규칙 검색으로 돌린다
+            logger.warning("Health hybrid search failed: error=%s", type(exc).__name__)
+            return self._rule.search(notice_text, question, species)
+
+    def blocked_entry_ids(self, notice_text, question, species):
+        return self._rule.blocked_entry_ids(notice_text, question, species)
+
+    def search_tool(self, notice_text, query, original_question, species):
+        """에이전트 검색 도구용 하이브리드. 규칙은 모델이 바꾼 검색어로 찾고, 벡터는 두 질의가 합의한 해설만 더한다.
+
+        - 벡터로 더하는 해설은 많아야 하나다: 모델이 바꾼 검색어의 벡터 1위가 원래 질문의 벡터 상위 VECTOR_TOP_K 안에 있고
+          원래 질문 기준 기준값을 넘을 때만. 11/11 로컬 실측에서 원래 질문만의 1위는 자주 틀렸고("앞이 안 보인다고"의
+          1위 예후불량, 실명은 3위), 두 질의 상위 3개의 교집합도 3위 자리에 잡음이 남았다("털이 빠지고 긁어요"의 탈수).
+        - 기준값과 범위 밖 관문은 원래 질문에만 건다(11/06~07에 질문 문장으로 고른 값이다).
+        - 규칙이 공고의 "없음, 음성, 예방, 접종" 문맥으로 해설을 하나라도 막은 질문에는 벡터를 쓰지 않는다
+          (예: "외부기생충 예방 도포 완료" 공고의 "피부는 괜찮나요?", "외상 없음" 공고의 "다친 데 없나요?").
+        """
+        results = list(self._rule.search(notice_text, query, species))
+        if not original_question or len(results) >= MAX_RESULTS:
+            return results[:MAX_RESULTS]
+        blocked = self._rule.blocked_entry_ids(notice_text, original_question, species) | self._rule.blocked_entry_ids(
+            notice_text, query, species
+        )
+        if blocked:
+            return results
+        try:
+            vector = self._hybrid_vector()
+            if vector.is_off_topic(original_question):
+                return results
+            if not query:
+                return results
+            by_question = {entry.id: score for entry, score in vector.scores(original_question, species)[:VECTOR_TOP_K]}
+            query_top = vector.scores(query, species)[:1]
+        except Exception as exc:  # noqa: BLE001 - 임베딩 서비스 장애는 종류와 관계없이 규칙 검색으로 돌린다
+            logger.warning("Health hybrid search failed: error=%s", type(exc).__name__)
+            return results
+        if not query_top:
+            return results
+        entry = query_top[0][0]
+        score = by_question.get(entry.id)
+        if score is None or score < VECTOR_THRESHOLD or entry.id in {match.entry.id for match in results}:
+            return results
+        results.append(HealthMatch(entry, score, "vector-agreed", basis="question"))
+        return results
+
+    def _hybrid_vector(self):
+        return self._hybrid._vector
+
+
+@lru_cache(maxsize=1)
+def agent_health_retriever():
+    """에이전트 검색 도구가 쓰는 검색기. EMBEDDING_SERVICE_URL이 있으면 규칙 + 벡터 하이브리드, 없으면 규칙만.
+
+    코드의 첫 검색(고정 흐름과 같은 단계)은 계속 규칙만 쓴다(11/09 결정: 하이브리드는 에이전트 도구에 붙인다).
+    기준값과 관문 여유는 11/06~07 한국어 보류 세트에서 고른 값이다(bge-m3, split 0.475, 관문 +0.10).
+    """
+    rule = health_retriever()
+    settings = ChatbotSettings.load()
+    if not settings.embedding_service_url:
+        return rule
+    from pathlib import Path
+
+    from app.chatbot.health.remote_embedder import RemoteEmbedder
+    from app.chatbot.health.vector import HybridHealthRetriever, VectorHealthRetriever
+
+    examples_path = Path(__file__).parent / "health" / "off_topic_examples.txt"
+    examples = [line.strip() for line in examples_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    try:
+        vector = VectorHealthRetriever(
+            approved_entries(),
+            RemoteEmbedder(settings.embedding_service_url),
+            mode="split",
+            threshold=VECTOR_THRESHOLD,
+            off_topic_examples=examples,
+            off_topic_margin=OFF_TOPIC_MARGIN,
+        )
+    except Exception as exc:  # noqa: BLE001 - 임베딩 서비스가 없으면 규칙 검색으로 시작한다
+        logger.warning("Health hybrid search unavailable at startup: error=%s", type(exc).__name__)
+        return rule
+    logger.info("Health hybrid search ready: threshold=%s margin=%s", VECTOR_THRESHOLD, OFF_TOPIC_MARGIN)
+    return SafeHybridRetriever(rule, HybridHealthRetriever(rule, vector))
+
+
+VECTOR_THRESHOLD = 0.475
+# 두 질의(원래 질문, 모델이 바꾼 검색어)의 벡터 상위 몇 개끼리 겹쳐 보는지.
+VECTOR_TOP_K = 3
+OFF_TOPIC_MARGIN = 0.10
 
 
 @lru_cache(maxsize=1)
@@ -82,6 +190,8 @@ def load_health_retriever_if_enabled() -> None:
 
         agent_graph()
         chat_model()
+        # 하이브리드 색인(해설 조각 벡터)을 첫 질문 전에 만든다. 임베딩 서비스가 없으면 규칙만으로 시작한다.
+        agent_health_retriever()
 
 
 def find_health_evidence(animal, question: str) -> tuple[list[HealthMatch], list]:
