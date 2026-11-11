@@ -163,6 +163,29 @@ class SimilarAnimalsTest(unittest.TestCase):
         self.assertEqual(self.tool_result(model), similar.UNAVAILABLE)
         self.assertEqual(self.requests, [])
 
+    def test_similar_question_forces_the_tool_even_when_notice_evidence_exists(self):
+        # 11/11 운영: 특이사항 건강 용어로 근거가 있으면 강제가 안 걸려 모델이 도구를 부르지 않았다.
+        self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
+        model = ScriptedChatModel(turns=[similar_call(), reply("공고번호 경기-양평-2025-00429 아이가 비슷해요.")])
+        body = self.post(model).json()
+        self.assertEqual(model.calls[0]["tool_choice"], "find_similar_animals")
+        self.assertEqual([made["tool_choice"] for made in model.calls[1:]], [None])
+        self.assertEqual(body["answer"], "공고번호 경기-양평-2025-00429 아이가 비슷해요.")
+
+    def test_health_question_with_similar_word_is_not_forced_to_similar(self):
+        self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
+        self.payload["question"] = "비슷한 증상이 있으면 산책해도 되나요?"
+        model = ScriptedChatModel(turns=[reply("치료 중에는 운동을 제한해야 합니다 [2].", [2])])
+        self.post(model)
+        self.assertEqual(model.calls[0]["tool_choice"], None)
+
+    def test_without_animal_id_similar_question_is_not_forced(self):
+        del self.payload["animalId"]
+        self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
+        model = ScriptedChatModel(turns=[reply("공고 목록에서 찾아보세요.")])
+        self.post(model)
+        self.assertEqual(model.calls[0]["tool_choice"], None)
+
     def test_animal_id_must_be_positive(self):
         self.payload["animalId"] = 0
         with patch.dict(os.environ, AGENT_ENV):
@@ -186,6 +209,20 @@ class GeminiToolDeclarationTest(unittest.TestCase):
         # 입력이 없는 OBJECT는 Gemini가 거부할 수 있다. 모든 도구에 입력이 하나 이상 있어야 한다.
         for item in declarations:
             self.assertTrue(item.parameters.properties, item.name)
+
+
+class SimilarQuestionTest(unittest.TestCase):
+    def test_questions_that_ask_for_similar_animals(self):
+        for question in ("이 아이랑 비슷한 다른 아이도 있나요?", "비슷한 애들 있어요?", "이 아이와 닮은 친구 있나요",
+                         "비슷하게 생긴 강아지 또 있어요?", "닮은 고양이 보여줘", "비슷한아이 있나요"):
+            with self.subTest(question=question):
+                self.assertTrue(similar.asks_for_similar(question))
+
+    def test_health_and_other_questions_are_not_similar_requests(self):
+        for question in ("비슷한 증상이 있으면 어떡하죠?", "다른 동물에게 옮나요?", "다른 보호소도 있나요",
+                         "비슷한 개월 수면 몇 살이에요?", "엄마를 닮았나요?"):
+            with self.subTest(question=question):
+                self.assertFalse(similar.asks_for_similar(question))
 
 
 if __name__ == "__main__":
