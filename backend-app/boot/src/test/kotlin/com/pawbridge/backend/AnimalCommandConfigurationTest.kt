@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.animal.api.AnimalCommandActors
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Animal
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.BaseTimeEntity
+import com.pawbridge.backend.animal.internal.command.infrastructure.entity.ShelterPublicInformation
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Shelter
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.ShelterRepository
@@ -97,6 +98,7 @@ class AnimalCommandConfigurationTest {
             assertThat(factory.persistenceUnitInfo!!.managedClassNames).containsExactlyInAnyOrder(
                 Animal::class.java.name,
                 Shelter::class.java.name,
+                ShelterPublicInformation::class.java.name,
                 BaseTimeEntity::class.java.name,
             )
             assertThat(factory.jpaPropertyMap)

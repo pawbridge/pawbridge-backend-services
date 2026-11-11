@@ -15,6 +15,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.service.Chat
 import com.pawbridge.backend.animal.internal.chatbot.web.ChatbotController
 import com.pawbridge.backend.animal.internal.chatbot.web.ChatbotExceptionHandler
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
+import com.pawbridge.backend.animal.internal.command.infrastructure.repository.ShelterPublicInformationRepository
 import com.pawbridge.backend.boot.javaIsBlank
 import feign.Client
 import feign.Request
@@ -195,6 +196,14 @@ class AnimalChatbotConfiguration {
         return FeignPythonChatbotClient(settings.pythonUrl, mapper, Client.Default(null, null), Request.Options())
     }
 
+    // 수집기가 모은 보호소 공공정보를 챗봇 읽기 트랜잭션(animalCommandJpaTransactionManager)에서 읽는다.
+    @Bean
+    fun animalChatbotShelterPublicInformation(
+        @Qualifier("animalCommandRepositoryFactory") repositories: JpaRepositoryFactory,
+    ): ShelterPublicInformationRepository {
+        return repositories.getRepository(ShelterPublicInformationRepository::class.java)
+    }
+
     @Bean
     fun animalChatbotService(
         animals: AnimalRepository,
@@ -208,6 +217,7 @@ class AnimalChatbotConfiguration {
         guard: ChatbotGuardService,
         python: PythonChatbotClient,
         settings: Settings,
+        shelterPublicInformation: ShelterPublicInformationRepository,
         @Qualifier("animalChatbotReads") reads: TransactionTemplate,
         @Qualifier("animalChatbotWrites") writes: TransactionTemplate,
     ): ChatbotService {
@@ -223,6 +233,7 @@ class AnimalChatbotConfiguration {
             guard,
             python,
             settings.pythonKey,
+            shelterPublicInformation,
             reads,
             writes,
         )
