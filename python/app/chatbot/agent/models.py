@@ -89,6 +89,20 @@ def model_call_settings() -> dict:
     return {"http_options": HttpOptions(retry_options=retry)}
 
 
+@lru_cache(maxsize=1)
+def forced_tool_call_settings() -> dict:
+    """도구 호출을 강제하는 호출에 더 붙일 제공자별 설정.
+
+    Gemini는 도구 강제(ANY 모드)와 JSON 응답 형식을 함께 받지 않는다(400 "Forced function calling (ANY mode)
+    with a response mime type: 'application/json' is unsupported", 11/11 확인). 강제한 호출은 도구 호출만
+    돌려주고 답 글을 쓰지 않으므로 그 호출에서만 JSON 형식을 뺀다.
+    """
+    provider = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+    if provider != "gemini":
+        return {}
+    return {"response_mime_type": "text/plain"}
+
+
 def _stub(settings: ChatbotSettings, reasoning: str):
     """키 없이 로컬에서 에이전트 모드를 돌려 볼 때 쓴다. 도구를 부르지 않고 고정 문구로 답한다."""
     import json

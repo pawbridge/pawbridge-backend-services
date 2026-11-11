@@ -22,7 +22,7 @@ from app.chatbot.agent.graph import (
     AgentRun,
     run_agent,
 )
-from app.chatbot.agent.models import chat_model, model_call_settings, reasoning_level
+from app.chatbot.agent.models import chat_model, forced_tool_call_settings, model_call_settings, reasoning_level
 from app.chatbot.agent.tools import ToolContext
 from app.chatbot.health.answer import (
     FALLBACK_ANSWER,
@@ -78,7 +78,13 @@ async def create_agent_message(req) -> dict:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
     prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
     tools = ToolContext(health_retriever(), animal.specialMark, animal.species, matches=list(matches), evidence=list(evidence))
-    context = AgentContext(model, tools, deadline, model_settings=model_call_settings())
+    context = AgentContext(
+        model,
+        tools,
+        deadline,
+        model_settings=model_call_settings(),
+        forced_tool_settings=forced_tool_call_settings(),
+    )
     ledger = context.ledger
 
     run = None
