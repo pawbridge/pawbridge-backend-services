@@ -424,6 +424,17 @@ class AgentModelFactoryTest(unittest.TestCase):
                 self.assertEqual(model.timeout, 15)
                 self.assertEqual(model.response_mime_type, "application/json")
 
+    def test_default_reasoning_is_low(self):
+        with patch.dict(os.environ, {"LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "test-only-key"}, clear=True):
+            self.assertEqual(models.reasoning_level(), "low")
+
+    def test_tool_rule_asks_for_search_before_a_referral_only_answer(self):
+        # 시범 실행에서 모델이 도구 없이 "문의하세요"로만 답하던 것을 막는 규칙이 프롬프트에 남아 있는지 본다.
+        from app.chatbot.prompt_builder import AGENT_TOOL_RULES
+        rules = "\n".join(AGENT_TOOL_RULES)
+        self.assertIn("반드시 이 도구를 먼저 부르세요", rules)
+        self.assertIn("도구로도 근거를 찾지 못했을 때만", rules)
+
     def test_missing_key_or_unsupported_provider_is_a_configuration_error(self):
         for env in ({"LLM_PROVIDER": "gemini"}, {"LLM_PROVIDER": "openai"}):
             models.chat_model.cache_clear()
