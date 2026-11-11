@@ -91,6 +91,8 @@ class AgentContext:
     # time.monotonic() 기준 마감 시각
     deadline: float
     ledger: AgentLedger = field(default_factory=AgentLedger)
+    # 모델 호출마다 붙일 제공자별 설정(예: Gemini 일시 오류 재시도). models.model_call_settings()가 만든다.
+    model_settings: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -128,7 +130,11 @@ class AgentLimits(AgentMiddleware):
         # 도구 상한에 닿았거나 마지막 호출이면 도구 호출만 막아 이번에 답을 내게 한다.
         # 선언은 남긴다(대화에 이미 도구 호출이 있으면 선언이 있어야 제공자가 받아 준다).
         blocked = ledger.tool_calls >= MAX_TOOL_CALLS or ledger.model_calls >= MAX_MODEL_CALLS
-        request = request.override(model=context.model, tool_choice="none" if blocked else None)
+        request = request.override(
+            model=context.model,
+            tool_choice="none" if blocked else None,
+            model_settings={**request.model_settings, **context.model_settings},
+        )
         remaining = max(0.0, context.deadline - time.monotonic())
         try:
             # 제공자의 시간 제한과 별개로 남은 시간에서 끊는다(제공자가 시간 제한을 지키지 않아도).

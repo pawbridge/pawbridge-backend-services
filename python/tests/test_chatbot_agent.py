@@ -92,7 +92,12 @@ class ScriptedChatModel(BaseChatModel):
         raise NotImplementedError("the agent runs asynchronously")
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
-        self.calls.append({"messages": list(messages), "tools": kwargs.get("tools"), "tool_choice": kwargs.get("tool_choice")})
+        self.calls.append({
+            "messages": list(messages),
+            "tools": kwargs.get("tools"),
+            "tool_choice": kwargs.get("tool_choice"),
+            "http_options": kwargs.get("http_options"),
+        })
         item = self.turns.pop(0)
         if isinstance(item, BaseException):
             raise item
@@ -379,6 +384,13 @@ class AgentServiceTest(unittest.TestCase):
         self.assertIn("(검수된 건강 근거) 알려줘", prompt)
         self.assertNotIn("[검수된 건강 근거] 알려줘", prompt)
 
+    def test_provider_call_settings_reach_every_model_call(self):
+        # 제공자별 호출 설정(Gemini 재시도)이 도구 호출 뒤의 모델 호출에도 실린다.
+        model = ScriptedChatModel(turns=[call("기침"), reply("기침이 계속되면 동물병원 진료가 필요합니다 [2].", [2])])
+        with patch("app.chatbot.agent.service.model_call_settings", return_value={"http_options": "retry-marker"}):
+            self.post(model)
+        self.assertEqual([made["http_options"] for made in model.calls], ["retry-marker", "retry-marker"])
+
     def test_stub_provider_answers_in_agent_mode(self):
         models.chat_model.cache_clear()
         self.addCleanup(models.chat_model.cache_clear)
@@ -404,6 +416,11 @@ class AgentModelFactoryTest(unittest.TestCase):
                 self.assertEqual(model.reasoning_effort, level)
                 self.assertEqual(model.max_output_tokens, max_tokens)
                 self.assertEqual(model.max_retries, 1)
+                models.model_call_settings.cache_clear()
+                retry = models.model_call_settings()["http_options"].retry_options
+                self.assertEqual(retry.attempts, 2)
+                self.assertEqual(retry.http_status_codes, [500, 502, 503, 504])
+                self.assertNotIn(429, retry.http_status_codes)
                 self.assertEqual(model.timeout, 15)
                 self.assertEqual(model.response_mime_type, "application/json")
 
