@@ -459,6 +459,49 @@ class AgentModelFactoryTest(unittest.TestCase):
                 self.assertEqual(model.timeout, 15)
                 self.assertEqual(model.response_mime_type, "application/json")
 
+    def test_openai_model_follows_settings(self):
+        env = {"LLM_PROVIDER": "openai", "OPENAI_API_KEY": "test-only-key"}
+        for level, effort, max_tokens in (("minimal", "none", 1024), ("low", "low", 2048), ("high", "high", 8192)):
+            models.chat_model.cache_clear()
+            with self.subTest(level=level), patch.dict(os.environ, {**env, "CHATBOT_REASONING": level}, clear=True):
+                model = models.chat_model()
+                self.assertEqual(type(model).__name__, "ChatOpenAI")
+                self.assertEqual(model.model_name, "gpt-6-luna")
+                self.assertTrue(model.use_responses_api)
+                self.assertEqual(model.reasoning, {"effort": effort})
+                self.assertEqual(model.max_tokens, max_tokens)
+                self.assertEqual(model.model_kwargs, {"text": {"format": {"type": "json_object"}}})
+                self.assertIs(model.store, False)
+                self.assertEqual(model.include, ["reasoning.encrypted_content"])
+                self.assertIsNone(model.temperature)
+                self.assertEqual(model.max_retries, 1)
+                self.assertEqual(model.request_timeout, 15)
+                # Gemini 전용 호출 설정은 붙이지 않는다(도구 강제와 JSON 형식을 함께 받는다).
+                models.model_call_settings.cache_clear()
+                models.forced_tool_call_settings.cache_clear()
+                self.assertEqual(models.model_call_settings(), {})
+                self.assertEqual(models.forced_tool_call_settings(), {})
+        models.model_call_settings.cache_clear()
+        models.forced_tool_call_settings.cache_clear()
+
+    def test_openai_model_name_follows_setting(self):
+        env = {"LLM_PROVIDER": "openai", "OPENAI_API_KEY": "test-only-key", "OPENAI_MODEL": " gpt-6-sol "}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(models.chat_model().model_name, "gpt-6-sol")
+
+    def test_final_answer_text_keeps_only_final_answer_blocks(self):
+        # OpenAI Responses API는 최종 답 앞에 중간 설명 조각을 붙일 수 있다. 이어 붙이면 JSON이 깨진다.
+        from app.chatbot.agent.graph import final_answer_text
+
+        mixed = AIMessage(content=[
+            {"type": "text", "text": "찾아볼게요.", "phase": "commentary"},
+            {"type": "text", "text": '{"answer": "답", "used": []}', "phase": "final_answer"},
+        ])
+        self.assertEqual(final_answer_text(mixed), '{"answer": "답", "used": []}')
+        pieces = AIMessage(content=[{"type": "text", "text": "가"}, {"type": "text", "text": "나"}])
+        self.assertEqual(final_answer_text(pieces), "가나")
+        self.assertEqual(final_answer_text(AIMessage(content="그대로")), "그대로")
+
     def test_default_reasoning_is_low(self):
         with patch.dict(os.environ, {"LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "test-only-key"}, clear=True):
             self.assertEqual(models.reasoning_level(), "low")
@@ -496,6 +539,23 @@ class AgentModelFactoryTest(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 self.assertIsInstance(models.classify_model_error(error), ChatbotProviderTimeoutError)
         self.assertIsNone(models.classify_model_error(ValueError("ours")))
+
+    def test_openai_errors_are_sorted_into_timeout_or_upstream(self):
+        import openai
+
+        request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+        upstream = [
+            openai.RateLimitError("429", response=httpx.Response(429, request=request), body=None),
+            openai.InternalServerError("503", response=httpx.Response(503, request=request), body=None),
+            openai.ConflictError("409", response=httpx.Response(409, request=request), body=None),
+            openai.APIConnectionError(request=request),
+        ]
+        for error in upstream:
+            with self.subTest(error=type(error).__name__):
+                self.assertIsInstance(models.classify_model_error(error), ChatbotProviderUpstreamError)
+                self.assertNotIsInstance(models.classify_model_error(error), ChatbotProviderTimeoutError)
+        self.assertIsInstance(models.classify_model_error(openai.APITimeoutError(request=request)),
+                              ChatbotProviderTimeoutError)
 
 
 class AgentSettingsTest(unittest.TestCase):

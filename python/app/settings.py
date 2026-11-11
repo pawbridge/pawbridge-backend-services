@@ -93,6 +93,10 @@ class ChatbotSettings(_Settings):
     gemini_api_key: str = Field("", alias="GEMINI_API_KEY")
     gemini_model: str = Field("gemini-3.5-flash-lite", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(15, alias="GEMINI_TIMEOUT_SECONDS")
+    # OpenAI(LLM_PROVIDER=openai). 모델 이름만 바꾸면 같은 키로 다른 모델을 쓴다.
+    openai_api_key: str = Field("", alias="OPENAI_API_KEY")
+    openai_model: str = Field("gpt-6-luna", alias="OPENAI_MODEL")
+    openai_timeout_seconds: float = Field(15, alias="OPENAI_TIMEOUT_SECONDS")
     # 공고 건강 해설 RAG. 기본은 꺼짐이고, 켜면 승인된 해설을 근거로 답한다.
     health_rag_enabled: bool = Field(False, alias="HEALTH_RAG_ENABLED")
     # 끌 해설 id를 쉼표로 적는다(예: heartworm-positive,cough). 틀린 해설 하나를 배포 없이 내리고 재시작한다.
