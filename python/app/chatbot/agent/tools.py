@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel, Field
 
 from app.chatbot.agent.adoption import AdoptionGuideArgs, adoption_guide_text
+from app.chatbot.agent.similar import FindSimilarArgs, similar_animals_text
 from app.chatbot.health.answer import Evidence, build_evidence, format_evidence
 from app.chatbot.health.retriever import HealthMatch, HealthRetriever
 
@@ -29,6 +30,10 @@ class ToolContext:
     species: str | None
     matches: list[HealthMatch] = field(default_factory=list)
     evidence: list[Evidence] = field(default_factory=list)
+    # 지금 공고 동물 id. 백엔드가 보내지 않으면 None이고, 비슷한 동물 도구는 찾지 않는다.
+    animal_id: int | None = None
+    # 비슷한 동물 도구가 돌려준 공고번호. 답에 이 밖의 공고번호가 나오면 지어낸 것으로 본다.
+    similar_notice_numbers: set[str] = field(default_factory=set)
 
 
 class SearchHealthArgs(BaseModel):
@@ -81,8 +86,23 @@ def adoption_guide(args: AdoptionGuideArgs, context: ToolContext) -> str:
     return adoption_guide_text(args.topic)
 
 
-# 이름 → (명세, 함수). 그래프의 도구 노드는 여기서만 찾는다.
+FIND_SIMILAR_ANIMALS = ToolSpec(
+    name="find_similar_animals",
+    description="지금 공고 동물과 사진 생김새가 비슷한, 공고중이거나 보호중인 다른 동물을 찾는다. 공고번호, 품종, 성별, 나이, 보호소를 돌려준다.",
+    args_schema=FindSimilarArgs,
+)
+
+
+async def find_similar_animals(args: FindSimilarArgs, context: ToolContext) -> str:
+    """어느 동물인지는 요청의 animalId로 코드가 정한다. 돌려준 공고번호는 답 검사를 위해 모은다."""
+    text, notice_numbers = await similar_animals_text(context.animal_id, args.count)
+    context.similar_notice_numbers.update(notice_numbers)
+    return text
+
+
+# 이름 → (명세, 함수). 그래프의 도구 노드는 여기서만 찾는다. 함수는 평범한 함수나 async 함수다.
 TOOLS = {
     SEARCH_HEALTH.name: (SEARCH_HEALTH, search_health),
     ADOPTION_GUIDE.name: (ADOPTION_GUIDE, adoption_guide),
+    FIND_SIMILAR_ANIMALS.name: (FIND_SIMILAR_ANIMALS, find_similar_animals),
 }
