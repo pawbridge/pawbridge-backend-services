@@ -85,7 +85,7 @@ class SimilarAnimalsTest(unittest.TestCase):
         model = ScriptedChatModel(turns=[similar_call(), reply(answer)])
         body = self.post(model).json()
         self.assertEqual(body["answer"], answer)
-        self.assertEqual(model.calls[0]["tools"], ["search_health", "find_similar_animals"])
+        self.assertEqual(model.calls[0]["tools"], ["search_health", "adoption_guide", "find_similar_animals"])
         self.assertEqual([str(request.url) for request in self.requests], [f"{BACKEND}/api/v1/animals/41/similar"])
         result = self.tool_result(model)
         self.assertIn("- 공고번호 경기-양평-2025-00429: 개, 믹스견, 수컷, 2023년생, 털색 갈색, 체중 5(Kg), 가상 보호소, 공고 종료 2026-11-20", result)
@@ -182,7 +182,7 @@ class GeminiToolDeclarationTest(unittest.TestCase):
 
         tools = [_langchain_tool(spec, function) for spec, function in TOOLS.values()]
         declarations = [item for tool in convert_to_genai_function_declarations(tools) for item in tool.function_declarations]
-        self.assertEqual([item.name for item in declarations], ["search_health", "find_similar_animals"])
+        self.assertEqual([item.name for item in declarations], ["search_health", "adoption_guide", "find_similar_animals"])
         # 입력이 없는 OBJECT는 Gemini가 거부할 수 있다. 모든 도구에 입력이 하나 이상 있어야 한다.
         for item in declarations:
             self.assertTrue(item.parameters.properties, item.name)

@@ -27,7 +27,7 @@ from langgraph.runtime import get_runtime
 from langsmith.run_helpers import tracing_context
 
 from app.chatbot.agent.models import classify_model_error
-from app.chatbot.agent.tools import SEARCH_HEALTH, TOOLS, ToolContext, ToolSpec
+from app.chatbot.agent.tools import TOOLS, ToolContext, ToolSpec
 from app.chatbot.health.answer import Evidence
 from app.chatbot.health.retriever import HealthMatch
 from app.chatbot.provider import ChatbotProviderTruncatedError
@@ -134,12 +134,13 @@ class AgentLimits(AgentMiddleware):
         # 선언은 남긴다(대화에 이미 도구 호출이 있으면 선언이 있어야 제공자가 받아 준다).
         blocked = ledger.tool_calls >= MAX_TOOL_CALLS or ledger.model_calls >= MAX_MODEL_CALLS
         tool_choice = "none" if blocked else None
-        # 코드의 첫 검색이 근거를 하나도 못 찾았으면 첫 호출에서 검색 도구를 반드시 부르게 한다.
-        # 모델은 부를지는 고르지 못하고 검색어만 고른다. 11/11 시범 실행에서 모델에게 맡기면
-        # 첫 검색이 놓친 건강 질문 18개 중 minimal 0개, low와 강화한 규칙으로도 12개만 불렀다.
+        # 코드의 첫 검색이 근거를 하나도 못 찾았으면 첫 호출에서 도구 하나를 반드시 부르게 한다.
+        # 모델은 부를지는 고르지 못하고 어느 도구와 입력을 쓸지만 고른다(건강이면 search_health,
+        # 입양 절차면 adoption_guide). 11/11 시범 실행에서 모델에게 맡기면 첫 검색이 놓친 건강 질문
+        # 18개 중 minimal 0개, low와 강화한 규칙으로도 12개만 불렀다.
         settings = {**request.model_settings, **context.model_settings}
         if not blocked and ledger.model_calls == 1 and not context.tools.evidence:
-            tool_choice = SEARCH_HEALTH.name
+            tool_choice = "any"
             settings = {**settings, **context.forced_tool_settings}
         request = request.override(model=context.model, tool_choice=tool_choice, model_settings=settings)
         remaining = max(0.0, context.deadline - time.monotonic())
