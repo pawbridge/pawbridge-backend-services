@@ -49,16 +49,18 @@ class FindSimilarArgs(BaseModel):
     )
 
 
-async def similar_animals_text(animal_id: int | None, count: int = DEFAULT_ANIMALS) -> tuple[str, list[str]]:
-    """추천 API 결과를 모델이 읽을 글과, 그 글에 넣은 공고번호로 바꾼다.
+async def similar_animals_text(
+    animal_id: int | None, count: int = DEFAULT_ANIMALS
+) -> tuple[str, list[str], list[str]]:
+    """추천 API 결과를 모델이 읽을 글, 그 글에 넣은 공고번호, 답 끝에 붙일 목록 줄로 바꾼다.
 
     실패해도 오류를 올리지 않고 안내 문구를 돌려준다. 추천이 안 된다고 상담 전체가 실패할 일은 아니다.
     """
     if animal_id is None:
-        return NO_ANIMAL, []
+        return NO_ANIMAL, [], []
     base_url = ChatbotSettings.load().backend_base_url.rstrip("/")
     if not base_url:
-        return UNAVAILABLE, []
+        return UNAVAILABLE, [], []
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
             response = await client.get(f"{base_url}/api/v1/animals/{animal_id}/similar")
@@ -67,17 +69,21 @@ async def similar_animals_text(animal_id: int | None, count: int = DEFAULT_ANIMA
     except (httpx.HTTPError, ValueError) as exc:
         # 주소나 응답 본문은 남기지 않고 오류 종류만 남긴다.
         logger.warning("Chatbot similar animals failed: error=%s", type(exc).__name__)
-        return UNAVAILABLE, []
+        return UNAVAILABLE, [], []
     if not isinstance(cards, list):
         logger.warning("Chatbot similar animals failed: error=unexpected_body")
-        return UNAVAILABLE, []
+        return UNAVAILABLE, [], []
 
     shown = [card for card in cards if isinstance(card, dict) and card.get("apmsNoticeNo")][:min(count, MAX_ANIMALS)]
     if not shown:
-        return NOTHING_SIMILAR, []
-    header = "사진 생김새가 비슷한 보호 동물입니다. 이 목록에 있는 동물만, 공고번호를 그대로 옮겨 소개하세요."
+        return NOTHING_SIMILAR, [], []
+    header = (
+        f"사진 생김새가 비슷한 보호 동물 {len(shown)}마리입니다. 이 목록은 코드가 답 끝에 그대로 붙입니다. "
+        "답에는 목록을 다시 쓰지 말고, 비슷한 아이를 찾았다는 안내를 한두 문장으로만 쓰세요. 동물을 지어내지 마세요."
+    )
     # 모델에게 보여 준 동물의 번호만 돌려준다. 잘라 낸 동물의 번호가 답에 나오면 지어낸 것이다.
-    return "\n".join([header, *(describe(card) for card in shown)]), [card["apmsNoticeNo"] for card in shown]
+    text = "\n".join([header, *(describe(card) for card in shown)])
+    return text, [card["apmsNoticeNo"] for card in shown], [answer_line(card) for card in shown]
 
 
 def describe(card: dict) -> str:
@@ -99,6 +105,25 @@ def describe(card: dict) -> str:
 def asks_for_similar(question: str) -> bool:
     """비슷한 동물을 묻는 질문인지. 맞으면 첫 모델 호출에서 이 도구를 반드시 부르게 한다."""
     return SIMILAR_QUESTION.search(question) is not None
+
+
+def answer_line(card: dict) -> str:
+    """사용자에게 보일 한 줄. 모델이 줄이거나 바꾸지 않게 코드가 만든다(11/11 운영에서 공고번호만 남김)."""
+    parts = [
+        card.get("breed"),
+        GENDER_NAMES.get(card.get("gender"), None),
+        f"{card['birthYear']}년생" if card.get("birthYear") else None,
+        card.get("shelterName"),
+    ]
+    details = ", ".join(str(part) for part in parts if part)
+    return f"- {details} (공고번호 {card['apmsNoticeNo']})" if details else f"- 공고번호 {card['apmsNoticeNo']}"
+
+
+def with_similar_list(answer: str, lines: list[str]) -> str:
+    """검사를 통과한 답 끝에 비슷한 동물 목록을 붙인다. 화면은 줄바꿈을 그대로 그린다(whitespace-pre-wrap)."""
+    if not lines:
+        return answer
+    return "\n".join([answer.rstrip(), "", *lines])
 
 
 def unknown_notice_numbers(answer: str, allowed: set[str]) -> list[str]:
