@@ -23,8 +23,8 @@ from app.chatbot.agent.graph import (
     run_agent,
 )
 from app.chatbot.agent.models import chat_model, forced_tool_call_settings, model_call_settings, reasoning_level
-from app.chatbot.agent.similar import SIMILAR_FALLBACK, unknown_notice_numbers
-from app.chatbot.agent.tools import ToolContext
+from app.chatbot.agent.similar import SIMILAR_FALLBACK, asks_for_similar, unknown_notice_numbers
+from app.chatbot.agent.tools import FIND_SIMILAR_ANIMALS, ToolContext
 from app.chatbot.health.answer import (
     FALLBACK_ANSWER,
     NO_EVIDENCE_FALLBACK,
@@ -85,6 +85,8 @@ async def create_agent_message(req) -> dict:
         matches=list(matches),
         evidence=list(evidence),
         animal_id=req.animalId,
+        # 공고 id가 없으면 도구가 찾지 못하므로 강제하지 않는다.
+        first_tool=FIND_SIMILAR_ANIMALS.name if req.animalId and asks_for_similar(req.question) else None,
     )
     context = AgentContext(
         model,

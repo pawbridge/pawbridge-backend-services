@@ -139,7 +139,13 @@ class AgentLimits(AgentMiddleware):
         # 입양 절차면 adoption_guide). 11/11 시범 실행에서 모델에게 맡기면 첫 검색이 놓친 건강 질문
         # 18개 중 minimal 0개, low와 강화한 규칙으로도 12개만 불렀다.
         settings = {**request.model_settings, **context.model_settings}
-        if not blocked and ledger.model_calls == 1 and not context.tools.evidence:
+        # 비슷한 동물 질문은 공고 특이사항으로 건강 근거를 이미 찾았어도 그 도구를 강제한다.
+        # 11/11 운영 확인(공고 106382, 특이사항에 종양, 피부병)에서 근거가 있어 강제가 걸리지 않았고,
+        # 모델은 도구 없이 "그런 기능은 없다"고 답했다.
+        if not blocked and ledger.model_calls == 1 and context.tools.first_tool:
+            tool_choice = context.tools.first_tool
+            settings = {**settings, **context.forced_tool_settings}
+        elif not blocked and ledger.model_calls == 1 and not context.tools.evidence:
             tool_choice = "any"
             settings = {**settings, **context.forced_tool_settings}
         request = request.override(model=context.model, tool_choice=tool_choice, model_settings=settings)

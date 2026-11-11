@@ -34,6 +34,8 @@ class ToolContext:
     animal_id: int | None = None
     # 비슷한 동물 도구가 돌려준 공고번호. 답에 이 밖의 공고번호가 나오면 지어낸 것으로 본다.
     similar_notice_numbers: set[str] = field(default_factory=set)
+    # 질문만 보고 코드가 정한, 첫 모델 호출에서 반드시 부를 도구 이름. 없으면 graph.py의 기본 규칙을 따른다.
+    first_tool: str | None = None
 
 
 class SearchHealthArgs(BaseModel):
