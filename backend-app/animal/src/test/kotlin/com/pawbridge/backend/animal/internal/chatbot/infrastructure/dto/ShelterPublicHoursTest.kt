@@ -1,5 +1,8 @@
 package com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.pawbridge.backend.animal.internal.shelterdirectory.infrastructure.ShelterPublicDetails
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -67,6 +70,56 @@ class ShelterPublicHoursTest {
 
         // then
         assertEquals("휴무 일요일, 공휴일 (공공데이터 2025-12-31 기준, 방문 전 전화 확인 필요)", text)
+    }
+
+    @Test
+    fun `수집기가 저장한 모양의 details일 때__꺼내면__같은 키 이름으로 운영시간 칸을 채운다`() {
+        // given
+        // 수집기가 실제로 쓰는 변환(ShelterPublicDetails)으로 만든 뒤 JSON을 거쳐 Map으로 읽는다(jsonb를 읽는 것과 같은 모양).
+        // 수집기 쪽 키 이름이 바뀌면 이 시험이 깨진다.
+        val written = ShelterPublicDetails.details(
+            mapOf(
+                "careTel" to "000-0000-0000",
+                "weekOprStime" to "09:00",
+                "weekOprEtime" to "18:00",
+                "weekendOprStime" to "10:00",
+                "weekendOprEtime" to "15:00",
+                "closeDay" to "일요일+공휴일",
+                "lat" to "37.5",
+                "lng" to "127.0",
+                "dataStdDt" to "2026-01-02",
+            ),
+        )
+        val mapper = ObjectMapper()
+        val details = mapper.readValue(mapper.writeValueAsString(written), object : TypeReference<Map<String, Any?>>() {})
+
+        // when
+        val hours = ShelterPublicHours.fromDetails(details)
+
+        // then
+        assertEquals(ShelterPublicHours("09:00", "18:00", "10:00", "15:00", "일요일+공휴일", "2026-01-02"), hours)
+    }
+
+    @Test
+    fun `글자가 아닌 값이나 빠진 키가 있을 때__꺼내면__그 칸만 비운다`() {
+        // given
+        val details = mapOf("weekdayOpen" to 900, "weekdayClose" to null, "closedDays" to "일요일")
+
+        // when
+        val hours = ShelterPublicHours.fromDetails(details)
+
+        // then
+        assertEquals(ShelterPublicHours(null, null, null, null, "일요일", null), hours)
+    }
+
+    @Test
+    fun `details가 없을 때__꺼내면__null이다`() {
+        // given
+        // when
+        val hours = ShelterPublicHours.fromDetails(null)
+
+        // then
+        assertNull(hours)
     }
 
     companion object {

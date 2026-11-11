@@ -34,7 +34,7 @@ class AnimalJpaWriterConfiguration {
         val factory = LocalContainerEntityManagerFactoryBean()
         factory.setDataSource(source)
         factory.setPersistenceUnitName("pawbridge-animal-command-writer")
-        val managed = ArrayList<String>(listOf(MODEL + "Animal", MODEL + "Shelter", MODEL + "BaseTimeEntity"))
+        val managed = ArrayList<String>(listOf(MODEL + "Animal", MODEL + "Shelter", MODEL + "ShelterPublicInformation", MODEL + "BaseTimeEntity"))
         if ("true".equals(chatbotFlag, ignoreCase = true)) {
             managed.add("com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotSession")
             managed.add("com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage")

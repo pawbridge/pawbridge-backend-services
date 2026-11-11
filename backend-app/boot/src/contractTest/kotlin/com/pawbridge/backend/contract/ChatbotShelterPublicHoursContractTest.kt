@@ -1,24 +1,31 @@
 package com.pawbridge.backend.contract
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterPublicHours
-import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.JdbcShelterPublicHoursReader
+import com.pawbridge.backend.animal.internal.command.infrastructure.repository.ShelterPublicInformationRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.data.jpa.repository.support.JpaRepositoryFactory
+import org.springframework.orm.jpa.JpaTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 
-/** 챗봇이 실제 shelter_public_information 표에서 운영시간과 휴무일을 읽는지 본다. */
+/** 챗봇이 실제 shelter_public_information 표(jsonb)를 읽기 전용 JPA 엔티티로 읽는지 본다. */
 class ChatbotShelterPublicHoursContractTest : AnimalRepositoryContractBase() {
     @Autowired
-    private lateinit var mapper: ObjectMapper
+    @Qualifier("animalCommandRepositoryFactory")
+    private lateinit var repositories: JpaRepositoryFactory
 
-    private lateinit var reader: JdbcShelterPublicHoursReader
+    @Autowired
+    @Qualifier("animalCommandJpaTransactionManager")
+    private lateinit var jpaManager: JpaTransactionManager
+
+    private lateinit var information: ShelterPublicInformationRepository
 
     @BeforeEach
     fun seed() {
-        reader = JdbcShelterPublicHoursReader(JdbcTemplate(writeSource), mapper)
+        information = repositories.getRepository(ShelterPublicInformationRepository::class.java)
         seedShelter(1)
         seedShelter(2)
     }
@@ -32,13 +39,17 @@ class ChatbotShelterPublicHoursContractTest : AnimalRepositoryContractBase() {
                 "\"closedDays\":\"일요일+공휴일\",\"latitude\":37.5,\"longitude\":127.0,\"sourceUpdatedDate\":\"2026-01-02\"}'::jsonb, " +
                 "'2026-11-11 11:45:00')",
         )
+        val reads = TransactionTemplate(jpaManager)
+        reads.isReadOnly = true
 
         // when
-        val collected = reader.find(1)
-        val missing = reader.find(2)
+        val collected = reads.execute {
+            information.findById(1).map { row -> ShelterPublicHours.fromDetails(row.details) }.orElse(null)
+        }
+        val missing = reads.execute { information.findById(2).isPresent }
 
         // then
         assertThat(collected).isEqualTo(ShelterPublicHours("09:00", "18:00", null, null, "일요일+공휴일", "2026-01-02"))
-        assertThat(missing).isNull()
+        assertThat(missing).isFalse()
     }
 }

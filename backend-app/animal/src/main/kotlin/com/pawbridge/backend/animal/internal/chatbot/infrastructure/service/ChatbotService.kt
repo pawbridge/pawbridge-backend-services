@@ -9,6 +9,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotM
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageResponse
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotRecentMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterPublicHours
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotBlockLog
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotSession
@@ -16,10 +17,10 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.Ch
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotBlockLogRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotMessageRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotSessionRepository
-import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ShelterPublicHoursReader
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Animal
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Shelter
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
+import com.pawbridge.backend.animal.internal.command.infrastructure.repository.ShelterPublicInformationRepository
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.transaction.support.TransactionOperations
@@ -36,7 +37,7 @@ class ChatbotService(
     private val chatbotGuardService: ChatbotGuardService,
     private val pythonAiServiceClient: PythonChatbotClient,
     private val pythonAiInternalApiKey: String?,
-    private val shelterPublicHours: ShelterPublicHoursReader,
+    private val shelterPublicInformation: ShelterPublicInformationRepository,
     private val reads: TransactionOperations,
     private val writes: TransactionOperations,
 ) {
@@ -221,7 +222,11 @@ class ChatbotService(
             return entered
         }
         val shelterId = shelter.id ?: return entered
-        val collected = reads.execute { shelterPublicHours.find(shelterId) }
+        val collected = reads.execute {
+            shelterPublicInformation.findById(shelterId)
+                .map { information -> ShelterPublicHours.fromDetails(information.details) }
+                .orElse(null)
+        }
         return collected?.describe() ?: entered
     }
 

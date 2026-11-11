@@ -7,7 +7,6 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.AnimalCh
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageRequest
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageResponse
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
-import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterPublicHours
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotBlockLog
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessageRole
@@ -17,11 +16,12 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.Ch
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotBlockLogRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotMessageRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotSessionRepository
-import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ShelterPublicHoursReader
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Animal
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Shelter
+import com.pawbridge.backend.animal.internal.command.infrastructure.entity.ShelterPublicInformation
 import com.pawbridge.backend.animal.internal.command.infrastructure.enums.Species
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
+import com.pawbridge.backend.animal.internal.command.infrastructure.repository.ShelterPublicInformationRepository
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
@@ -64,7 +64,7 @@ class ChatbotServiceTest {
     private val hashes = mockk<ChatbotIpHashService>()
     private val quota = mockk<ChatbotRateLimitService>()
     private val ai = mockk<PythonChatbotClient>()
-    private val publicHours = mockk<ShelterPublicHoursReader>()
+    private val publicInformation = mockk<ShelterPublicInformationRepository>()
     private val events = ArrayList<String>()
     private val saved = ArrayList<ChatbotMessage>()
     private val rejected = ArrayList<ChatbotBlockLog>()
@@ -104,7 +104,7 @@ class ChatbotServiceTest {
         reads.isReadOnly = true
         val writes = TransactionTemplate(manager)
         service = ChatbotService(
-            animals, sessions, messages, blocks, cookies, ips, hashes, quota, ChatbotGuardService(), ai, KEY, publicHours,
+            animals, sessions, messages, blocks, cookies, ips, hashes, quota, ChatbotGuardService(), ai, KEY, publicInformation,
             reads, writes,
         )
     }
@@ -200,7 +200,7 @@ class ChatbotServiceTest {
         verify(exactly = 1) { sessions.findByIdAndAnonymousSessionIdAndAnimal_Id(SESSION, ANON, 41L) }
         verify(exactly = 1) { quota.check(ANON, "fixture-ip-hash") }
         // 보호소가 직접 적은 운영시간이 있으면 공공정보를 읽지 않는다.
-        confirmVerified(blocks, publicHours)
+        confirmVerified(blocks, publicInformation)
         verify(exactly = 0) { sessions.save(any<ChatbotSession>()) }
     }
 
@@ -213,11 +213,20 @@ class ChatbotServiceTest {
         // given
         val withoutHours = shelterAnimal(entered)
         stubUntilAi(withoutHours)
-        every { publicHours.find(9L) } answers {
+        every { publicInformation.findById(9L) } answers {
             inTransaction(
                 "public-hours",
                 true,
-                ShelterPublicHours("09:00", "18:00", null, null, "토요일+일요일", "2026-01-02"),
+                collected(
+                    mapOf(
+                        "phone" to "000-0000-0000",
+                        "weekdayOpen" to "09:00",
+                        "weekdayClose" to "18:00",
+                        "closedDays" to "토요일+일요일",
+                        "latitude" to 37.5,
+                        "sourceUpdatedDate" to "2026-01-02",
+                    ),
+                ),
             )
         }
 
@@ -236,14 +245,16 @@ class ChatbotServiceTest {
             listOf("history", "commit:R", "begin:R", "public-hours", "commit:R", "ai"),
             events.subList(events.indexOf("history"), events.indexOf("ai") + 1),
         )
-        verify(exactly = 1) { publicHours.find(9L) }
+        verify(exactly = 1) { publicInformation.findById(9L) }
     }
 
     @Test
     fun `보호소가 적은 운영시간도 수집된 공공정보도 없을 때__질문하면__운영시간 칸을 비워 보낸다`() {
         // given
         stubUntilAi(shelterAnimal(null))
-        every { publicHours.find(9L) } answers { inTransaction("public-hours", true, null) }
+        every { publicInformation.findById(9L) } answers {
+            inTransaction("public-hours", true, Optional.empty<ShelterPublicInformation>())
+        }
 
         // when
         service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), request, response)
@@ -259,8 +270,12 @@ class ChatbotServiceTest {
     fun `수집된 공공정보가 모두 뜻 모를 값일 때__질문하면__운영시간 칸을 비워 보낸다`() {
         // given
         stubUntilAi(shelterAnimal(null))
-        every { publicHours.find(9L) } answers {
-            inTransaction("public-hours", true, ShelterPublicHours(":", ":", null, null, "0", "2026-01-02"))
+        every { publicInformation.findById(9L) } answers {
+            inTransaction(
+                "public-hours",
+                true,
+                collected(mapOf("weekdayOpen" to ":", "weekdayClose" to ":", "closedDays" to "0", "sourceUpdatedDate" to "2026-01-02")),
+            )
         }
 
         // when
@@ -349,7 +364,7 @@ class ChatbotServiceTest {
         val input = slot<PythonChatbotMessageRequest>()
         verify(exactly = 1) { ai.createChatbotMessage(KEY, capture(input)) }
         assertEquals(ShelterChatbotContext(null, null, null, null, null, null), input.captured.shelterContext)
-        confirmVerified(publicHours)
+        confirmVerified(publicInformation)
     }
 
     @ParameterizedTest
@@ -575,6 +590,13 @@ class ChatbotServiceTest {
         // then
         assertEquals(listOf("cookie", "ip", "hash", "begin:R", "animal", "rollback:R"), events)
         confirmVerified(sessions, quota, messages, blocks, ai)
+    }
+
+    /** 수집기가 저장한 details를 가진 공공정보 행. 읽기 전용 엔티티라 값은 흉내 낸다. */
+    private fun collected(details: Map<String, Any?>): Optional<ShelterPublicInformation> {
+        val row = mockk<ShelterPublicInformation>()
+        every { row.details } returns details
+        return Optional.of(row)
     }
 
     /** 보호소 id가 9이고 운영시간만 주어진 값인 동물. */

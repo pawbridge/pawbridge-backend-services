@@ -48,7 +48,25 @@ data class ShelterPublicHours(
         return parts.joinToString(", ") + " ($basis, 방문 전 전화 확인 필요)"
     }
 
-    private companion object {
+    companion object {
+        /**
+         * 공공정보 details(jsonb를 읽은 Map)에서 운영시간 칸만 꺼낸다. details가 없으면 null.
+         * 글자가 아닌 값(숫자, null)은 원문 모양이 아니므로 없는 것으로 본다.
+         */
+        fun fromDetails(details: Map<String, *>?): ShelterPublicHours? {
+            if (details == null) {
+                return null
+            }
+            return ShelterPublicHours(
+                details["weekdayOpen"] as? String,
+                details["weekdayClose"] as? String,
+                details["weekendOpen"] as? String,
+                details["weekendClose"] as? String,
+                details["closedDays"] as? String,
+                details["sourceUpdatedDate"] as? String,
+            )
+        }
+
         // 원문 시각은 "09:00" 모양이다. 자정 마감을 적는 곳이 있을 수 있어 24:00도 받는다.
         private val TIME = Regex("""([01]\d|2[0-3]):[0-5]\d|24:00""")
 
@@ -57,7 +75,7 @@ data class ShelterPublicHours(
         private const val NO_HOLIDAY = "연중무휴"
 
         /** 시작과 끝이 모두 시각 모양이고 서로 다를 때만 "09:00~18:00"을 돌려준다. */
-        fun timeRange(open: String?, close: String?): String? {
+        private fun timeRange(open: String?, close: String?): String? {
             val start = open?.trim()
             val end = close?.trim()
             if (start == null || end == null) {
@@ -73,7 +91,7 @@ data class ShelterPublicHours(
         }
 
         /** 요일과 공휴일로만 이뤄진 값이면 "휴무 토요일, 일요일"을, 연중무휴면 그대로 돌려준다. */
-        fun closedDayText(value: String?): String? {
+        private fun closedDayText(value: String?): String? {
             val text = value?.trim()
             if (text.isNullOrEmpty()) {
                 return null
@@ -89,7 +107,7 @@ data class ShelterPublicHours(
         }
 
         /** ISO 날짜(2026-01-02)일 때만 돌려준다. */
-        fun sourceDate(value: String?): String? {
+        private fun sourceDate(value: String?): String? {
             val text = value?.trim()
             if (text.isNullOrEmpty()) {
                 return null
