@@ -21,6 +21,11 @@ TIMEOUT_SECONDS = 3.0
 MAX_ANIMALS = 4
 DEFAULT_ANIMALS = 3
 
+# 비슷한 동물을 묻는 질문. "비슷한/닮은" 바로 뒤에 동물을 가리키는 낱말이 와야 한다.
+# "비슷한 증상"처럼 건강 질문에 쓰인 "비슷한"은 걸리지 않게 한다. "다른 동물에게 옮나요?" 같은 질문이 있어
+# "다른"만으로는 잡지 않는다.
+SIMILAR_QUESTION = re.compile(r"(비슷|닮)\S*\s*(생긴\s*)?(다른\s*)?(아이|애|얘|친구|강아지|개(?!월)|고양이|냥이|동물|녀석)")
+
 # 경기-양평-2025-00429 같은 공고번호. 답 검사에서 도구 결과에 없는 번호를 찾는 데 쓴다.
 NOTICE_NUMBER = re.compile(r"[가-힣]{1,10}-[가-힣]{1,10}-\d{4}-\d{3,6}")
 
@@ -89,6 +94,11 @@ def describe(card: dict) -> str:
     ]
     details = ", ".join(str(part) for part in parts if part)
     return f"- 공고번호 {card['apmsNoticeNo']}: {details}"
+
+
+def asks_for_similar(question: str) -> bool:
+    """비슷한 동물을 묻는 질문인지. 맞으면 첫 모델 호출에서 이 도구를 반드시 부르게 한다."""
+    return SIMILAR_QUESTION.search(question) is not None
 
 
 def unknown_notice_numbers(answer: str, allowed: set[str]) -> list[str]:
