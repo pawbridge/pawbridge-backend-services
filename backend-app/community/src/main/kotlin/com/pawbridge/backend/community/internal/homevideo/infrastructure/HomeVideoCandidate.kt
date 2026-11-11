@@ -26,7 +26,8 @@ class HomeVideoCandidate protected constructor() : Persistable<String> {
     var videoId: String? = null
         protected set
 
-    @Column(nullable = false, length = 64)
+    // 관리자가 손으로 올렸다가 교체된 영상은 채널 ID를 모른다.
+    @Column(length = 64)
     var channelId: String? = null
         protected set
 
@@ -56,9 +57,20 @@ class HomeVideoCandidate protected constructor() : Persistable<String> {
         fresh = false
     }
 
+    /** 홈에 올렸거나 홈에서 뺀 영상: 다시 넣지 않는다. */
+    fun markUsed(now: Instant) {
+        status = CandidateStatus.USED
+        checkedAt = now
+    }
+
+    /** YouTube에서 아직 있는지 다시 확인했다(약관의 30일 기한). */
+    fun confirm(now: Instant) {
+        checkedAt = now
+    }
+
     constructor(
         videoId: String,
-        channelId: String,
+        channelId: String?,
         status: CandidateStatus,
         searchRank: Int,
         checkedAt: Instant,

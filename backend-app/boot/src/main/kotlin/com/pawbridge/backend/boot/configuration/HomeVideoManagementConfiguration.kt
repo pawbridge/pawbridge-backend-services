@@ -2,11 +2,17 @@ package com.pawbridge.backend.boot.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.community.internal.homevideo.application.CollectHomeVideoCandidates
+import com.pawbridge.backend.community.internal.homevideo.application.CurateHomeVideos
+import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoCurationException
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoManagement
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.GeminiCandidateJudge
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.HomeVideoBoardRepository
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.HomeVideoCandidateRepository
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.HomeVideoCurationRepository
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.HomeVideoEntityRepository
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.JdbcHomeVideoManagement
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.JdbcHomeVideoRepository
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.JpaCurationBoard
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.JpaHomeVideoCandidateStore
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.YouTubeVideoClient
 import jakarta.persistence.EntityManagerFactory
@@ -18,6 +24,7 @@ import java.time.Clock
 import java.time.Duration
 import javax.sql.DataSource
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -124,8 +131,11 @@ class HomeVideoManagementConfiguration {
         }
 
         @Bean
-        fun homeVideoRefreshJob(management: HomeVideoManagement): HomeVideoRefreshJob {
-            return HomeVideoRefreshJob(management)
+        fun homeVideoRefreshJob(
+            management: HomeVideoManagement,
+            curation: ObjectProvider<CurateHomeVideos>,
+        ): HomeVideoRefreshJob {
+            return HomeVideoRefreshJob(management, curation.ifAvailable)
         }
     }
 
@@ -150,7 +160,10 @@ class HomeVideoManagementConfiguration {
             factory.setPersistenceUnitName("pawbridge-home-video-candidates")
             factory.setManagedTypes(
                 PersistenceManagedTypes.of(
-                    "com.pawbridge.backend.community.internal.homevideo.infrastructure.HomeVideoCandidate",
+                    HOME_VIDEO_MODEL + "HomeVideoCandidate",
+                    HOME_VIDEO_MODEL + "HomeVideoEntity",
+                    HOME_VIDEO_MODEL + "HomeVideoBoardEntity",
+                    HOME_VIDEO_MODEL + "HomeVideoCurationEntity",
                 ),
             )
             factory.jpaVendorAdapter = HibernateJpaVendorAdapter()
@@ -170,8 +183,9 @@ class HomeVideoManagementConfiguration {
         }
 
         /**
-         * 같은 쓰기 DataSource를 지정해, 다음 단계에서 기존 JDBC 홈 영상 코드도 이 트랜잭션에 함께 묶을 수 있게 한다.
+         * 자동 교체는 후보 표, 홈 영상 표, 목록 잠금, 실행 기록을 모두 이 JPA 단위로 쓰므로 한 작업에 관리자가 하나다.
          * 한 작업에 JDBC와 JPA 트랜잭션 관리자를 섞으면 커밋 시점이 갈린다(README의 APMS 기록).
+         * dataSource를 지정해 두면 같은 트랜잭션 안의 JDBC 접근도 같은 연결을 쓴다(animal 단위와 같은 설정).
          */
         @Bean
         fun homeVideoCandidateTransactionManager(
@@ -186,11 +200,18 @@ class HomeVideoManagementConfiguration {
         }
 
         @Bean
-        fun homeVideoCandidateRepository(
+        fun homeVideoCurationRepositories(
             @Qualifier("homeVideoCandidateEntityManagerFactory") factory: EntityManagerFactory,
-        ): HomeVideoCandidateRepository {
+        ): JpaRepositoryFactory {
             val entityManager = SharedEntityManagerCreator.createSharedEntityManager(factory)
-            return JpaRepositoryFactory(entityManager).getRepository(HomeVideoCandidateRepository::class.java)
+            return JpaRepositoryFactory(entityManager)
+        }
+
+        @Bean
+        fun homeVideoCandidateRepository(
+            @Qualifier("homeVideoCurationRepositories") repositories: JpaRepositoryFactory,
+        ): HomeVideoCandidateRepository {
+            return repositories.getRepository(HomeVideoCandidateRepository::class.java)
         }
 
         @Bean
@@ -222,20 +243,86 @@ class HomeVideoManagementConfiguration {
         ): CollectHomeVideoCandidates {
             return CollectHomeVideoCandidates(youtube, judge, store, repository, clock)
         }
+
+        @Bean
+        fun homeVideoCurationBoard(
+            @Qualifier("homeVideoCurationRepositories") repositories: JpaRepositoryFactory,
+            candidates: HomeVideoCandidateRepository,
+            @Qualifier("homeVideoCandidateTransactionManager") manager: JpaTransactionManager,
+        ): JpaCurationBoard {
+            return JpaCurationBoard(
+                repositories.getRepository(HomeVideoEntityRepository::class.java),
+                repositories.getRepository(HomeVideoBoardRepository::class.java),
+                candidates,
+                repositories.getRepository(HomeVideoCurationRepository::class.java),
+                TransactionTemplate(manager),
+            )
+        }
+
+        @Bean
+        fun curateHomeVideos(
+            collect: CollectHomeVideoCandidates,
+            board: JpaCurationBoard,
+            youtube: YouTubeVideoClient,
+            @Qualifier("readClock") clock: Clock,
+        ): CurateHomeVideos {
+            return CurateHomeVideos(collect, board, youtube, clock)
+        }
     }
 
-    class HomeVideoRefreshJob(private val management: HomeVideoManagement) {
+    /**
+     * 1시간마다: 상태 갱신 → (자동 교체가 켜져 있으면) 빈칸 채우기 → 사용 기록 재확인 → 주간 교체.
+     * 갱신이 실패하면 영상 상태를 믿을 수 없어 자동 교체도 다음 시간으로 미룬다. 단계마다 실패를 따로 받아 다음 단계를 막지 않는다.
+     */
+    class HomeVideoRefreshJob(
+        private val management: HomeVideoManagement,
+        private val curation: CurateHomeVideos? = null,
+    ) {
         @Scheduled(scheduler = "homeVideoRefreshScheduler", fixedDelay = 3_600_000, initialDelay = 60_000)
         fun refresh() {
             try {
                 management.refresh()
             } catch (failure: RuntimeException) {
-                LoggerFactory.getLogger(HomeVideoRefreshJob::class.java)
-                    .warn(
-                        "YouTube metadata refresh unavailable; retry on next schedule ({})",
-                        failure.javaClass.simpleName,
-                    )
+                log.warn("YouTube metadata refresh unavailable; retry on next schedule ({})", failure.javaClass.simpleName)
+                return
+            }
+            if (curation == null) {
+                return
+            }
+            step("fill gaps") {
+                val filled = curation.fillGaps()
+                if (filled > 0) {
+                    log.info("Home video gaps filled: {}", filled)
+                }
+            }
+            step("recheck used") {
+                curation.recheckUsed()
+            }
+            step("weekly curation") {
+                if (curation.weekly()) {
+                    log.info("Home video weekly curation finished")
+                }
             }
         }
+
+        private fun step(name: String, action: () -> Unit) {
+            try {
+                action()
+            } catch (failure: HomeVideoCurationException) {
+                // 이 예외의 메시지에는 비밀값이 없다(작성 규칙).
+                log.warn("Home video {} skipped: {}", name, failure.message)
+            } catch (failure: RuntimeException) {
+                // 다른 예외는 주소나 키를 담을 수 있어 종류만 남긴다.
+                log.warn("Home video {} failed ({})", name, failure.javaClass.simpleName)
+            }
+        }
+
+        private companion object {
+            private val log = LoggerFactory.getLogger(HomeVideoRefreshJob::class.java)
+        }
+    }
+
+    private companion object {
+        private const val HOME_VIDEO_MODEL = "com.pawbridge.backend.community.internal.homevideo.infrastructure."
     }
 }

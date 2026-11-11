@@ -137,6 +137,11 @@ GRANT SELECT (id, revision), UPDATE (revision) ON pawbridge_community.home_video
 GRANT INSERT (id, video_id, published, position, created_at) ON pawbridge_community.home_videos TO pawbridge_app;
 GRANT UPDATE (video_id, published, position, title, channel_title, thumbnail_url, duration_seconds, available, checked_at)
     ON pawbridge_community.home_videos TO pawbridge_app;
+-- 자동 교체: 새 영상은 메타데이터까지 한 번에 넣고(JPA INSERT는 모든 칸을 쓴다), 교체된 영상 줄은 지운다.
+GRANT INSERT (title, channel_title, thumbnail_url, duration_seconds, available, checked_at),
+      DELETE ON pawbridge_community.home_videos TO pawbridge_app;
+GRANT SELECT (id, last_succeeded_at, last_attempted_at), UPDATE (last_succeeded_at, last_attempted_at)
+    ON pawbridge_community.home_video_curation TO pawbridge_app;
 -- 홈 영상 후보: 주간 판정 결과 저장과 30일 정리.
 GRANT SELECT (video_id, channel_id, status, search_rank, checked_at),
       INSERT (video_id, channel_id, status, search_rank, checked_at),

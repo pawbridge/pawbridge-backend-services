@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.community.internal.homevideo.application.CandidateSource
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoManagement.Metadata
+import com.pawbridge.backend.community.internal.homevideo.application.VideoLookup
 import com.pawbridge.backend.community.internal.homevideo.domain.CandidateVideo
 import java.net.URI
 import java.net.URLEncoder
@@ -26,9 +27,9 @@ class YouTubeVideoClient(
     private val apiKey: String,
     private val http: HttpClient,
     private val endpoint: URI,
-) : CandidateSource {
+) : CandidateSource, VideoLookup {
 
-    fun lookup(ids: List<String>): Map<String, Metadata> {
+    override fun lookup(ids: List<String>): Map<String, Metadata> {
         if (isBlank(apiKey)) {
             throw unavailable()
         }
