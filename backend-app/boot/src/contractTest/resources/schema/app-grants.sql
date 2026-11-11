@@ -137,6 +137,11 @@ GRANT SELECT (id, revision), UPDATE (revision) ON pawbridge_community.home_video
 GRANT INSERT (id, video_id, published, position, created_at) ON pawbridge_community.home_videos TO pawbridge_app;
 GRANT UPDATE (video_id, published, position, title, channel_title, thumbnail_url, duration_seconds, available, checked_at)
     ON pawbridge_community.home_videos TO pawbridge_app;
+-- 홈 영상 후보: 주간 판정 결과 저장과 30일 정리.
+GRANT SELECT (video_id, channel_id, status, search_rank, checked_at),
+      INSERT (video_id, channel_id, status, search_rank, checked_at),
+      UPDATE (channel_id, status, search_rank, checked_at),
+      DELETE ON pawbridge_community.home_video_candidates TO pawbridge_app;
 
 -- Visit collection: one deduplicated row per visitor and day, the day total, the collection start and the daily cleanup.
 GRANT INSERT (visit_date, unique_visitors), UPDATE (unique_visitors) ON pawbridge_community.daily_visit_count TO pawbridge_app;
