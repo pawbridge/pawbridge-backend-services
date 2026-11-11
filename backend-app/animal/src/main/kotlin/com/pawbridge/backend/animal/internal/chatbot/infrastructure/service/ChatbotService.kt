@@ -8,6 +8,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotG
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageRequest
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageResponse
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotRecentMessage
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotBlockLog
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotSession
@@ -77,6 +78,7 @@ class ChatbotService(
             pythonAiInternalApiKey,
             PythonChatbotMessageRequest(
                 toAnimalContext(animal),
+                toShelterContext(animal),
                 recentMessages,
                 guardResult.questionForLlm,
             ),
@@ -187,6 +189,20 @@ class ChatbotService(
             animal.neuterStatus?.name,
             animal.specialMark,
             animal.apmsProcessState,
+        )
+    }
+
+    // 동물은 findWithShelterById로 보호소와 함께 읽었으므로 트랜잭션 밖에서 읽어도 추가 조회가 없다.
+    // 보호소가 없어도 공고 종료일은 보낸다. 빈 칸은 Python이 프롬프트에서 뺀다.
+    private fun toShelterContext(animal: Animal): ShelterChatbotContext {
+        val shelter = animal.shelter
+        return ShelterChatbotContext(
+            shelter?.name,
+            shelter?.phone,
+            shelter?.address,
+            animal.noticeEndDate?.toString(),
+            shelter?.adoptionProcedure,
+            shelter?.operatingHours,
         )
     }
 

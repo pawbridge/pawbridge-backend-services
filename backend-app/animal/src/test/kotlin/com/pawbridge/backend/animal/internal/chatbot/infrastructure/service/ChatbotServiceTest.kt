@@ -6,6 +6,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.client.dto.P
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.AnimalChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageRequest
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageResponse
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotBlockLog
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessageRole
@@ -16,6 +17,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.C
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotMessageRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotSessionRepository
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Animal
+import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Shelter
 import com.pawbridge.backend.animal.internal.command.infrastructure.enums.Species
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
 import io.mockk.confirmVerified
@@ -46,6 +48,7 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
 import org.springframework.transaction.support.DefaultTransactionStatus
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.LocalDate
 import java.util.Optional
 import java.util.stream.Stream
 
@@ -73,6 +76,18 @@ class ChatbotServiceTest {
         .color("white")
         .specialMark("calm")
         .apmsProcessState("보호중")
+        .noticeEndDate(LocalDate.of(2026, 11, 20))
+        .shelter(
+            Shelter.builder()
+                .careRegNo("fixture-care-reg-no")
+                .name("가상 보호소")
+                .phone("000-0000-0000")
+                .address("가상시 가상구 1")
+                .ownerName("가상 담당자")
+                .email("shelter@example.invalid")
+                .operatingHours("평일 10시~17시")
+                .build(),
+        )
         .build()
     private val session = ChatbotSession(ANON, animal)
     private val answer = PythonChatbotMessageResponse("saved answer [1]", "provider notice", "fixture-provider")
@@ -144,6 +159,11 @@ class ChatbotServiceTest {
         assertEquals(
             AnimalChatbotContext("DOG", "mix", "2023년생", "5(Kg)", "white", null, null, "calm", "보호중"),
             input.captured.animalContext,
+        )
+        // 담당자 이름과 이메일은 칸 자체가 없어 보내지 않는다. 비어 있는 입양 절차는 null 그대로 보낸다.
+        assertEquals(
+            ShelterChatbotContext("가상 보호소", "000-0000-0000", "가상시 가상구 1", "2026-11-20", null, "평일 10시~17시"),
+            input.captured.shelterContext,
         )
         assertEquals(
             listOf("one", "two", "three", "four", "five", "six"),
@@ -219,6 +239,43 @@ class ChatbotServiceTest {
         assertEquals(ANON, saved.first().session!!.anonymousSessionId)
         assertSame(animal, saved.first().session!!.animal)
         assertTrue(events.indexOf("session-save") < events.indexOf("quota"))
+    }
+
+    @Test
+    fun `동물에 보호소와 공고 종료일이 없을 때__질문하면__보호소 칸을 모두 비운 채 AI를 호출한다`() {
+        // given
+        val withoutShelter = Animal.builder()
+            .id(41L)
+            .species(Species.CAT)
+            .build()
+        every { cookies.resolveAnonymousSessionId(request, response) } answers { external("cookie", ANON) }
+        every { ips.resolve(request) } answers { external("ip", "127.0.0.2") }
+        every { hashes.hash("127.0.0.2") } answers { external("hash", "fixture-ip-hash") }
+        every { animals.findWithShelterById(41L) } answers {
+            inTransaction("animal", true, Optional.of(withoutShelter))
+        }
+        every { sessions.save(any<ChatbotSession>()) } answers {
+            val entity = firstArg<ChatbotSession>()
+            ReflectionTestUtils.setField(entity, "id", SESSION)
+            inTransaction("session-save", false, entity)
+        }
+        every { quota.check(any(), any()) } answers { external("quota", Unit) }
+        every { messages.countBySession(any()) } answers { inTransaction("count", true, 0L) }
+        every { messages.findTop6BySessionOrderByCreatedAtDesc(any()) } answers {
+            inTransaction("history", true, listOf<ChatbotMessage>())
+        }
+        every { ai.createChatbotMessage(any(), any()) } answers { external("ai", answer) }
+        every { messages.saveAll(any<List<ChatbotMessage>>()) } answers {
+            inTransaction("messages-save", false, firstArg<List<ChatbotMessage>>())
+        }
+
+        // when
+        service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), request, response)
+
+        // then
+        val input = slot<PythonChatbotMessageRequest>()
+        verify(exactly = 1) { ai.createChatbotMessage(KEY, capture(input)) }
+        assertEquals(ShelterChatbotContext(null, null, null, null, null, null), input.captured.shelterContext)
     }
 
     @ParameterizedTest

@@ -3,6 +3,7 @@ package com.pawbridge.backend.animal.internal.chatbot.infrastructure.client
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.client.dto.PythonChatbotMessageRequest
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.AnimalChatbotContext
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotRecentMessage
 import feign.Client
 import feign.FeignException
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -26,6 +28,7 @@ class FeignPythonChatbotClientTest {
     private val json = ObjectMapper()
     private val input = PythonChatbotMessageRequest(
         AnimalChatbotContext("DOG", "mix", "2023년생", "5(Kg)", "white", null, null, "calm", "보호중"),
+        ShelterChatbotContext("가상 보호소", "000-0000-0000", "가상시 가상구 1", "2026-11-20", null, null),
         listOf(ChatbotRecentMessage("user", "입양 문의"), ChatbotRecentMessage("assistant", "저장된 답변")),
         "마스킹된 문의",
     )
@@ -96,8 +99,14 @@ class FeignPythonChatbotClientTest {
         assertEquals("http://python.example.invalid:8000/internal/chatbot/messages", request.url())
         assertEquals(listOf("synthetic-internal-key"), request.headers()["X-Internal-Api-Key"]!!.toList())
         val body = json.readTree(request.body())
-        assertEquals(3, body.size())
+        assertEquals(4, body.size())
         assertEquals(9, body.get("animalContext").size())
+        // Python ShelterContext와 같은 키 6개. 빈 칸도 null로 보낸다.
+        assertEquals(
+            listOf("shelterName", "shelterPhone", "shelterAddress", "noticeEndDate", "adoptionProcedure", "operatingHours"),
+            body.get("shelterContext").fieldNames().asSequence().toList(),
+        )
+        assertTrue(body.get("shelterContext").get("adoptionProcedure").isNull)
         assertFalse(body.get("animalContext").has("animalId"))
         assertEquals(json.readTree(json.writeValueAsBytes(input)), body)
         assertEquals(2, body.get("recentMessages").get(0).size())
