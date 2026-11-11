@@ -11,7 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ContextConfiguration
 
 /**
- * Base of the contracts for the JPA adapters (store catalog writes, carts, orders, payment events; animal and shelter commands).
+ * Base of the contracts for the JPA adapters (store catalog writes, carts, orders, payment events; animal and shelter commands;
+ * home video candidates).
  *
  * The JPA adapters exist only when their feature flags are on, so the shared context of [ContractTestBase] does not
  * contain them. This is the second Spring context of the contract suite, on purpose: the same application, database
@@ -39,6 +40,9 @@ import org.springframework.test.context.ContextConfiguration
         "pawbridge.store-payment-events.enabled=true",
         "pawbridge.shelter-commands.enabled=true",
         "pawbridge.animal-commands.enabled=true",
+        // 홈 영상 후보 저장소는 홈 영상 관리 기능 안의 JPA 단위라 두 스위치를 함께 켠다.
+        "pawbridge.home-videos.management-enabled=true",
+        "pawbridge.home-videos.curation-enabled=true",
         // The ranking Redis client is created lazily and never connects in these contracts.
         "spring.data.redis.host=127.0.0.1",
     ],
