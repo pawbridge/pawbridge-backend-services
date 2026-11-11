@@ -163,7 +163,7 @@ class AgentServiceTest(unittest.TestCase):
         self.assertEqual([card["id"] for card in body["healthCards"]], ["heartworm-positive"])
         self.assertEqual([source["url"] for source in body["sources"]], ["https://example.org/a"])
         self.assertEqual(len(model.calls), 1)
-        self.assertEqual(model.calls[0]["tools"], ["search_health"])
+        self.assertEqual(model.calls[0]["tools"], ["search_health", "adoption_guide"])
         prompt = model.calls[0]["messages"][0].content
         self.assertIn("[2] (심장사상충 양성) 치료 중에는 운동을 제한해야 합니다.", prompt)
         self.assertIn("보호소 이름: 행복 보호소", prompt)
@@ -216,7 +216,7 @@ class AgentServiceTest(unittest.TestCase):
         body = self.post(model).json()
         self.assertEqual(body["answer"], "보호소에 기침이 언제부터인지 물어보세요.")
         # 첫 검색이 근거를 못 찾은 질문이라 첫 호출은 검색 도구를 강제한다.
-        self.assertEqual([turn["tool_choice"] for turn in model.calls], ["search_health", None, None, "none"])
+        self.assertEqual([turn["tool_choice"] for turn in model.calls], ["any", None, None, "none"])
 
     def test_calls_over_the_limit_in_one_turn_are_not_run(self):
         model = ScriptedChatModel(turns=[call("기침", "콧물", "발열", "구토"), reply("보호소에 물어보세요.")])
@@ -231,7 +231,7 @@ class AgentServiceTest(unittest.TestCase):
         model = ScriptedChatModel(turns=[call("기침"), call("기침"), call("x", name="find_hospital"),
                                          call("x", name="find_hospital"), reply("보호소에 물어보세요.")])
         self.post(model)
-        self.assertEqual([turn["tool_choice"] for turn in model.calls], ["search_health", None, None, None, "none"])
+        self.assertEqual([turn["tool_choice"] for turn in model.calls], ["any", None, None, None, "none"])
 
     def test_model_limit_falls_back_to_fixed_flow(self):
         model = ScriptedChatModel(turns=[call("x", name="find_hospital") for _ in range(graph.MAX_MODEL_CALLS)])
@@ -391,7 +391,7 @@ class AgentServiceTest(unittest.TestCase):
         empty = ScriptedChatModel(turns=[call("기침"), reply("기침이 계속되면 동물병원 진료가 필요합니다 [2].", [2])])
         with patch("app.chatbot.agent.service.forced_tool_call_settings", return_value={"response_mime_type": "text/plain"}):
             self.post(empty)
-        self.assertEqual([made["tool_choice"] for made in empty.calls], ["search_health", None])
+        self.assertEqual([made["tool_choice"] for made in empty.calls], ["any", None])
         self.assertEqual([made["response_mime_type"] for made in empty.calls], ["text/plain", None])
 
         # 공고에서 근거를 이미 찾았으면 강제하지 않는다(모델이 바로 답할 수 있다).
@@ -402,6 +402,20 @@ class AgentServiceTest(unittest.TestCase):
             self.post(found)
         self.assertEqual([made["tool_choice"] for made in found.calls], [None])
         self.assertEqual([made["response_mime_type"] for made in found.calls], [None])
+
+    def test_adoption_guide_tool_returns_official_guide_with_sources(self):
+        self.payload["question"] = "입양비 지원 받을 수 있나요?"
+        model = ScriptedChatModel(turns=[
+            AIMessage(content="", tool_calls=[{"name": "adoption_guide", "args": {"topic": "cost-support"}, "id": "g1"}],
+                      usage_metadata=usage()),
+            reply("정부24 안내에 따르면 입양 후 6개월 이내에 신청하면 최대 15만원까지 지원받을 수 있습니다."),
+        ])
+        body = self.post(model).json()
+        self.assertIn("최대 15만원", body["answer"])
+        tool_result = model.calls[1]["messages"][-1].content
+        self.assertIn("[입양 안내: 입양비 지원]", tool_result)
+        self.assertIn("정부24", tool_result)
+        self.assertIn("6개월 이내", tool_result)
 
     def test_provider_call_settings_reach_every_model_call(self):
         # 제공자별 호출 설정(Gemini 재시도)이 도구 호출 뒤의 모델 호출에도 실린다.
