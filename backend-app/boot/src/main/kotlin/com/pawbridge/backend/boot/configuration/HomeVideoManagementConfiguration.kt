@@ -1,6 +1,7 @@
 package com.pawbridge.backend.boot.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.pawbridge.backend.community.internal.homevideo.application.CandidateJudge
 import com.pawbridge.backend.community.internal.homevideo.application.CollectHomeVideoCandidates
 import com.pawbridge.backend.community.internal.homevideo.application.CurateHomeVideos
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoCurationException
@@ -14,6 +15,7 @@ import com.pawbridge.backend.community.internal.homevideo.infrastructure.JdbcHom
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.JdbcHomeVideoRepository
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.JpaCurationBoard
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.JpaHomeVideoCandidateStore
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.OpenAiCandidateJudge
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.YouTubeVideoClient
 import jakarta.persistence.EntityManagerFactory
 import com.pawbridge.backend.community.internal.homevideo.web.HomeVideoManagementController
@@ -222,21 +224,43 @@ class HomeVideoManagementConfiguration {
             return JpaHomeVideoCandidateStore(repository, TransactionTemplate(manager))
         }
 
+        /**
+         * 판정 제공자는 설정으로 고른다. 기본은 OpenAI: Gemini는 무료 한도(하루 500회)를 챗봇과 같이 써서
+         * 한도가 차면 판정이 실패하고 교체가 미뤄진다(11/11 결정).
+         */
         @Bean
         fun homeVideoCandidateJudge(
             mapper: ObjectMapper,
-            @Value("\${gemini.api-key:\${GEMINI_API_KEY:}}") key: String,
-            @Value("\${pawbridge.home-videos.gemini-model:gemini-3.5-flash-lite}") model: String,
+            @Value("\${pawbridge.home-videos.judge-provider:openai}") provider: String,
+            @Value("\${openai.api-key:\${OPENAI_API_KEY:}}") openAiKey: String,
+            @Value("\${pawbridge.home-videos.openai-model:gpt-6-luna}") openAiModel: String,
+            @Value("\${gemini.api-key:\${GEMINI_API_KEY:}}") geminiKey: String,
+            @Value("\${pawbridge.home-videos.gemini-model:gemini-3.5-flash-lite}") geminiModel: String,
             @Qualifier("homeVideoHttpClient") http: HttpClient,
-        ): GeminiCandidateJudge {
-            val endpoint = URI.create("https://generativelanguage.googleapis.com/v1beta/models")
-            return GeminiCandidateJudge(mapper, key, model, http, endpoint)
+        ): CandidateJudge {
+            return when (provider.trim().lowercase()) {
+                "openai" -> OpenAiCandidateJudge(
+                    mapper,
+                    openAiKey,
+                    openAiModel,
+                    http,
+                    URI.create("https://api.openai.com/v1"),
+                )
+                "gemini" -> GeminiCandidateJudge(
+                    mapper,
+                    geminiKey,
+                    geminiModel,
+                    http,
+                    URI.create("https://generativelanguage.googleapis.com/v1beta/models"),
+                )
+                else -> throw IllegalArgumentException("pawbridge.home-videos.judge-provider must be openai or gemini")
+            }
         }
 
         @Bean
         fun collectHomeVideoCandidates(
             youtube: YouTubeVideoClient,
-            judge: GeminiCandidateJudge,
+            judge: CandidateJudge,
             store: JpaHomeVideoCandidateStore,
             repository: JdbcHomeVideoRepository,
             @Qualifier("readClock") clock: Clock,
