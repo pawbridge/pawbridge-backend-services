@@ -53,6 +53,8 @@ class RecentMessage(BaseModel):
 
 
 class ChatbotMessageRequest(BaseModel):
+    # 지금 공고 동물 id. 비슷한 동물 도구가 쓴다. 백엔드가 아직 보내지 않아도 되도록 선택 필드다.
+    animalId: int | None = Field(default=None, gt=0)
     animalContext: AnimalContext
     shelterContext: ShelterContext | None = None
     recentMessages: list[RecentMessage] = Field(default_factory=list, max_length=6)

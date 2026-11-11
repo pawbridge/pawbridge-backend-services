@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference
 class FeignPythonChatbotClientTest {
     private val json = ObjectMapper()
     private val input = PythonChatbotMessageRequest(
+        41L,
         AnimalChatbotContext("DOG", "mix", "2023년생", "5(Kg)", "white", null, null, "calm", "보호중"),
         ShelterChatbotContext("가상 보호소", "000-0000-0000", "가상시 가상구 1", "2026-11-20", null, null),
         listOf(ChatbotRecentMessage("user", "입양 문의"), ChatbotRecentMessage("assistant", "저장된 답변")),
@@ -99,7 +100,9 @@ class FeignPythonChatbotClientTest {
         assertEquals("http://python.example.invalid:8000/internal/chatbot/messages", request.url())
         assertEquals(listOf("synthetic-internal-key"), request.headers()["X-Internal-Api-Key"]!!.toList())
         val body = json.readTree(request.body())
-        assertEquals(4, body.size())
+        assertEquals(5, body.size())
+        // 동물 id는 animalContext 안이 아니라 최상위 칸이다(Python ChatbotMessageRequest.animalId).
+        assertEquals(41L, body.get("animalId").asLong())
         assertEquals(9, body.get("animalContext").size())
         // Python ShelterContext와 같은 키 6개. 빈 칸도 null로 보낸다.
         assertEquals(

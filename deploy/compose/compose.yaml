@@ -88,6 +88,11 @@ services:
       GEMINI_MODEL: gemini-3.5-flash-lite
       # 공고 건강 해설 RAG. 틀린 해설 하나만 내릴 때는 HEALTH_RAG_DISABLED_IDS에 id를 쉼표로 적는다.
       HEALTH_RAG_ENABLED: "true"
+      # 챗봇 답 방식. agent는 입양 상담 에이전트(건강 해설 검색, 입양 안내 도구), rag는 모델 한 번의 고정 흐름.
+      # 되돌릴 때는 rag로 바꾸고 python-ai-service만 다시 만든다.
+      CHATBOT_MODE: agent
+      # 상담 챗봇의 비슷한 동물 도구가 부르는 백엔드. 같은 private 망의 monolith 별칭이다.
+      CHATBOT_BACKEND_BASE_URL: http://monolith:8080
       LOST_STORAGE_BACKEND: postgresql
       LOST_GALLERY_SYNC_ENABLED: "false"
     # GEMINI_API_KEY, INTERNAL_API_KEY, LOST_PG_DSN

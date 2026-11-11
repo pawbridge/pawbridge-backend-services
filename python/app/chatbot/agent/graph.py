@@ -12,6 +12,7 @@
 """
 
 import asyncio
+import inspect
 import time
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -138,7 +139,13 @@ class AgentLimits(AgentMiddleware):
         # 입양 절차면 adoption_guide). 11/11 시범 실행에서 모델에게 맡기면 첫 검색이 놓친 건강 질문
         # 18개 중 minimal 0개, low와 강화한 규칙으로도 12개만 불렀다.
         settings = {**request.model_settings, **context.model_settings}
-        if not blocked and ledger.model_calls == 1 and not context.tools.evidence:
+        # 비슷한 동물 질문은 공고 특이사항으로 건강 근거를 이미 찾았어도 그 도구를 강제한다.
+        # 11/11 운영 확인(공고 106382, 특이사항에 종양, 피부병)에서 근거가 있어 강제가 걸리지 않았고,
+        # 모델은 도구 없이 "그런 기능은 없다"고 답했다.
+        if not blocked and ledger.model_calls == 1 and context.tools.first_tool:
+            tool_choice = context.tools.first_tool
+            settings = {**settings, **context.forced_tool_settings}
+        elif not blocked and ledger.model_calls == 1 and not context.tools.evidence:
             tool_choice = "any"
             settings = {**settings, **context.forced_tool_settings}
         request = request.override(model=context.model, tool_choice=tool_choice, model_settings=settings)
@@ -188,12 +195,16 @@ def _last_ai_message(messages) -> AIMessage | None:
 def _langchain_tool(spec: ToolSpec, function) -> StructuredTool:
     """tools.py의 평범한 함수를 LangChain 도구로 감싼다. 입력 검사는 LangChain이 spec.args_schema로 한다.
 
-    함수 안에 기다림(await)이 없어 동시에 불려도 한 번에 하나씩 끝까지 돈다. 그래서 근거 번호가 겹치지 않는다.
+    건강 해설 검색은 기다림(await)이 없어 동시에 불려도 한 번에 하나씩 끝까지 돈다. 그래서 근거 번호가 겹치지 않는다.
+    비슷한 동물 도구는 백엔드 API를 기다리는 async 함수다. 근거를 건드리지 않으므로 겹쳐 돌아도 된다.
     """
 
     async def run(**kwargs) -> str:
         context = get_runtime(AgentContext).context
-        return function(spec.args_schema(**kwargs), context.tools)
+        result = function(spec.args_schema(**kwargs), context.tools)
+        if inspect.isawaitable(result):
+            result = await result
+        return result
 
     return StructuredTool.from_function(
         coroutine=run, name=spec.name, description=spec.description, args_schema=spec.args_schema
