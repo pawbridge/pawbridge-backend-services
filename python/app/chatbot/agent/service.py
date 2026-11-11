@@ -47,6 +47,7 @@ from app.chatbot.provider import (
 from app.chatbot.service import (
     answer_fixed,
     chatbot_response,
+    agent_health_retriever,
     find_health_evidence,
     health_retriever,
     log_health_answer,
@@ -79,12 +80,13 @@ async def create_agent_message(req) -> dict:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
     prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
     tools = ToolContext(
-        health_retriever(),
+        agent_health_retriever(),
         animal.specialMark,
         animal.species,
         matches=list(matches),
         evidence=list(evidence),
         animal_id=req.animalId,
+        question=req.question,
         # 공고 id가 없으면 도구가 찾지 못하므로 강제하지 않는다.
         first_tool=FIND_SIMILAR_ANIMALS.name if req.animalId and asks_for_similar(req.question) else None,
     )
