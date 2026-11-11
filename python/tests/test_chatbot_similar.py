@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage
 
 from app.chatbot.agent import similar
 from app.chatbot.health.retriever import RuleHealthRetriever
+from app.chatbot.service import agent_health_retriever
 from app.entrypoints.chatbot_api import app
 from tests.test_chatbot_agent import AGENT_ENV, COUGH, HEARTWORM, FixedProvider, ScriptedChatModel, reply, usage
 
@@ -28,6 +29,13 @@ CARDS = [
         "shelterName": "가상 보호소",
     },
     {"id": 8, "apmsNoticeNo": "경기-양평-2026-00001", "species": "DOG", "breed": "푸들", "gender": "FEMALE"},
+]
+
+
+# CARDS를 답 끝에 붙인 모양(특이사항은 넣지 않는다).
+LISTED = [
+    "- 믹스견, 수컷, 2023년생, 가상 보호소 (공고번호 경기-양평-2025-00429)",
+    "- 푸들, 암컷 (공고번호 경기-양평-2026-00001)",
 ]
 
 
@@ -52,6 +60,9 @@ class SimilarAnimalsTest(unittest.TestCase):
             patcher = patch(target, return_value=retriever)
             patcher.start()
             self.addCleanup(patcher.stop)
+        # 에이전트 검색기는 lru_cache라 먼저 돈 시험의 검색기를 붙잡는다. 앞뒤로 비워 시험 순서와 무관하게 한다.
+        agent_health_retriever.cache_clear()
+        self.addCleanup(agent_health_retriever.cache_clear)
         self.requests = []
         self.backend_status = 200
         self.backend_body = CARDS
@@ -84,7 +95,8 @@ class SimilarAnimalsTest(unittest.TestCase):
         answer = "사진이 비슷한 아이로 공고번호 경기-양평-2025-00429 믹스견 수컷이 있어요."
         model = ScriptedChatModel(turns=[similar_call(), reply(answer)])
         body = self.post(model).json()
-        self.assertEqual(body["answer"], answer)
+        # 목록은 모델 답과 상관없이 코드가 도구 결과로 붙인다.
+        self.assertEqual(body["answer"], answer + "\n\n" + "\n".join(LISTED))
         self.assertEqual(model.calls[0]["tools"], ["search_health", "adoption_guide", "find_similar_animals"])
         self.assertEqual([str(request.url) for request in self.requests], [f"{BACKEND}/api/v1/animals/41/similar"])
         result = self.tool_result(model)
@@ -121,6 +133,22 @@ class SimilarAnimalsTest(unittest.TestCase):
         self.backend_body = [dict(CARDS[1], id=10 + index, apmsNoticeNo=f"경기-양평-2026-0010{index}") for index in range(6)]
         model = ScriptedChatModel(turns=[similar_call(), reply("공고번호 경기-양평-2026-00104 아이가 있어요.")])
         self.assertEqual(self.post(model).json()["answer"], similar.SIMILAR_FALLBACK)
+
+    def test_model_answer_gets_the_code_list_and_model_is_told_not_to_repeat_it(self):
+        # 11/11 운영: 모델이 도구가 준 품종과 보호소를 빼고 공고번호만 나열했다.
+        model = ScriptedChatModel(turns=[similar_call(), reply("사진이 비슷한 아이 2마리를 찾았어요.")])
+        body = self.post(model).json()
+        self.assertEqual(body["answer"], "사진이 비슷한 아이 2마리를 찾았어요.\n\n" + "\n".join(LISTED))
+        self.assertIn("목록은 코드가 답 끝에 그대로 붙입니다", self.tool_result(model))
+
+    def test_list_is_not_added_to_fallback_answers(self):
+        model = ScriptedChatModel(turns=[similar_call(), reply("공고번호 경기-양평-2025-99999 아이가 비슷해요.")])
+        self.assertEqual(self.post(model).json()["answer"], similar.SIMILAR_FALLBACK)
+
+    def test_list_follows_the_last_successful_call(self):
+        model = ScriptedChatModel(turns=[similar_call(1), similar_call(), reply("비슷한 아이들이에요.")])
+        body = self.post(model).json()
+        self.assertEqual(body["answer"], "비슷한 아이들이에요.\n\n" + "\n".join(LISTED))
 
     def test_empty_result_tells_model_there_is_none(self):
         self.backend_body = []
@@ -170,7 +198,7 @@ class SimilarAnimalsTest(unittest.TestCase):
         body = self.post(model).json()
         self.assertEqual(model.calls[0]["tool_choice"], "find_similar_animals")
         self.assertEqual([made["tool_choice"] for made in model.calls[1:]], [None])
-        self.assertEqual(body["answer"], "공고번호 경기-양평-2025-00429 아이가 비슷해요.")
+        self.assertEqual(body["answer"], "공고번호 경기-양평-2025-00429 아이가 비슷해요.\n\n" + "\n".join(LISTED))
 
     def test_health_question_with_similar_word_is_not_forced_to_similar(self):
         self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
