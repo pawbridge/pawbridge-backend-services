@@ -12,7 +12,8 @@ import org.springframework.orm.jpa.JpaTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 
 /** 챗봇이 실제 shelter_public_information 표(jsonb)를 읽기 전용 JPA 엔티티로 읽는지 본다. */
-class ChatbotShelterPublicHoursContractTest : AnimalRepositoryContractBase() {
+// Animal JPA 저장소는 JPA 계약 시험 컨텍스트(JpaContractBase)에만 조립된다.
+class ChatbotShelterPublicHoursContractTest : JpaContractBase() {
     @Autowired
     @Qualifier("animalCommandRepositoryFactory")
     private lateinit var repositories: JpaRepositoryFactory
