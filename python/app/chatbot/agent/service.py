@@ -86,6 +86,7 @@ async def create_agent_message(req) -> dict:
         matches=list(matches),
         evidence=list(evidence),
         animal_id=req.animalId,
+        question=req.question,
         # 공고 id가 없으면 도구가 찾지 못하므로 강제하지 않는다.
         first_tool=FIND_SIMILAR_ANIMALS.name if req.animalId and asks_for_similar(req.question) else None,
     )

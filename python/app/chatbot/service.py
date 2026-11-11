@@ -57,6 +57,9 @@ def approved_entries() -> list:
     return entries
 
 
+from app.chatbot.health.retriever import MAX_RESULTS, HealthMatch  # noqa: E402
+
+
 class SafeHybridRetriever:
     """하이브리드 검색. 임베딩 서비스가 실패하면 그 질문은 규칙 검색만으로 답한다(상담 전체를 실패시키지 않는다)."""
 
@@ -73,6 +76,47 @@ class SafeHybridRetriever:
 
     def blocked_entry_ids(self, notice_text, question, species):
         return self._rule.blocked_entry_ids(notice_text, question, species)
+
+    def search_tool(self, notice_text, query, original_question, species):
+        """에이전트 검색 도구용 하이브리드. 규칙은 모델이 바꾼 검색어로 찾고, 벡터는 두 질의가 합의한 해설만 더한다.
+
+        - 벡터로 더하는 해설은 많아야 하나다: 모델이 바꾼 검색어의 벡터 1위가 원래 질문의 벡터 상위 VECTOR_TOP_K 안에 있고
+          원래 질문 기준 기준값을 넘을 때만. 11/11 로컬 실측에서 원래 질문만의 1위는 자주 틀렸고("앞이 안 보인다고"의
+          1위 예후불량, 실명은 3위), 두 질의 상위 3개의 교집합도 3위 자리에 잡음이 남았다("털이 빠지고 긁어요"의 탈수).
+        - 기준값과 범위 밖 관문은 원래 질문에만 건다(11/06~07에 질문 문장으로 고른 값이다).
+        - 규칙이 공고의 "없음, 음성, 예방, 접종" 문맥으로 해설을 하나라도 막은 질문에는 벡터를 쓰지 않는다
+          (예: "외부기생충 예방 도포 완료" 공고의 "피부는 괜찮나요?", "외상 없음" 공고의 "다친 데 없나요?").
+        """
+        results = list(self._rule.search(notice_text, query, species))
+        if not original_question or len(results) >= MAX_RESULTS:
+            return results[:MAX_RESULTS]
+        blocked = self._rule.blocked_entry_ids(notice_text, original_question, species) | self._rule.blocked_entry_ids(
+            notice_text, query, species
+        )
+        if blocked:
+            return results
+        try:
+            vector = self._hybrid_vector()
+            if vector.is_off_topic(original_question):
+                return results
+            if not query:
+                return results
+            by_question = {entry.id: score for entry, score in vector.scores(original_question, species)[:VECTOR_TOP_K]}
+            query_top = vector.scores(query, species)[:1]
+        except Exception as exc:  # noqa: BLE001 - 임베딩 서비스 장애는 종류와 관계없이 규칙 검색으로 돌린다
+            logger.warning("Health hybrid search failed: error=%s", type(exc).__name__)
+            return results
+        if not query_top:
+            return results
+        entry = query_top[0][0]
+        score = by_question.get(entry.id)
+        if score is None or score < VECTOR_THRESHOLD or entry.id in {match.entry.id for match in results}:
+            return results
+        results.append(HealthMatch(entry, score, "vector-agreed", basis="question"))
+        return results
+
+    def _hybrid_vector(self):
+        return self._hybrid._vector
 
 
 @lru_cache(maxsize=1)
@@ -110,6 +154,8 @@ def agent_health_retriever():
 
 
 VECTOR_THRESHOLD = 0.475
+# 두 질의(원래 질문, 모델이 바꾼 검색어)의 벡터 상위 몇 개끼리 겹쳐 보는지.
+VECTOR_TOP_K = 3
 OFF_TOPIC_MARGIN = 0.10
 
 
