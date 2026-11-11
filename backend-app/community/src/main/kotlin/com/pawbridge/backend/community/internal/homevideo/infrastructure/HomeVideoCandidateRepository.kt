@@ -1,6 +1,8 @@
 package com.pawbridge.backend.community.internal.homevideo.infrastructure
 
+import com.pawbridge.backend.community.internal.homevideo.domain.CandidateStatus
 import java.time.Instant
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -12,4 +14,12 @@ interface HomeVideoCandidateRepository : JpaRepository<HomeVideoCandidate, Strin
     @Modifying
     @Query("DELETE FROM HomeVideoCandidate candidate WHERE candidate.checkedAt <= :cutoff")
     fun deleteCheckedAtOrBefore(@Param("cutoff") cutoff: Instant): Int
+
+    fun findByStatusOrderBySearchRankAscCheckedAtDesc(status: CandidateStatus): List<HomeVideoCandidate>
+
+    fun findByStatusAndCheckedAtLessThanEqualOrderByCheckedAt(
+        status: CandidateStatus,
+        cutoff: Instant,
+        page: Pageable,
+    ): List<HomeVideoCandidate>
 }
