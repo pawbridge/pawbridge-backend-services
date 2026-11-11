@@ -1,12 +1,16 @@
 package com.pawbridge.backend.boot.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.pawbridge.backend.community.internal.homevideo.application.CollectHomeVideoCandidates
+import com.pawbridge.backend.community.internal.homevideo.application.CurateHomeVideos
+import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoCurationException
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoManagement
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.YouTubeVideoClient
 import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test
@@ -20,6 +24,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import java.net.http.HttpClient
 import java.time.Clock
 import java.util.function.Supplier
+import javax.sql.DataSource
 
 class HomeVideoManagementConfigurationTest {
     @ParameterizedTest
@@ -91,5 +96,107 @@ class HomeVideoManagementConfigurationTest {
         assertThatCode { HomeVideoManagementConfiguration.HomeVideoRefreshJob(management).refresh() }
             .doesNotThrowAnyException()
         verify(exactly = 1) { management.refresh() }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["absent", "false"])
+    fun `후보 모으기가 꺼졌을 때__관리 기능만 조립하면__후보 모으기와 JPA 단위를 만들지 않는다`(flag: String) {
+        // given
+        var runner = managementRunner()
+        if (flag == "false") {
+            runner = runner.withPropertyValues("pawbridge.home-videos.curation-enabled=false")
+        }
+
+        // when
+        runner.run { context ->
+            // then
+            assertThat(context).hasNotFailed()
+                .doesNotHaveBean(CollectHomeVideoCandidates::class.java)
+                .doesNotHaveBean("homeVideoCandidateEntityManagerFactory")
+        }
+    }
+
+    @Test
+    fun `후보 모으기를 켰을 때__조립하면__DB 연결을 열지 않고 후보 모으기를 만든다`() {
+        // given
+        val source = mockk<DataSource>()
+        val runner = managementRunner()
+            .withPropertyValues("pawbridge.home-videos.curation-enabled=true", "gemini.api-key=synthetic-key")
+            .withBean("writeDataSource", DataSource::class.java, Supplier { source })
+
+        // when
+        runner.run { context ->
+            // then
+            assertThat(context).hasNotFailed()
+                .hasSingleBean(CollectHomeVideoCandidates::class.java)
+                .hasSingleBean(CurateHomeVideos::class.java)
+            verify(exactly = 0) { source.connection }
+        }
+    }
+
+    @Test
+    fun `자동 교체가 켜진 갱신 작업일 때__실행하면__상태 갱신 뒤 빈칸 채우기 사용 기록 재확인 주간 교체 순서로 부른다`() {
+        // given
+        val management = mockk<HomeVideoManagement>()
+        val curation = mockk<CurateHomeVideos>()
+        justRun { management.refresh() }
+        every { curation.fillGaps() } returns 0
+        every { curation.recheckUsed() } returns 0
+        every { curation.weekly() } returns false
+
+        // when
+        HomeVideoManagementConfiguration.HomeVideoRefreshJob(management, curation).refresh()
+
+        // then
+        verifyOrder {
+            management.refresh()
+            curation.fillGaps()
+            curation.recheckUsed()
+            curation.weekly()
+        }
+    }
+
+    @Test
+    fun `상태 갱신이 실패할 때__실행하면__영상 상태를 믿을 수 없어 자동 교체를 다음 시간으로 미룬다`() {
+        // given
+        val management = mockk<HomeVideoManagement>()
+        val curation = mockk<CurateHomeVideos>()
+        every { management.refresh() } throws IllegalStateException("synthetic")
+
+        // when
+        HomeVideoManagementConfiguration.HomeVideoRefreshJob(management, curation).refresh()
+
+        // then
+        verify(exactly = 0) { curation.fillGaps() }
+        verify(exactly = 0) { curation.weekly() }
+    }
+
+    @Test
+    fun `빈칸 채우기가 실패할 때__실행하면__실패를 삼키고 다음 단계는 그대로 부른다`() {
+        // given
+        val management = mockk<HomeVideoManagement>()
+        val curation = mockk<CurateHomeVideos>()
+        justRun { management.refresh() }
+        every { curation.fillGaps() } throws IllegalStateException("synthetic-private-key")
+        every { curation.recheckUsed() } throws HomeVideoCurationException("synthetic")
+        every { curation.weekly() } returns true
+
+        // when, then
+        assertThatCode { HomeVideoManagementConfiguration.HomeVideoRefreshJob(management, curation).refresh() }
+            .doesNotThrowAnyException()
+        verify(exactly = 1) { curation.weekly() }
+    }
+
+    private fun managementRunner(): ApplicationContextRunner {
+        val jdbc = mockk<JdbcTemplate>()
+        val manager = mockk<JdbcTransactionManager>()
+        justRun { jdbc.afterPropertiesSet() }
+        justRun { manager.afterPropertiesSet() }
+        return ApplicationContextRunner().withUserConfiguration(HomeVideoManagementConfiguration::class.java)
+            .withPropertyValues("pawbridge.home-videos.management-enabled=true", "youtube.api-key=synthetic-key")
+            .withBean("writeJdbc", JdbcTemplate::class.java, Supplier { jdbc })
+            .withBean("writeTransactionManager", JdbcTransactionManager::class.java, Supplier { manager })
+            .withBean("readClock", Clock::class.java, Supplier { Clock.systemUTC() })
+            .withBean(ObjectMapper::class.java, Supplier { ObjectMapper() })
     }
 }

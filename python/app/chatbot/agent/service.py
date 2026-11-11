@@ -23,7 +23,7 @@ from app.chatbot.agent.graph import (
     run_agent,
 )
 from app.chatbot.agent.models import chat_model, forced_tool_call_settings, model_call_settings, reasoning_level
-from app.chatbot.agent.similar import SIMILAR_FALLBACK, asks_for_similar, unknown_notice_numbers
+from app.chatbot.agent.similar import SIMILAR_FALLBACK, asks_for_similar, unknown_notice_numbers, with_similar_list
 from app.chatbot.agent.tools import FIND_SIMILAR_ANIMALS, ToolContext
 from app.chatbot.health.answer import (
     FALLBACK_ANSWER,
@@ -47,6 +47,7 @@ from app.chatbot.provider import (
 from app.chatbot.service import (
     answer_fixed,
     chatbot_response,
+    agent_health_retriever,
     find_health_evidence,
     health_retriever,
     log_health_answer,
@@ -79,12 +80,13 @@ async def create_agent_message(req) -> dict:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
     prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
     tools = ToolContext(
-        health_retriever(),
+        agent_health_retriever(),
         animal.specialMark,
         animal.species,
         matches=list(matches),
         evidence=list(evidence),
         animal_id=req.animalId,
+        question=req.question,
         # 공고 id가 없으면 도구가 찾지 못하므로 강제하지 않는다.
         first_tool=FIND_SIMILAR_ANIMALS.name if req.animalId and asks_for_similar(req.question) else None,
     )
@@ -110,7 +112,14 @@ async def create_agent_message(req) -> dict:
     stop = ledger.stop
 
     if stop is None:
-        response = finish_agent_answer(provider.name, run, animal.species, req.shelterContext, tools.similar_notice_numbers)
+        response = finish_agent_answer(
+            provider.name,
+            run,
+            animal.species,
+            req.shelterContext,
+            tools.similar_notice_numbers,
+            tools.similar_lines,
+        )
         log_agent_run(PATH_AGENT, None, ledger, started)
         return response
 
@@ -139,6 +148,7 @@ def finish_agent_answer(
     species: str | None,
     shelter,
     similar_notice_numbers: set[str] | frozenset[str] = frozenset(),
+    similar_lines: list[str] | tuple[str, ...] = (),
 ) -> dict:
     """루프가 낸 답을 고정 흐름과 같은 검사에 통과시킨다. 도구로 더 찾은 근거도 검사 범위에 들어간다."""
     evidence = run.evidence
@@ -171,7 +181,11 @@ def finish_agent_answer(
     log_health_answer(run.matches, checked.used, checked.fallback)
     sources = sources_for(checked.used, evidence) if evidence else []
     cards = health_cards(run.matches, species) if evidence else []
-    return chatbot_response(provider_name, strip_citations(checked.answer), sources, cards)
+    answer = strip_citations(checked.answer)
+    # 비슷한 동물 목록은 검사를 모두 통과한 답에만 붙인다. 대체 답에는 붙이지 않는다.
+    if not checked.fallback:
+        answer = with_similar_list(answer, list(similar_lines))
+    return chatbot_response(provider_name, answer, sources, cards)
 
 
 def log_agent_run(path: str, stop: str | None, ledger: AgentLedger, started: float, error=None) -> None:

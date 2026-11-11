@@ -34,6 +34,11 @@ class ToolContext:
     animal_id: int | None = None
     # 비슷한 동물 도구가 돌려준 공고번호. 답에 이 밖의 공고번호가 나오면 지어낸 것으로 본다.
     similar_notice_numbers: set[str] = field(default_factory=set)
+    # 답 끝에 붙일 비슷한 동물 목록. 도구를 여러 번 부르면 마지막 결과를 쓴다.
+    similar_lines: list[str] = field(default_factory=list)
+    # 사용자의 원래 질문. 하이브리드 검색의 벡터 쪽은 모델이 바꾼 검색어가 아니라 이 문장으로 찾는다
+    # (기준값과 관문을 질문 문장으로 골랐기 때문이다. 짧은 낱말은 2, 3위 해설까지 점수가 높게 나온다).
+    question: str | None = None
     # 질문만 보고 코드가 정한, 첫 모델 호출에서 반드시 부를 도구 이름. 없으면 graph.py의 기본 규칙을 따른다.
     first_tool: str | None = None
 
@@ -61,7 +66,11 @@ def search_health(args: SearchHealthArgs, context: ToolContext) -> str:
     공고 특이사항을 함께 넘겨야 '사상충'처럼 공고에 결과(양성, 음성)가 적힌 용어가 공고 문맥을 따른다.
     """
     seen = {match.entry.id for match in context.matches}
-    found = context.retriever.search(context.notice_text, args.query, context.species)
+    search_tool = getattr(context.retriever, "search_tool", None)
+    if search_tool is not None:
+        found = search_tool(context.notice_text, args.query, context.question, context.species)
+    else:
+        found = context.retriever.search(context.notice_text, args.query, context.species)
     new_matches = [match for match in found if match.entry.id not in seen]
     if not new_matches:
         return NOTHING_FOUND
@@ -97,8 +106,10 @@ FIND_SIMILAR_ANIMALS = ToolSpec(
 
 async def find_similar_animals(args: FindSimilarArgs, context: ToolContext) -> str:
     """어느 동물인지는 요청의 animalId로 코드가 정한다. 돌려준 공고번호는 답 검사를 위해 모은다."""
-    text, notice_numbers = await similar_animals_text(context.animal_id, args.count)
+    text, notice_numbers, lines = await similar_animals_text(context.animal_id, args.count)
     context.similar_notice_numbers.update(notice_numbers)
+    if lines:
+        context.similar_lines = lines
     return text
 
 

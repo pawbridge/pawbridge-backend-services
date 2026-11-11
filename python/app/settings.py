@@ -105,6 +105,8 @@ class ChatbotSettings(_Settings):
     # 단계가 높을수록 생각 토큰(출력 요금)이 늘어난다. 기본은 low다: 11/11 시범 실행에서 minimal은
     # 첫 검색이 놓친 건강 질문 18개에 도구를 한 번도 부르지 않았고, low와 강화한 도구 규칙을 함께 쓰니
     # 12개에서 불러 8개의 정답 해설을 찾았다(고정 흐름은 그대로 모델을 한 번 부른다).
+    # 에이전트 검색 도구의 하이브리드 검색이 부르는 임베딩 서비스(bge-m3만 올린 별도 프로세스). 비우면 규칙 검색만.
+    embedding_service_url: str = Field("", alias="EMBEDDING_SERVICE_URL")
     chatbot_reasoning: Literal["minimal", "low", "medium", "high"] = Field("low", alias="CHATBOT_REASONING")
     # 비슷한 동물 도구가 부르는 백엔드 주소(예: http://monolith:8080). 비우면 도구는 추천을 못 불러온다고 답한다.
     backend_base_url: str = Field("", alias="CHATBOT_BACKEND_BASE_URL")
