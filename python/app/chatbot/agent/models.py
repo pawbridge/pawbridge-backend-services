@@ -54,12 +54,53 @@ def _gemini(settings: ChatbotSettings, reasoning: str):
         max_output_tokens=MAX_OUTPUT_TOKENS[reasoning],
         # 최종 답은 늘 JSON({"answer", "used"})이다. 도구 선언과 같이 쓸 수 있음을 11/10에 확인했다.
         response_mime_type="application/json",
-        # 고정 흐름처럼 다시 시도하지 않는다. 1이 "한 번만"이다(0은 구글 기본값 5회 재시도).
+        # 패키지 기본 재시도는 끈다. 1이 "한 번만"이다(0은 구글 기본값 5회 재시도이고 429도 다시 보낸다).
+        # 일시 오류 재시도는 model_call_settings()가 요청마다 따로 넘긴다.
         max_retries=1,
         timeout=settings.gemini_timeout_seconds,
         # gemini-3.5-flash-lite처럼 표집 값을 고정한 모델은 패키지가 이 값을 보내지 않는다.
         temperature=TEMPERATURE,
     )
+
+
+# Gemini 일시 오류(5xx)만 한 번 더 보낸다. 고정 흐름(gemini_provider.py)과 같은 규칙이다:
+# 429(요청 한도)와 시간 초과는 다시 보내도 같거나 한도만 깎으므로 바로 실패한다.
+# 11/11 시범 실행에서 재시도가 없던 에이전트는 첫 시도 실패가 8/60, 같은 시간대 고정 흐름은 1/60이었다.
+GEMINI_RETRY_ATTEMPTS = 2
+GEMINI_RETRY_DELAY_SECONDS = 1.0
+GEMINI_RETRY_STATUS_CODES = [500, 502, 503, 504]
+
+
+@lru_cache(maxsize=1)
+def model_call_settings() -> dict:
+    """모델 호출마다 붙일 제공자별 설정. 제공자 이름이 나오는 곳이 이 파일뿐이도록 여기서 만든다."""
+    provider = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+    if provider != "gemini":
+        return {}
+
+    from google.genai.types import HttpOptions, HttpRetryOptions
+
+    retry = HttpRetryOptions(
+        attempts=GEMINI_RETRY_ATTEMPTS,
+        initial_delay=GEMINI_RETRY_DELAY_SECONDS,
+        http_status_codes=GEMINI_RETRY_STATUS_CODES,
+    )
+    # 요청별 http_options는 모델 설정에서 나온 시간 제한을 남기고 재시도만 덮어쓴다.
+    return {"http_options": HttpOptions(retry_options=retry)}
+
+
+@lru_cache(maxsize=1)
+def forced_tool_call_settings() -> dict:
+    """도구 호출을 강제하는 호출에 더 붙일 제공자별 설정.
+
+    Gemini는 도구 강제(ANY 모드)와 JSON 응답 형식을 함께 받지 않는다(400 "Forced function calling (ANY mode)
+    with a response mime type: 'application/json' is unsupported", 11/11 확인). 강제한 호출은 도구 호출만
+    돌려주고 답 글을 쓰지 않으므로 그 호출에서만 JSON 형식을 뺀다.
+    """
+    provider = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+    if provider != "gemini":
+        return {}
+    return {"response_mime_type": "text/plain"}
 
 
 def _stub(settings: ChatbotSettings, reasoning: str):

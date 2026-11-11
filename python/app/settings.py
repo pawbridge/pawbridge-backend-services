@@ -102,8 +102,10 @@ class ChatbotSettings(_Settings):
     # 골라 부르는 입양 상담 에이전트다. agent는 해설 검색을 도구로 쓰므로 HEALTH_RAG_ENABLED가 켜져 있어야 한다.
     chatbot_mode: Literal["rag", "agent"] = Field("rag", alias="CHATBOT_MODE")
     # 에이전트 모델의 추론(생각) 단계. 제공자마다 이름이 달라 agent/models.py가 바꿔 넘긴다.
-    # 단계가 높을수록 생각 토큰(출력 요금)이 늘어난다. 기본 minimal은 고정 흐름과 같은 수준이다.
-    chatbot_reasoning: Literal["minimal", "low", "medium", "high"] = Field("minimal", alias="CHATBOT_REASONING")
+    # 단계가 높을수록 생각 토큰(출력 요금)이 늘어난다. 기본은 low다: 11/11 시범 실행에서 minimal은
+    # 첫 검색이 놓친 건강 질문 18개에 도구를 한 번도 부르지 않았고, low와 강화한 도구 규칙을 함께 쓰니
+    # 12개에서 불러 8개의 정답 해설을 찾았다(고정 흐름은 그대로 모델을 한 번 부른다).
+    chatbot_reasoning: Literal["minimal", "low", "medium", "high"] = Field("low", alias="CHATBOT_REASONING")
 
     def disabled_health_entry_ids(self) -> frozenset[str]:
         return frozenset(item.strip() for item in self.health_rag_disabled_ids.split(",") if item.strip())

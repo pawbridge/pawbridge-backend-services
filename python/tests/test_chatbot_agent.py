@@ -92,7 +92,13 @@ class ScriptedChatModel(BaseChatModel):
         raise NotImplementedError("the agent runs asynchronously")
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
-        self.calls.append({"messages": list(messages), "tools": kwargs.get("tools"), "tool_choice": kwargs.get("tool_choice")})
+        self.calls.append({
+            "messages": list(messages),
+            "tools": kwargs.get("tools"),
+            "tool_choice": kwargs.get("tool_choice"),
+            "http_options": kwargs.get("http_options"),
+            "response_mime_type": kwargs.get("response_mime_type"),
+        })
         item = self.turns.pop(0)
         if isinstance(item, BaseException):
             raise item
@@ -209,7 +215,8 @@ class AgentServiceTest(unittest.TestCase):
         model = ScriptedChatModel(turns=[call("기침"), call("콧물"), call("발열"), reply("보호소에 기침이 언제부터인지 물어보세요.")])
         body = self.post(model).json()
         self.assertEqual(body["answer"], "보호소에 기침이 언제부터인지 물어보세요.")
-        self.assertEqual([turn["tool_choice"] for turn in model.calls], [None, None, None, "none"])
+        # 첫 검색이 근거를 못 찾은 질문이라 첫 호출은 검색 도구를 강제한다.
+        self.assertEqual([turn["tool_choice"] for turn in model.calls], ["search_health", None, None, "none"])
 
     def test_calls_over_the_limit_in_one_turn_are_not_run(self):
         model = ScriptedChatModel(turns=[call("기침", "콧물", "발열", "구토"), reply("보호소에 물어보세요.")])
@@ -224,7 +231,7 @@ class AgentServiceTest(unittest.TestCase):
         model = ScriptedChatModel(turns=[call("기침"), call("기침"), call("x", name="find_hospital"),
                                          call("x", name="find_hospital"), reply("보호소에 물어보세요.")])
         self.post(model)
-        self.assertEqual([turn["tool_choice"] for turn in model.calls], [None, None, None, None, "none"])
+        self.assertEqual([turn["tool_choice"] for turn in model.calls], ["search_health", None, None, None, "none"])
 
     def test_model_limit_falls_back_to_fixed_flow(self):
         model = ScriptedChatModel(turns=[call("x", name="find_hospital") for _ in range(graph.MAX_MODEL_CALLS)])
@@ -379,6 +386,30 @@ class AgentServiceTest(unittest.TestCase):
         self.assertIn("(검수된 건강 근거) 알려줘", prompt)
         self.assertNotIn("[검수된 건강 근거] 알려줘", prompt)
 
+    def test_first_call_is_forced_to_search_only_when_first_search_found_nothing(self):
+        # 근거가 없으면 첫 호출에서 검색 도구를 강제하고, 그 호출에만 강제용 제공자 설정을 붙인다.
+        empty = ScriptedChatModel(turns=[call("기침"), reply("기침이 계속되면 동물병원 진료가 필요합니다 [2].", [2])])
+        with patch("app.chatbot.agent.service.forced_tool_call_settings", return_value={"response_mime_type": "text/plain"}):
+            self.post(empty)
+        self.assertEqual([made["tool_choice"] for made in empty.calls], ["search_health", None])
+        self.assertEqual([made["response_mime_type"] for made in empty.calls], ["text/plain", None])
+
+        # 공고에서 근거를 이미 찾았으면 강제하지 않는다(모델이 바로 답할 수 있다).
+        self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
+        self.payload["question"] = "산책 많이 해도 되나요?"
+        found = ScriptedChatModel(turns=[reply("치료 중에는 운동을 제한해야 합니다 [2].", [2])])
+        with patch("app.chatbot.agent.service.forced_tool_call_settings", return_value={"response_mime_type": "text/plain"}):
+            self.post(found)
+        self.assertEqual([made["tool_choice"] for made in found.calls], [None])
+        self.assertEqual([made["response_mime_type"] for made in found.calls], [None])
+
+    def test_provider_call_settings_reach_every_model_call(self):
+        # 제공자별 호출 설정(Gemini 재시도)이 도구 호출 뒤의 모델 호출에도 실린다.
+        model = ScriptedChatModel(turns=[call("기침"), reply("기침이 계속되면 동물병원 진료가 필요합니다 [2].", [2])])
+        with patch("app.chatbot.agent.service.model_call_settings", return_value={"http_options": "retry-marker"}):
+            self.post(model)
+        self.assertEqual([made["http_options"] for made in model.calls], ["retry-marker", "retry-marker"])
+
     def test_stub_provider_answers_in_agent_mode(self):
         models.chat_model.cache_clear()
         self.addCleanup(models.chat_model.cache_clear)
@@ -404,8 +435,26 @@ class AgentModelFactoryTest(unittest.TestCase):
                 self.assertEqual(model.reasoning_effort, level)
                 self.assertEqual(model.max_output_tokens, max_tokens)
                 self.assertEqual(model.max_retries, 1)
+                models.model_call_settings.cache_clear()
+                retry = models.model_call_settings()["http_options"].retry_options
+                self.assertEqual(retry.attempts, 2)
+                self.assertEqual(retry.http_status_codes, [500, 502, 503, 504])
+                self.assertNotIn(429, retry.http_status_codes)
+                models.forced_tool_call_settings.cache_clear()
+                self.assertEqual(models.forced_tool_call_settings(), {"response_mime_type": "text/plain"})
                 self.assertEqual(model.timeout, 15)
                 self.assertEqual(model.response_mime_type, "application/json")
+
+    def test_default_reasoning_is_low(self):
+        with patch.dict(os.environ, {"LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "test-only-key"}, clear=True):
+            self.assertEqual(models.reasoning_level(), "low")
+
+    def test_tool_rule_asks_for_search_before_a_referral_only_answer(self):
+        # 시범 실행에서 모델이 도구 없이 "문의하세요"로만 답하던 것을 막는 규칙이 프롬프트에 남아 있는지 본다.
+        from app.chatbot.prompt_builder import AGENT_TOOL_RULES
+        rules = "\n".join(AGENT_TOOL_RULES)
+        self.assertIn("반드시 이 도구를 먼저 부르세요", rules)
+        self.assertIn("도구로도 근거를 찾지 못했을 때만", rules)
 
     def test_missing_key_or_unsupported_provider_is_a_configuration_error(self):
         for env in ({"LLM_PROVIDER": "gemini"}, {"LLM_PROVIDER": "openai"}):

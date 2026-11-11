@@ -26,7 +26,7 @@ from langgraph.runtime import get_runtime
 from langsmith.run_helpers import tracing_context
 
 from app.chatbot.agent.models import classify_model_error
-from app.chatbot.agent.tools import TOOLS, ToolContext, ToolSpec
+from app.chatbot.agent.tools import SEARCH_HEALTH, TOOLS, ToolContext, ToolSpec
 from app.chatbot.health.answer import Evidence
 from app.chatbot.health.retriever import HealthMatch
 from app.chatbot.provider import ChatbotProviderTruncatedError
@@ -91,6 +91,10 @@ class AgentContext:
     # time.monotonic() 기준 마감 시각
     deadline: float
     ledger: AgentLedger = field(default_factory=AgentLedger)
+    # 모델 호출마다 붙일 제공자별 설정(예: Gemini 일시 오류 재시도). models.model_call_settings()가 만든다.
+    model_settings: dict = field(default_factory=dict)
+    # 도구 호출을 강제하는 호출에만 더 붙일 제공자별 설정. models.forced_tool_call_settings()가 만든다.
+    forced_tool_settings: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -128,7 +132,15 @@ class AgentLimits(AgentMiddleware):
         # 도구 상한에 닿았거나 마지막 호출이면 도구 호출만 막아 이번에 답을 내게 한다.
         # 선언은 남긴다(대화에 이미 도구 호출이 있으면 선언이 있어야 제공자가 받아 준다).
         blocked = ledger.tool_calls >= MAX_TOOL_CALLS or ledger.model_calls >= MAX_MODEL_CALLS
-        request = request.override(model=context.model, tool_choice="none" if blocked else None)
+        tool_choice = "none" if blocked else None
+        # 코드의 첫 검색이 근거를 하나도 못 찾았으면 첫 호출에서 검색 도구를 반드시 부르게 한다.
+        # 모델은 부를지는 고르지 못하고 검색어만 고른다. 11/11 시범 실행에서 모델에게 맡기면
+        # 첫 검색이 놓친 건강 질문 18개 중 minimal 0개, low와 강화한 규칙으로도 12개만 불렀다.
+        settings = {**request.model_settings, **context.model_settings}
+        if not blocked and ledger.model_calls == 1 and not context.tools.evidence:
+            tool_choice = SEARCH_HEALTH.name
+            settings = {**settings, **context.forced_tool_settings}
+        request = request.override(model=context.model, tool_choice=tool_choice, model_settings=settings)
         remaining = max(0.0, context.deadline - time.monotonic())
         try:
             # 제공자의 시간 제한과 별개로 남은 시간에서 끊는다(제공자가 시간 제한을 지키지 않아도).
