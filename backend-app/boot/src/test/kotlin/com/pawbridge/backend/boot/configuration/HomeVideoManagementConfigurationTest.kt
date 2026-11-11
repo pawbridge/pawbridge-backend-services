@@ -1,10 +1,13 @@
 package com.pawbridge.backend.boot.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.pawbridge.backend.community.internal.homevideo.application.CandidateJudge
 import com.pawbridge.backend.community.internal.homevideo.application.CollectHomeVideoCandidates
 import com.pawbridge.backend.community.internal.homevideo.application.CurateHomeVideos
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoCurationException
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoManagement
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.GeminiCandidateJudge
+import com.pawbridge.backend.community.internal.homevideo.infrastructure.OpenAiCandidateJudge
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.YouTubeVideoClient
 import io.mockk.every
 import io.mockk.justRun
@@ -185,6 +188,28 @@ class HomeVideoManagementConfigurationTest {
         assertThatCode { HomeVideoManagementConfiguration.HomeVideoRefreshJob(management, curation).refresh() }
             .doesNotThrowAnyException()
         verify(exactly = 1) { curation.weekly() }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["absent", "openai", "gemini", "unknown"])
+    fun `판정 제공자 설정일 때__조립하면__기본은 OpenAI이고 Gemini를 고를 수 있으며 모르는 값은 시작하지 않는다`(provider: String) {
+        // given
+        var runner = managementRunner()
+            .withPropertyValues("pawbridge.home-videos.curation-enabled=true")
+            .withBean("writeDataSource", DataSource::class.java, Supplier { mockk<DataSource>() })
+        if (provider != "absent") {
+            runner = runner.withPropertyValues("pawbridge.home-videos.judge-provider=$provider")
+        }
+
+        // when
+        runner.run { context ->
+            // then
+            when (provider) {
+                "unknown" -> assertThat(context).hasFailed()
+                "gemini" -> assertThat(context.getBean(CandidateJudge::class.java)).isInstanceOf(GeminiCandidateJudge::class.java)
+                else -> assertThat(context.getBean(CandidateJudge::class.java)).isInstanceOf(OpenAiCandidateJudge::class.java)
+            }
+        }
     }
 
     private fun managementRunner(): ApplicationContextRunner {
