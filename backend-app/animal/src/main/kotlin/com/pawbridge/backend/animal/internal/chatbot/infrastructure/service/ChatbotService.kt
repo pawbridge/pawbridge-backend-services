@@ -16,7 +16,9 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.Ch
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotBlockLogRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotMessageRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotSessionRepository
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ShelterPublicHoursReader
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Animal
+import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Shelter
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -34,6 +36,7 @@ class ChatbotService(
     private val chatbotGuardService: ChatbotGuardService,
     private val pythonAiServiceClient: PythonChatbotClient,
     private val pythonAiInternalApiKey: String?,
+    private val shelterPublicHours: ShelterPublicHoursReader,
     private val reads: TransactionOperations,
     private val writes: TransactionOperations,
 ) {
@@ -202,8 +205,24 @@ class ChatbotService(
             shelter?.address,
             animal.noticeEndDate?.toString(),
             shelter?.adoptionProcedure,
-            shelter?.operatingHours,
+            operatingHours(shelter),
         )
+    }
+
+    // 보호소가 PawBridge에 직접 적은 운영시간이 있으면 그것을 쓴다(보호소가 직접 고친 값이 더 최신일 가능성이 높다).
+    // 비어 있을 때만 수집기가 공공데이터에서 모은 운영시간과 휴무일을 한 줄 글로 만들어 넣는다.
+    // 이 경우 질문마다 기본키 조회가 한 번 늘어난다.
+    private fun operatingHours(shelter: Shelter?): String? {
+        if (shelter == null) {
+            return null
+        }
+        val entered = shelter.operatingHours
+        if (entered != null && !isBlank(entered)) {
+            return entered
+        }
+        val shelterId = shelter.id ?: return entered
+        val collected = reads.execute { shelterPublicHours.find(shelterId) }
+        return collected?.describe() ?: entered
     }
 
     // 건강 해설 근거 번호([1])는 그 응답에서만 뜻이 있다. 저장된 답은 다음 질문의 최근 대화로 다시 쓰이고

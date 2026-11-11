@@ -6,6 +6,8 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.client.Pytho
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotBlockLogRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotMessageRepository
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ChatbotSessionRepository
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.JdbcShelterPublicHoursReader
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.ShelterPublicHoursReader
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.service.ChatbotClientIpResolver
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.service.ChatbotCookieService
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.service.ChatbotGuardService
@@ -31,6 +33,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.core.env.Environment
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.data.jpa.repository.support.JpaRepositoryFactory
 import org.springframework.orm.jpa.JpaTransactionManager
 import org.springframework.transaction.TransactionDefinition
@@ -195,6 +198,15 @@ class AnimalChatbotConfiguration {
         return FeignPythonChatbotClient(settings.pythonUrl, mapper, Client.Default(null, null), Request.Options())
     }
 
+    // 챗봇 읽기 트랜잭션(animalCommandJpaTransactionManager)과 같은 writeDataSource를 쓰므로 같은 연결에서 읽는다.
+    @Bean
+    fun animalChatbotShelterPublicHours(
+        @Qualifier("writeJdbc") jdbc: JdbcTemplate,
+        mapper: ObjectMapper,
+    ): ShelterPublicHoursReader {
+        return JdbcShelterPublicHoursReader(jdbc, mapper)
+    }
+
     @Bean
     fun animalChatbotService(
         animals: AnimalRepository,
@@ -208,6 +220,7 @@ class AnimalChatbotConfiguration {
         guard: ChatbotGuardService,
         python: PythonChatbotClient,
         settings: Settings,
+        shelterPublicHours: ShelterPublicHoursReader,
         @Qualifier("animalChatbotReads") reads: TransactionTemplate,
         @Qualifier("animalChatbotWrites") writes: TransactionTemplate,
     ): ChatbotService {
@@ -223,6 +236,7 @@ class AnimalChatbotConfiguration {
             guard,
             python,
             settings.pythonKey,
+            shelterPublicHours,
             reads,
             writes,
         )
