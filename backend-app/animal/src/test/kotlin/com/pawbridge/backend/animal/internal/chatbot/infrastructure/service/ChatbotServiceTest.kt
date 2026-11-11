@@ -160,6 +160,7 @@ class ChatbotServiceTest {
         assertEquals(emptyList<Any>(), result.sources)
         assertEquals(emptyList<Any>(), result.healthCards)
         verify(exactly = 1) { ai.createChatbotMessage(KEY, capture(input)) }
+        assertEquals(41L, input.captured.animalId)
         assertEquals(
             AnimalChatbotContext("DOG", "mix", "2023년생", "5(Kg)", "white", null, null, "calm", "보호중"),
             input.captured.animalContext,

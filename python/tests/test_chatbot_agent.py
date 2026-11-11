@@ -163,7 +163,7 @@ class AgentServiceTest(unittest.TestCase):
         self.assertEqual([card["id"] for card in body["healthCards"]], ["heartworm-positive"])
         self.assertEqual([source["url"] for source in body["sources"]], ["https://example.org/a"])
         self.assertEqual(len(model.calls), 1)
-        self.assertEqual(model.calls[0]["tools"], ["search_health"])
+        self.assertEqual(model.calls[0]["tools"], ["search_health", "find_similar_animals"])
         prompt = model.calls[0]["messages"][0].content
         self.assertIn("[2] (심장사상충 양성) 치료 중에는 운동을 제한해야 합니다.", prompt)
         self.assertIn("보호소 이름: 행복 보호소", prompt)

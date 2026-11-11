@@ -81,6 +81,7 @@ class ChatbotService(
         val aiResponse = pythonAiServiceClient.createChatbotMessage(
             pythonAiInternalApiKey,
             PythonChatbotMessageRequest(
+                animal.id,
                 toAnimalContext(animal),
                 toShelterContext(animal),
                 recentMessages,

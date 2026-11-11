@@ -23,6 +23,7 @@ from app.chatbot.agent.graph import (
     run_agent,
 )
 from app.chatbot.agent.models import chat_model, forced_tool_call_settings, model_call_settings, reasoning_level
+from app.chatbot.agent.similar import SIMILAR_FALLBACK, unknown_notice_numbers
 from app.chatbot.agent.tools import ToolContext
 from app.chatbot.health.answer import (
     FALLBACK_ANSWER,
@@ -77,7 +78,14 @@ async def create_agent_message(req) -> dict:
     except ChatbotProviderConfigurationError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
     prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
-    tools = ToolContext(health_retriever(), animal.specialMark, animal.species, matches=list(matches), evidence=list(evidence))
+    tools = ToolContext(
+        health_retriever(),
+        animal.specialMark,
+        animal.species,
+        matches=list(matches),
+        evidence=list(evidence),
+        animal_id=req.animalId,
+    )
     context = AgentContext(
         model,
         tools,
@@ -100,7 +108,7 @@ async def create_agent_message(req) -> dict:
     stop = ledger.stop
 
     if stop is None:
-        response = finish_agent_answer(provider.name, run, animal.species, req.shelterContext)
+        response = finish_agent_answer(provider.name, run, animal.species, req.shelterContext, tools.similar_notice_numbers)
         log_agent_run(PATH_AGENT, None, ledger, started)
         return response
 
@@ -123,7 +131,13 @@ async def create_agent_message(req) -> dict:
     return chatbot_response(provider.name, FALLBACK_ANSWER if evidence else NO_EVIDENCE_FALLBACK, [], cards)
 
 
-def finish_agent_answer(provider_name: str, run: AgentRun, species: str | None, shelter) -> dict:
+def finish_agent_answer(
+    provider_name: str,
+    run: AgentRun,
+    species: str | None,
+    shelter,
+    similar_notice_numbers: set[str] | frozenset[str] = frozenset(),
+) -> dict:
     """루프가 낸 답을 고정 흐름과 같은 검사에 통과시킨다. 도구로 더 찾은 근거도 검사 범위에 들어간다."""
     evidence = run.evidence
     if evidence:
@@ -141,6 +155,14 @@ def finish_agent_answer(provider_name: str, run: AgentRun, species: str | None, 
             FALLBACK_ANSWER if evidence else NO_EVIDENCE_FALLBACK,
             [],
             ["보호소 정보에 없는 전화번호"],
+            fallback=True,
+        )
+    # 비슷한 동물 도구가 돌려준 동물만 소개해야 한다. 결과에 없는 공고번호는 지어낸 동물로 본다.
+    if not checked.fallback and unknown_notice_numbers(checked.answer, similar_notice_numbers):
+        checked = CheckedAnswer(
+            SIMILAR_FALLBACK,
+            [],
+            ["비슷한 동물 결과에 없는 공고번호"],
             fallback=True,
         )
 

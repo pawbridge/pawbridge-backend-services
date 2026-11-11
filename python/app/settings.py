@@ -106,6 +106,8 @@ class ChatbotSettings(_Settings):
     # 첫 검색이 놓친 건강 질문 18개에 도구를 한 번도 부르지 않았고, low와 강화한 도구 규칙을 함께 쓰니
     # 12개에서 불러 8개의 정답 해설을 찾았다(고정 흐름은 그대로 모델을 한 번 부른다).
     chatbot_reasoning: Literal["minimal", "low", "medium", "high"] = Field("low", alias="CHATBOT_REASONING")
+    # 비슷한 동물 도구가 부르는 백엔드 주소(예: http://monolith:8080). 비우면 도구는 추천을 못 불러온다고 답한다.
+    backend_base_url: str = Field("", alias="CHATBOT_BACKEND_BASE_URL")
 
     def disabled_health_entry_ids(self) -> frozenset[str]:
         return frozenset(item.strip() for item in self.health_rag_disabled_ids.split(",") if item.strip())

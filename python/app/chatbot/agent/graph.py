@@ -12,6 +12,7 @@
 """
 
 import asyncio
+import inspect
 import time
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -187,12 +188,16 @@ def _last_ai_message(messages) -> AIMessage | None:
 def _langchain_tool(spec: ToolSpec, function) -> StructuredTool:
     """tools.py의 평범한 함수를 LangChain 도구로 감싼다. 입력 검사는 LangChain이 spec.args_schema로 한다.
 
-    함수 안에 기다림(await)이 없어 동시에 불려도 한 번에 하나씩 끝까지 돈다. 그래서 근거 번호가 겹치지 않는다.
+    건강 해설 검색은 기다림(await)이 없어 동시에 불려도 한 번에 하나씩 끝까지 돈다. 그래서 근거 번호가 겹치지 않는다.
+    비슷한 동물 도구는 백엔드 API를 기다리는 async 함수다. 근거를 건드리지 않으므로 겹쳐 돌아도 된다.
     """
 
     async def run(**kwargs) -> str:
         context = get_runtime(AgentContext).context
-        return function(spec.args_schema(**kwargs), context.tools)
+        result = function(spec.args_schema(**kwargs), context.tools)
+        if inspect.isawaitable(result):
+            result = await result
+        return result
 
     return StructuredTool.from_function(
         coroutine=run, name=spec.name, description=spec.description, args_schema=spec.args_schema
