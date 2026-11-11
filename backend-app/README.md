@@ -556,6 +556,8 @@ ADMIN 목록/미리보기/등록/수정/게시/전체순서/재검사7경로는 
 
 `pawbridge.home-videos.management-enabled`는 기본 false다. 관리 true와 기존 canonical `pawbridge.jobs.refresh-enabled` 명시 true가 모두 있을 때만60초 뒤/1시간 주기 갱신을 조립한다. 기존 flag=false는 항상 거부하며 미지정도 후보에서는 off다. 원문 고정990은 canonical true/matchIfMissing=true였으므로 후보 기본 off는 알려진 활성화 차이다. 변경된 working 원문을 무조건 실행으로 본 초기 설명은 정정했고 원본 파일은 수정하지 않았다.
 
+`pawbridge.home-videos.curation-enabled`(기본 false, 관리 true 필요)는 후보 모으기를 조립한다: YouTube 검색 → 규칙(`CandidateRules`) → Gemini 판정 → `home_video_candidates`(V13) 저장. 이 표만 쓰는 JPA 단위가 쓰기 DataSource를 공유한다. 판정 키는 `gemini.api-key` 또는 `GEMINI_API_KEY`, 모델은 `pawbridge.home-videos.gemini-model`(기본 `gemini-3.5-flash-lite`)이다. 판정 묶음마다 정답 예시 영상(`CurationCriteria.REFERENCE_VIDEO_IDS`)을 섞어 하나라도 탈락하면 아무것도 저장하지 않는다. 확인한 지 29일 지난 줄은 모을 때마다 지운다.
+
 비작성 서브가16파일·30시험메서드와 원문 관리15본문/저장소11/YouTube client4본문·URL 변환을 대조했다. 고유69사례는 분할 성공 합집합이다. User/Report와 합친 새 조립1·466class 검사는4초에 통과했다. 실제 PG 잠금/rollback·YouTube·예약 true의 실행/활성 종료·JAR은 미실행이며 운영 스케줄러 소유권이 인계된 상태가 아니다.
 
 ## Community HTTP 편입 묶음

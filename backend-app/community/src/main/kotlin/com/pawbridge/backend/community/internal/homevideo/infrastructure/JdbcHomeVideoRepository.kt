@@ -1,5 +1,6 @@
 package com.pawbridge.backend.community.internal.homevideo.infrastructure
 
+import com.pawbridge.backend.community.internal.homevideo.application.CurrentHomeVideos
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideo
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoManagement.Metadata
 import java.sql.ResultSet
@@ -9,7 +10,9 @@ import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 
-class JdbcHomeVideoRepository(private val jdbc: JdbcTemplate) {
+class JdbcHomeVideoRepository(private val jdbc: JdbcTemplate) : CurrentHomeVideos {
+
+    override fun videoIds(): Set<String> = list().map { video -> video.videoId }.toSet()
 
     fun lockBoard(): Long =
         jdbc.queryForObject(

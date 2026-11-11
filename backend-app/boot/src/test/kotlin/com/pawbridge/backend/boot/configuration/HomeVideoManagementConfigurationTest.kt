@@ -1,6 +1,7 @@
 package com.pawbridge.backend.boot.configuration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.pawbridge.backend.community.internal.homevideo.application.CollectHomeVideoCandidates
 import com.pawbridge.backend.community.internal.homevideo.application.HomeVideoManagement
 import com.pawbridge.backend.community.internal.homevideo.infrastructure.YouTubeVideoClient
 import io.mockk.every
@@ -20,6 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import java.net.http.HttpClient
 import java.time.Clock
 import java.util.function.Supplier
+import javax.sql.DataSource
 
 class HomeVideoManagementConfigurationTest {
     @ParameterizedTest
@@ -91,5 +93,53 @@ class HomeVideoManagementConfigurationTest {
         assertThatCode { HomeVideoManagementConfiguration.HomeVideoRefreshJob(management).refresh() }
             .doesNotThrowAnyException()
         verify(exactly = 1) { management.refresh() }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["absent", "false"])
+    fun `후보 모으기가 꺼졌을 때__관리 기능만 조립하면__후보 모으기와 JPA 단위를 만들지 않는다`(flag: String) {
+        // given
+        var runner = managementRunner()
+        if (flag == "false") {
+            runner = runner.withPropertyValues("pawbridge.home-videos.curation-enabled=false")
+        }
+
+        // when
+        runner.run { context ->
+            // then
+            assertThat(context).hasNotFailed()
+                .doesNotHaveBean(CollectHomeVideoCandidates::class.java)
+                .doesNotHaveBean("homeVideoCandidateEntityManagerFactory")
+        }
+    }
+
+    @Test
+    fun `후보 모으기를 켰을 때__조립하면__DB 연결을 열지 않고 후보 모으기를 만든다`() {
+        // given
+        val source = mockk<DataSource>()
+        val runner = managementRunner()
+            .withPropertyValues("pawbridge.home-videos.curation-enabled=true", "gemini.api-key=synthetic-key")
+            .withBean("writeDataSource", DataSource::class.java, Supplier { source })
+
+        // when
+        runner.run { context ->
+            // then
+            assertThat(context).hasNotFailed()
+                .hasSingleBean(CollectHomeVideoCandidates::class.java)
+            verify(exactly = 0) { source.connection }
+        }
+    }
+
+    private fun managementRunner(): ApplicationContextRunner {
+        val jdbc = mockk<JdbcTemplate>()
+        val manager = mockk<JdbcTransactionManager>()
+        justRun { jdbc.afterPropertiesSet() }
+        justRun { manager.afterPropertiesSet() }
+        return ApplicationContextRunner().withUserConfiguration(HomeVideoManagementConfiguration::class.java)
+            .withPropertyValues("pawbridge.home-videos.management-enabled=true", "youtube.api-key=synthetic-key")
+            .withBean("writeJdbc", JdbcTemplate::class.java, Supplier { jdbc })
+            .withBean("writeTransactionManager", JdbcTransactionManager::class.java, Supplier { manager })
+            .withBean("readClock", Clock::class.java, Supplier { Clock.systemUTC() })
+            .withBean(ObjectMapper::class.java, Supplier { ObjectMapper() })
     }
 }
