@@ -189,11 +189,51 @@ class ChatbotApiTest(unittest.TestCase):
         self.assertTrue("질문 유형별 답변 가이드:" in prompt)
         self.assertTrue("문장마다 줄바꿈하지 마세요" in prompt)
 
-    def test_chatbot_message_returns_501_for_openai_provider_in_step_1(self):
-        with patch.dict(os.environ, {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "openai"}, clear=False):
+    def test_chatbot_message_returns_500_for_openai_provider_without_api_key(self):
+        with patch.dict(os.environ, {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "openai"}, clear=True):
             response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
 
-        self.assertEqual(response.status_code, 501)
+        self.assertEqual(response.status_code, 500)
+
+    def test_chatbot_message_returns_200_for_openai_provider_with_mocked_call(self):
+        with (
+            patch.dict(
+                os.environ,
+                {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "openai", "OPENAI_API_KEY": "openai-key"},
+                clear=False,
+            ),
+            patch(
+                "app.chatbot.openai_provider.OpenAIChatbotProvider.generate_answer",
+                new=AsyncMock(return_value="OpenAI answer"),
+            ),
+        ):
+            response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], "openai")
+
+    def test_chatbot_message_returns_500_for_anthropic_provider_without_api_key(self):
+        with patch.dict(os.environ, {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "anthropic"}, clear=True):
+            response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
+
+        self.assertEqual(response.status_code, 500)
+
+    def test_chatbot_message_returns_200_for_anthropic_provider_with_mocked_call(self):
+        with (
+            patch.dict(
+                os.environ,
+                {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "anthropic-key"},
+                clear=False,
+            ),
+            patch(
+                "app.chatbot.anthropic_provider.AnthropicChatbotProvider.generate_answer",
+                new=AsyncMock(return_value="Claude answer"),
+            ),
+        ):
+            response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], "anthropic")
 
     def test_health_endpoint_still_returns_200(self):
         response = self.client.get("/health")

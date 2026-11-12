@@ -266,6 +266,14 @@ class AgentServiceTest(unittest.TestCase):
         self.assertEqual(len(self.fixed.calls), 1)
         self.assertIn("path=fixed stop=truncated", line)
 
+    def test_anthropic_max_tokens_stop_reason_is_truncation(self):
+        # Anthropic은 잘림을 finish_reason이 아니라 stop_reason(max_tokens)에 적는다.
+        truncated = AIMessage(content=json.dumps({"answer": "잘린", "used": []}, ensure_ascii=False),
+                              usage_metadata=usage(), response_metadata={"stop_reason": "max_tokens"})
+        response, line = self.post_and_log(ScriptedChatModel(turns=[truncated]))
+        self.assertEqual(len(self.fixed.calls), 1)
+        self.assertIn("path=fixed stop=truncated", line)
+
     def test_timeout_ends_with_fallback_answer_not_502(self):
         self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
         model = ScriptedChatModel(turns=[httpx.ReadTimeout("slow")])
@@ -459,6 +467,103 @@ class AgentModelFactoryTest(unittest.TestCase):
                 self.assertEqual(model.timeout, 15)
                 self.assertEqual(model.response_mime_type, "application/json")
 
+    def test_openai_model_follows_settings(self):
+        env = {"LLM_PROVIDER": "openai", "OPENAI_API_KEY": "test-only-key"}
+        for level, effort, max_tokens in (("minimal", "none", 1024), ("low", "low", 2048), ("high", "high", 8192)):
+            models.chat_model.cache_clear()
+            with self.subTest(level=level), patch.dict(os.environ, {**env, "CHATBOT_REASONING": level}, clear=True):
+                model = models.chat_model()
+                self.assertEqual(type(model).__name__, "ChatOpenAI")
+                self.assertEqual(model.model_name, "gpt-6-luna")
+                self.assertTrue(model.use_responses_api)
+                self.assertEqual(model.reasoning, {"effort": effort})
+                self.assertEqual(model.max_tokens, max_tokens)
+                self.assertEqual(model.model_kwargs, {"text": {"format": {"type": "json_object"}}})
+                self.assertIs(model.store, False)
+                self.assertEqual(model.include, ["reasoning.encrypted_content"])
+                self.assertIsNone(model.temperature)
+                self.assertEqual(model.max_retries, 1)
+                self.assertEqual(model.request_timeout, 15)
+                # Gemini 전용 호출 설정은 붙이지 않는다(도구 강제와 JSON 형식을 함께 받는다).
+                models.model_call_settings.cache_clear()
+                models.forced_tool_call_settings.cache_clear()
+                self.assertEqual(models.model_call_settings(), {})
+                self.assertEqual(models.forced_tool_call_settings(), {})
+        models.model_call_settings.cache_clear()
+        models.forced_tool_call_settings.cache_clear()
+
+    def test_openai_model_name_follows_setting(self):
+        env = {"LLM_PROVIDER": "openai", "OPENAI_API_KEY": "test-only-key", "OPENAI_MODEL": " gpt-6-sol "}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(models.chat_model().model_name, "gpt-6-sol")
+
+    def test_anthropic_model_follows_settings(self):
+        env = {"LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-only-key"}
+        for level, effort, max_tokens in (("minimal", "low", 1024), ("low", "low", 2048),
+                                          ("medium", "medium", 4096), ("high", "high", 8192)):
+            models.chat_model.cache_clear()
+            with self.subTest(level=level), patch.dict(os.environ, {**env, "CHATBOT_REASONING": level}, clear=True):
+                model = models.chat_model()
+                self.assertEqual(type(model).__name__, "PawbridgeChatAnthropic")
+                self.assertEqual(model.model, "claude-haiku-5-5")
+                self.assertEqual(model.max_tokens, max_tokens)
+                self.assertEqual(model.output_config["effort"], effort)
+                self.assertEqual(model.output_config["format"]["type"], "json_schema")
+                self.assertEqual(model.output_config["format"]["schema"]["required"], ["answer", "used"])
+                # minimal만 생각을 끈다. 나머지는 모델 기본값(적응형)이라 보내지 않는다.
+                self.assertEqual(model.thinking, {"type": "disabled"} if level == "minimal" else None)
+                self.assertIsNone(model.temperature)
+                self.assertEqual(model.max_retries, 1)
+                self.assertEqual(model.default_request_timeout, 15)
+                models.model_call_settings.cache_clear()
+                models.forced_tool_call_settings.cache_clear()
+                self.assertEqual(models.model_call_settings(), {})
+                self.assertEqual(models.forced_tool_call_settings(), {})
+        models.model_call_settings.cache_clear()
+        models.forced_tool_call_settings.cache_clear()
+
+    def test_anthropic_request_keeps_tool_choice_effort_and_format(self):
+        # 실제로 나갈 요청 본문을 만들어 본다. 그래프가 쓰는 tool_choice 세 가지가 API 모양으로 바뀌어야 한다.
+        from langchain_core.messages import HumanMessage as Human
+        from langchain_core.tools import tool
+
+        @tool
+        def search_health(query: str) -> str:
+            """건강 해설 검색"""
+            return query
+
+        env = {"LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-only-key", "CHATBOT_REASONING": "medium"}
+        with patch.dict(os.environ, env, clear=True):
+            model = models.chat_model()
+        for choice, expected in (("none", {"type": "none"}), ("any", {"type": "any"}),
+                                 ("search_health", {"type": "tool", "name": "search_health"})):
+            with self.subTest(choice=choice):
+                bound = model.bind_tools([search_health], tool_choice=choice)
+                payload = model._get_request_payload([Human("질문")], **bound.kwargs)
+                self.assertEqual(payload["tool_choice"], expected)
+                self.assertEqual(payload["output_config"]["effort"], "medium")
+                self.assertEqual(payload["output_config"]["format"]["type"], "json_schema")
+                self.assertNotIn("thinking", payload)
+                self.assertNotIn("temperature", payload)
+
+    def test_anthropic_model_name_follows_setting(self):
+        env = {"LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-only-key", "ANTHROPIC_MODEL": " claude-sonnet-5-5 "}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(models.chat_model().model, "claude-sonnet-5-5")
+
+    def test_final_answer_text_keeps_only_final_answer_blocks(self):
+        # OpenAI Responses API는 최종 답 앞에 중간 설명 조각을 붙일 수 있다. 이어 붙이면 JSON이 깨진다.
+        from app.chatbot.agent.graph import final_answer_text
+
+        mixed = AIMessage(content=[
+            {"type": "text", "text": "찾아볼게요.", "phase": "commentary"},
+            {"type": "text", "text": '{"answer": "답", "used": []}', "phase": "final_answer"},
+        ])
+        self.assertEqual(final_answer_text(mixed), '{"answer": "답", "used": []}')
+        pieces = AIMessage(content=[{"type": "text", "text": "가"}, {"type": "text", "text": "나"}])
+        self.assertEqual(final_answer_text(pieces), "가나")
+        self.assertEqual(final_answer_text(AIMessage(content="그대로")), "그대로")
+
     def test_default_reasoning_is_low(self):
         with patch.dict(os.environ, {"LLM_PROVIDER": "gemini", "GEMINI_API_KEY": "test-only-key"}, clear=True):
             self.assertEqual(models.reasoning_level(), "low")
@@ -471,7 +576,7 @@ class AgentModelFactoryTest(unittest.TestCase):
         self.assertIn("도구로도 근거를 찾지 못했을 때만", rules)
 
     def test_missing_key_or_unsupported_provider_is_a_configuration_error(self):
-        for env in ({"LLM_PROVIDER": "gemini"}, {"LLM_PROVIDER": "openai"}):
+        for env in ({"LLM_PROVIDER": "gemini"}, {"LLM_PROVIDER": "openai"}, {"LLM_PROVIDER": "anthropic"}):
             models.chat_model.cache_clear()
             with self.subTest(env=env), patch.dict(os.environ, env, clear=True):
                 with self.assertRaises(ChatbotProviderConfigurationError):
@@ -496,6 +601,41 @@ class AgentModelFactoryTest(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 self.assertIsInstance(models.classify_model_error(error), ChatbotProviderTimeoutError)
         self.assertIsNone(models.classify_model_error(ValueError("ours")))
+
+    def test_openai_errors_are_sorted_into_timeout_or_upstream(self):
+        import openai
+
+        request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+        upstream = [
+            openai.RateLimitError("429", response=httpx.Response(429, request=request), body=None),
+            openai.InternalServerError("503", response=httpx.Response(503, request=request), body=None),
+            openai.ConflictError("409", response=httpx.Response(409, request=request), body=None),
+            openai.APIConnectionError(request=request),
+        ]
+        for error in upstream:
+            with self.subTest(error=type(error).__name__):
+                self.assertIsInstance(models.classify_model_error(error), ChatbotProviderUpstreamError)
+                self.assertNotIsInstance(models.classify_model_error(error), ChatbotProviderTimeoutError)
+        self.assertIsInstance(models.classify_model_error(openai.APITimeoutError(request=request)),
+                              ChatbotProviderTimeoutError)
+
+
+    def test_anthropic_errors_are_sorted_into_timeout_or_upstream(self):
+        import anthropic
+
+        request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+        upstream = [
+            anthropic.RateLimitError("429", response=httpx.Response(429, request=request), body=None),
+            anthropic.InternalServerError("529", response=httpx.Response(529, request=request), body=None),
+            anthropic.ConflictError("409", response=httpx.Response(409, request=request), body=None),
+            anthropic.APIConnectionError(request=request),
+        ]
+        for error in upstream:
+            with self.subTest(error=type(error).__name__):
+                self.assertIsInstance(models.classify_model_error(error), ChatbotProviderUpstreamError)
+                self.assertNotIsInstance(models.classify_model_error(error), ChatbotProviderTimeoutError)
+        self.assertIsInstance(models.classify_model_error(anthropic.APITimeoutError(request=request)),
+                              ChatbotProviderTimeoutError)
 
 
 class AgentSettingsTest(unittest.TestCase):

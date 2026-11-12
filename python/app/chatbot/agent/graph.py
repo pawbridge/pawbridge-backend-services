@@ -47,7 +47,8 @@ TOKEN_BUDGET = 24_000
 RECURSION_LIMIT = 3 * MAX_MODEL_CALLS + 4
 
 TOOL_LIMIT_MESSAGE = "도구 호출 상한에 닿았습니다. 지금까지 받은 근거로 답하세요."
-# 답이 잘렸다는 종료 사유. 제공자마다 이름이 다르다(Gemini는 MAX_TOKENS).
+# 답이 잘렸다는 종료 사유. 제공자마다 이름과 칸이 다르다(Gemini는 finish_reason MAX_TOKENS,
+# Anthropic은 stop_reason max_tokens).
 TRUNCATED_FINISH_REASONS = {"MAX_TOKENS", "length", "max_tokens"}
 
 # 멈춘 이유. 로그에 그대로 남기므로 질문 내용 없이 짧은 코드로 둔다.
@@ -162,7 +163,8 @@ class AgentLimits(AgentMiddleware):
         message = _last_ai_message(response.result)
         if message is not None:
             ledger.add_usage(message.usage_metadata)
-            if message.response_metadata.get("finish_reason") in TRUNCATED_FINISH_REASONS:
+            metadata = message.response_metadata
+            if (metadata.get("finish_reason") or metadata.get("stop_reason")) in TRUNCATED_FINISH_REASONS:
                 raise ChatbotProviderTruncatedError("Model response was truncated by token limit")
         return response
 
@@ -190,6 +192,24 @@ def _last_ai_message(messages) -> AIMessage | None:
         if isinstance(message, AIMessage):
             return message
     return None
+
+
+def final_answer_text(message: AIMessage) -> str:
+    """모델의 마지막 메시지에서 답 글만 꺼낸다.
+
+    Gemini 3 이상은 content가 조각 목록일 수 있어 text로 이어 붙인다.
+    OpenAI Responses API는 최종 답 앞에 중간 설명 메시지를 붙일 수 있고, 조각마다 phase를 단다
+    (final_answer, commentary). phase가 final_answer인 조각이 있으면 그것만 쓴다. 이어 붙이면 JSON이 깨진다.
+    """
+    if isinstance(message.content, list):
+        finals = [
+            block.get("text", "")
+            for block in message.content
+            if isinstance(block, dict) and block.get("type") == "text" and block.get("phase") == "final_answer"
+        ]
+        if finals:
+            return "".join(finals)
+    return str(message.text)
 
 
 def _langchain_tool(spec: ToolSpec, function) -> StructuredTool:
@@ -264,8 +284,7 @@ async def run_agent(prompt: str, context: AgentContext) -> AgentRun:
     if state is not None and not ledger.stop:
         last = state["messages"][-1]
         if isinstance(last, AIMessage) and not last.tool_calls:
-            # Gemini 3 이상은 content가 조각 목록일 수 있어 text로 이어 붙인다.
-            answer = str(last.text).strip() or None
+            answer = final_answer_text(last).strip() or None
         if answer is None:
             ledger.stop = STOP_EMPTY
     tools = context.tools
