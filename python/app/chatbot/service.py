@@ -186,10 +186,14 @@ def load_health_retriever_if_enabled() -> None:
         health_retriever()
     if settings.chatbot_mode == "agent":
         from app.chatbot.agent.graph import agent_graph
-        from app.chatbot.agent.models import chat_model
+        from app.chatbot.agent.models import chat_model, fallback_chat_model, fallback_provider_name
 
         agent_graph()
         chat_model()
+        # 예비 제공자를 적었는데 키가 없으면 장애 때에야 드러나므로 기동에서 멈춘다.
+        if fallback_provider_name():
+            fallback_chat_model()
+            get_chatbot_provider(fallback_provider_name())
         # 하이브리드 색인(해설 조각 벡터)을 첫 질문 전에 만든다. 임베딩 서비스가 없으면 규칙만으로 시작한다.
         agent_health_retriever()
 

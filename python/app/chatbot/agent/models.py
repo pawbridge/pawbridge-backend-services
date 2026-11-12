@@ -4,6 +4,7 @@
     LLM_PROVIDER=openai, OPENAI_MODEL, OPENAI_API_KEY  → 같은 방식의 OpenAI 채팅 모델
     LLM_PROVIDER=anthropic, ANTHROPIC_MODEL, ANTHROPIC_API_KEY  → 같은 방식의 Claude 채팅 모델
     CHATBOT_REASONING(minimal, low, medium, high) → 제공자별 추론 설정과 호출 하나의 출력 상한
+    LLM_FALLBACK_PROVIDER(선택) → 주 제공자가 일시 장애일 때 쓰는 예비 모델(위와 같은 방식, 같은 추론 단계)
 
 에이전트 코드(graph.py, service.py)는 LangChain 공통 모양(메시지, usage_metadata, ModelError)만 본다.
 제공자를 더하려면 _BUILDERS에 함수를 하나 넣고, 그 SDK의 오류를 classify_model_error가 알아보는지 시험한다.
@@ -29,11 +30,31 @@ def reasoning_level() -> str:
     return ChatbotSettings.load().chatbot_reasoning
 
 
+def provider_name() -> str:
+    """주 제공자 이름(LLM_PROVIDER). 비었으면 stub."""
+    return ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+
+
+def fallback_provider_name() -> str:
+    """예비 제공자 이름(LLM_FALLBACK_PROVIDER). 비었으면 빈 문자열(예비 없음)."""
+    return ChatbotSettings.load().llm_fallback_provider.strip().lower()
+
+
 @lru_cache(maxsize=1)
 def chat_model():
     """설정으로 모델을 한 번만 만든다. 설정이 잘못됐으면 ChatbotProviderConfigurationError."""
+    return _build(provider_name())
+
+
+@lru_cache(maxsize=1)
+def fallback_chat_model():
+    """예비 모델을 한 번만 만든다. 예비 설정이 없으면 None, 잘못됐으면(키 없음 등) ChatbotProviderConfigurationError."""
+    name = fallback_provider_name()
+    return _build(name) if name else None
+
+
+def _build(provider: str):
     settings = ChatbotSettings.load()
-    provider = settings.llm_provider.strip().lower() or "stub"
     builder = _BUILDERS.get(provider)
     if builder is None:
         raise ChatbotProviderConfigurationError(f"LLM provider '{provider}' does not support the agent")
@@ -171,10 +192,13 @@ GEMINI_RETRY_DELAY_SECONDS = 1.0
 GEMINI_RETRY_STATUS_CODES = [500, 502, 503, 504]
 
 
-@lru_cache(maxsize=1)
-def model_call_settings() -> dict:
-    """모델 호출마다 붙일 제공자별 설정. 제공자 이름이 나오는 곳이 이 파일뿐이도록 여기서 만든다."""
-    provider = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+@lru_cache(maxsize=4)
+def model_call_settings(provider: str | None = None) -> dict:
+    """모델 호출마다 붙일 제공자별 설정. 제공자 이름이 나오는 곳이 이 파일뿐이도록 여기서 만든다.
+
+    provider를 비우면 주 제공자(LLM_PROVIDER)다. 예비 모델로 다시 풀 때는 예비 제공자 이름을 넘긴다.
+    """
+    provider = provider or provider_name()
     if provider != "gemini":
         return {}
 
@@ -189,15 +213,15 @@ def model_call_settings() -> dict:
     return {"http_options": HttpOptions(retry_options=retry)}
 
 
-@lru_cache(maxsize=1)
-def forced_tool_call_settings() -> dict:
+@lru_cache(maxsize=4)
+def forced_tool_call_settings(provider: str | None = None) -> dict:
     """도구 호출을 강제하는 호출에 더 붙일 제공자별 설정.
 
     Gemini는 도구 강제(ANY 모드)와 JSON 응답 형식을 함께 받지 않는다(400 "Forced function calling (ANY mode)
     with a response mime type: 'application/json' is unsupported", 11/11 확인). 강제한 호출은 도구 호출만
-    돌려주고 답 글을 쓰지 않으므로 그 호출에서만 JSON 형식을 뺀다.
+    돌려주고 답 글을 쓰지 않으므로 그 호출에서만 JSON 형식을 뺀다. provider는 model_call_settings와 같다.
     """
-    provider = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+    provider = provider or provider_name()
     if provider != "gemini":
         return {}
     return {"response_mime_type": "text/plain"}
@@ -251,6 +275,52 @@ def classify_model_error(exc: BaseException) -> Exception | None:
     if isinstance(exc, (ModelError, httpx.HTTPError)) or _is_provider_sdk_error(exc):
         return ChatbotProviderUpstreamError(f"Model request failed ({name})")
     return None
+
+
+def is_transient_model_error(exc: BaseException) -> bool:
+    """다른 제공자로 다시 풀 만한 일시 장애인가. 요청 한도(429), 서버 오류(5xx, 과부하 529), 연결 실패, 시간 초과다.
+
+    키 오류(401, 403), 잘못된 요청(400), 없는 모델(404), 충돌(409)은 넘기지 않는다. 고쳐야 할 문제인데
+    예비 모델이 답하면 드러나지 않는다. classify_model_error가 감싼 원래 오류까지 거슬러 본다.
+    LangChain 공통 오류(ModelError)는 is_retryable로, 감싸지 않은 SDK 오류는 상태 코드로 가린다.
+    """
+    import httpx
+
+    from app.chatbot.provider import ChatbotProviderTimeoutError
+
+    seen = set()
+    error = exc
+    while error is not None and id(error) not in seen:
+        seen.add(id(error))
+        if isinstance(error, (ChatbotProviderTimeoutError, TimeoutError, httpx.TransportError)):
+            return True
+        retryable = getattr(error, "is_retryable", None)
+        if retryable is not None:
+            return bool(retryable)
+        status_code = getattr(error, "status_code", None) or getattr(error, "code", None)
+        if isinstance(status_code, int):
+            return status_code == 429 or status_code >= 500
+        if _is_provider_sdk_timeout(error) or _is_provider_connection_error(error):
+            return True
+        error = error.__cause__
+    return False
+
+
+def _is_provider_connection_error(exc: BaseException) -> bool:
+    """감싸지 않은 OpenAI, Anthropic SDK의 연결 실패. 상태 코드가 없어 따로 본다. 이미 불러온 SDK만 본다."""
+    import sys
+
+    if "openai" in sys.modules:
+        from openai import APIConnectionError
+
+        if isinstance(exc, APIConnectionError):
+            return True
+    if "anthropic" in sys.modules:
+        from anthropic import APIConnectionError as AnthropicConnectionError
+
+        if isinstance(exc, AnthropicConnectionError):
+            return True
+    return False
 
 
 def _is_provider_sdk_timeout(exc: BaseException) -> bool:
