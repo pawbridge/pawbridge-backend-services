@@ -10,6 +10,9 @@ langchain-google-genai==4.4.2
 # LLM_PROVIDER=openai. 1.7.3부터 langchain-core 1.7 이상을 요구해 1.6.13과 맞는 마지막 판을 쓴다.
 langchain-openai==1.7.2
 openai==3.41.0
+# LLM_PROVIDER=anthropic. langchain-anthropic 1.7.8부터 langchain-core 1.7.3 이상을 요구해 1.6.13과 맞는 마지막 판을 쓴다.
+langchain-anthropic==1.7.7
+anthropic==2.3.0
 # Pillow, numpy, python-multipart: the chatbot does not use them; README "로컬 시험" runs
 # the vision and photo tests in this image.
 Pillow==10.4.0

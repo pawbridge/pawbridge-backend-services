@@ -47,7 +47,8 @@ TOKEN_BUDGET = 24_000
 RECURSION_LIMIT = 3 * MAX_MODEL_CALLS + 4
 
 TOOL_LIMIT_MESSAGE = "도구 호출 상한에 닿았습니다. 지금까지 받은 근거로 답하세요."
-# 답이 잘렸다는 종료 사유. 제공자마다 이름이 다르다(Gemini는 MAX_TOKENS).
+# 답이 잘렸다는 종료 사유. 제공자마다 이름과 칸이 다르다(Gemini는 finish_reason MAX_TOKENS,
+# Anthropic은 stop_reason max_tokens).
 TRUNCATED_FINISH_REASONS = {"MAX_TOKENS", "length", "max_tokens"}
 
 # 멈춘 이유. 로그에 그대로 남기므로 질문 내용 없이 짧은 코드로 둔다.
@@ -162,7 +163,8 @@ class AgentLimits(AgentMiddleware):
         message = _last_ai_message(response.result)
         if message is not None:
             ledger.add_usage(message.usage_metadata)
-            if message.response_metadata.get("finish_reason") in TRUNCATED_FINISH_REASONS:
+            metadata = message.response_metadata
+            if (metadata.get("finish_reason") or metadata.get("stop_reason")) in TRUNCATED_FINISH_REASONS:
                 raise ChatbotProviderTruncatedError("Model response was truncated by token limit")
         return response
 

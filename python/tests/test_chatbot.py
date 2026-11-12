@@ -212,6 +212,29 @@ class ChatbotApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["provider"], "openai")
 
+    def test_chatbot_message_returns_500_for_anthropic_provider_without_api_key(self):
+        with patch.dict(os.environ, {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "anthropic"}, clear=True):
+            response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
+
+        self.assertEqual(response.status_code, 500)
+
+    def test_chatbot_message_returns_200_for_anthropic_provider_with_mocked_call(self):
+        with (
+            patch.dict(
+                os.environ,
+                {"INTERNAL_API_KEY": "test-key", "LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "anthropic-key"},
+                clear=False,
+            ),
+            patch(
+                "app.chatbot.anthropic_provider.AnthropicChatbotProvider.generate_answer",
+                new=AsyncMock(return_value="Claude answer"),
+            ),
+        ):
+            response = self.post_message(headers={"X-Internal-Api-Key": "test-key"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], "anthropic")
+
     def test_health_endpoint_still_returns_200(self):
         response = self.client.get("/health")
 

@@ -18,7 +18,7 @@ PawBridge 백엔드(`backend-app`)가 내부 API로 부르는 Python 서비스 �
 ```
 app/
 ├── entrypoints/        # 실행 진입점: chatbot_api, vision_api, photo_api, gallery_cli
-├── chatbot/            # 챗봇 경로(router)와 Gemini·stub 제공자, 프롬프트
+├── chatbot/            # 챗봇 경로(router)와 Gemini, OpenAI, Claude, stub 제공자, 프롬프트
 ├── lost_search/        # 실종 사진 검색 경로(router)와 순위(service)
 ├── recommendation/     # 유사 동물 추천 경로(router)와 순위(service)
 ├── gallery/            # 갤러리 빌드(builder)·자동 갱신(runtime, source, pages, inputs, prefetch)·보관(retention)

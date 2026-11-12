@@ -2,6 +2,7 @@
 
     LLM_PROVIDER, GEMINI_MODEL, GEMINI_API_KEY  → LangChain 채팅 모델(init_chat_model)
     LLM_PROVIDER=openai, OPENAI_MODEL, OPENAI_API_KEY  → 같은 방식의 OpenAI 채팅 모델
+    LLM_PROVIDER=anthropic, ANTHROPIC_MODEL, ANTHROPIC_API_KEY  → 같은 방식의 Claude 채팅 모델
     CHATBOT_REASONING(minimal, low, medium, high) → 제공자별 추론 설정과 호출 하나의 출력 상한
 
 에이전트 코드(graph.py, service.py)는 LangChain 공통 모양(메시지, usage_metadata, ModelError)만 본다.
@@ -98,6 +99,70 @@ def _openai(settings: ChatbotSettings, reasoning: str):
     )
 
 
+# 최종 답 JSON의 모양. Anthropic은 "JSON이면 된다" 모드가 없고 스키마를 받는다.
+# 답 검사(health/answer.py)가 받는 모양과 같다: 글 하나와 쓴 근거 번호 목록.
+ANSWER_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "answer": {"type": "string"},
+        "used": {"type": "array", "items": {"type": "integer"}},
+    },
+    "required": ["answer", "used"],
+    "additionalProperties": False,
+}
+
+
+def anthropic_output_config(reasoning: str, json_output: bool = True) -> dict:
+    """Claude의 추론 단계와 답 형식. minimal은 Claude에 없어 low로 보내고 생각을 끈다(anthropic_thinking)."""
+    config = {"effort": "low" if reasoning == "minimal" else reasoning}
+    if json_output:
+        config["format"] = {"type": "json_schema", "schema": ANSWER_JSON_SCHEMA}
+    return config
+
+
+def anthropic_thinking(reasoning: str) -> dict | None:
+    """minimal만 생각을 끈다. 나머지는 보내지 않는다(모델 기본값인 적응형 생각).
+
+    생각을 명시적으로 켜면(adaptive) langchain-anthropic이 도구 강제(any, 도구 이름)를 경고만 남기고 지운다.
+    API는 Haiku 5.5에서 도구 강제와 기본 생각을 함께 받는다(11/12 확인).
+    """
+    return {"type": "disabled"} if reasoning == "minimal" else None
+
+
+def _anthropic(settings: ChatbotSettings, reasoning: str):
+    from langchain_anthropic import ChatAnthropic
+
+    class PawbridgeChatAnthropic(ChatAnthropic):
+        def bind_tools(self, tools, *, tool_choice=None, **kwargs):
+            # 패키지는 문자열 "none"을 none이라는 도구를 부르라는 뜻({"type": "tool", "name": "none"})으로
+            # 바꿔 400을 받는다. 그래프는 마지막 호출에서 "none"으로 도구를 막으므로 API 모양으로 바꾼다.
+            if tool_choice == "none":
+                tool_choice = {"type": "none"}
+            return super().bind_tools(tools, tool_choice=tool_choice, **kwargs)
+
+    api_key = settings.anthropic_api_key.strip()
+    if not api_key:
+        raise ChatbotProviderConfigurationError("ANTHROPIC_API_KEY is not configured")
+    model = settings.anthropic_model.strip() or ChatbotSettings.model_fields["anthropic_model"].default
+    options = {}
+    thinking = anthropic_thinking(reasoning)
+    if thinking is not None:
+        options["thinking"] = thinking
+    return PawbridgeChatAnthropic(
+        model=model,
+        api_key=api_key,
+        max_tokens=MAX_OUTPUT_TOKENS[reasoning],
+        # 추론 단계와 최종 답 JSON 스키마. 도구 강제 호출과도 같이 쓸 수 있다(11/12 확인).
+        output_config=anthropic_output_config(reasoning),
+        # SDK 재시도 한 번(0이 재시도 없음). 429, 5xx, 연결 실패, 시간 초과를 다시 보낸다.
+        # Start 등급 한도(분당 4,000회)라 429는 순간 몰림일 때만 나고, 실패한 요청은 요금이 없다.
+        max_retries=1,
+        timeout=settings.anthropic_timeout_seconds,
+        # temperature는 보내지 않는다. Haiku 5.5는 기본값 말고는 400으로 거절한다.
+        **options,
+    )
+
+
 # Gemini 일시 오류(5xx)만 한 번 더 보낸다. 고정 흐름(gemini_provider.py)과 같은 규칙이다:
 # 429(요청 한도)와 시간 초과는 다시 보내도 같거나 한도만 깎으므로 바로 실패한다.
 # 11/11 시범 실행에서 재시도가 없던 에이전트는 첫 시도 실패가 8/60, 같은 시간대 고정 흐름은 1/60이었다.
@@ -165,6 +230,7 @@ def _stub(settings: ChatbotSettings, reasoning: str):
 _BUILDERS = {
     "gemini": _gemini,
     "openai": _openai,
+    "anthropic": _anthropic,
     "stub": _stub,
 }
 
@@ -188,7 +254,7 @@ def classify_model_error(exc: BaseException) -> Exception | None:
 
 
 def _is_provider_sdk_timeout(exc: BaseException) -> bool:
-    """LangChain 공통 오류로 바뀌지 않은 제공자 SDK의 시간 초과. OpenAI SDK의 시간 초과는 연결 오류의 하위
+    """LangChain 공통 오류로 바뀌지 않은 제공자 SDK의 시간 초과. OpenAI와 Anthropic SDK의 시간 초과는 연결 오류의 하위
     종류라 따로 보지 않으면 상류 장애로 분류된다. 이미 불러온 SDK만 본다."""
     import sys
 
@@ -197,11 +263,16 @@ def _is_provider_sdk_timeout(exc: BaseException) -> bool:
 
         if isinstance(exc, APITimeoutError):
             return True
+    if "anthropic" in sys.modules:
+        from anthropic import APITimeoutError as AnthropicTimeoutError
+
+        if isinstance(exc, AnthropicTimeoutError):
+            return True
     return False
 
 
 def _is_provider_sdk_error(exc: BaseException) -> bool:
-    """LangChain 공통 오류로 바뀌지 않은 제공자 SDK 오류(예: Gemini의 409, OpenAI의 409). 이미 불러온 SDK만 본다."""
+    """LangChain 공통 오류로 바뀌지 않은 제공자 SDK 오류(예: Gemini의 409, OpenAI와 Anthropic의 409). 이미 불러온 SDK만 본다."""
     import sys
 
     if "google.genai" in sys.modules:
@@ -218,5 +289,10 @@ def _is_provider_sdk_error(exc: BaseException) -> bool:
         from openai import APIError as OpenAIAPIError
 
         if isinstance(exc, OpenAIAPIError):
+            return True
+    if "anthropic" in sys.modules:
+        from anthropic import APIError as AnthropicAPIError
+
+        if isinstance(exc, AnthropicAPIError):
             return True
     return False
