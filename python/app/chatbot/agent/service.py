@@ -1,11 +1,13 @@
 """에이전트 모드의 요청 처리.
 
-    공고와 질문으로 근거 찾기(루프 밖, 매번) → 루프(graph.py) → [못 쓰는 제공자면 예비 제공자로 루프 다시] → 답 검사 → 기록 → 응답
+    공고와 질문으로 근거 찾기(루프 밖, 매번) → [차단기] → 루프(graph.py) → [못 쓰는 제공자면 예비 제공자로 루프 다시] → 답 검사 → 기록 → 응답
 
 고정 흐름과 응답 모양이 같아 백엔드와 화면은 모드를 모른다. 실패는 종류에 따라 나눈다.
 - 일시 장애(429, 5xx, 연결 실패, 시간 초과)나 크레딧 소진(402)이고 예비 제공자(LLM_FALLBACK_PROVIDER)가 있으며 시간이 남았으면:
   질문을 처음부터 예비 모델로 다시 푼다. 한 번만 넘기고, 마감 시각은 그대로다.
-  도중에 모델만 바꾸지 않는다. 대화 기록에 제공자 전용 조각(Claude의 서명된 생각, OpenAI의 암호화된 생각)이 들어 있다.
+  도중의 모델 호출 하나만 바꾸지 않는다(LangChain ModelFallbackMiddleware 방식). 질문 하나는 한 모델이 끝까지 풀어
+  모델마다 잰 품질과 운영이 같고, 넘긴 뒤에는 그 질문 안에서 주 제공자의 실패를 다시 기다리지 않는다.
+  주 제공자가 연달아 못 쓰는 오류를 내면 차단기(breaker.py)가 열려 한동안 처음부터 예비 제공자로 보낸다.
 - 그 밖의 상류 장애(키 오류, 잘못된 요청 등)나 예비도 실패: 고정 흐름도 같은 제공자를 부르므로 다시 시도하지 않고 502.
 - 시간 초과, 토큰 예산 초과: 더 부르지 않고 정해진 대체 답변.
 - 루프의 논리 실패(모델 호출 상한, 빈 답, 잘림, 단계 상한): 남은 시간이 있으면 고정 흐름, 없으면 대체 답변.
@@ -17,6 +19,7 @@ import time
 
 from fastapi import HTTPException, status
 
+from app.chatbot.agent.breaker import primary_breaker
 from app.chatbot.agent.graph import (
     DEADLINE_SECONDS,
     STOP_DEADLINE,
@@ -85,6 +88,9 @@ PATH_FALLBACK = "fallback"
 PATH_ERROR = "error"
 # 주 제공자를 쓸 수 없어(일시 장애, 크레딧 소진) 예비 제공자로 넘긴 시도. 예비 시도는 자기 결과로 한 줄 더 남긴다.
 PATH_SWITCH = "switch"
+# 차단기가 열려 주 제공자를 부르지 않고 바로 예비 제공자로 보낸 질문. 예비 시도는 자기 결과로 한 줄 더 남긴다.
+PATH_SKIP = "skip"
+STOP_BREAKER_OPEN = "breaker_open"
 
 
 async def create_agent_message(req) -> dict:
@@ -100,11 +106,25 @@ async def create_agent_message(req) -> dict:
     prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
 
     model_provider = provider_name()
-    context = agent_context(req, model, model_provider, deadline, matches, evidence)
-    run, error = await run_once(prompt, context)
-    if error is not None and should_switch(error, deadline):
-        backup = backup_provider()
-        if backup is not None:
+    # 예비 제공자가 없으면 차단기도 쓰지 않는다(건너뛸 곳이 없다).
+    backup = backup_provider()
+    breaker = primary_breaker()
+    if backup is not None and not breaker.allow():
+        log_agent_run(PATH_SKIP, STOP_BREAKER_OPEN, AgentLedger(), started, model_provider)
+        model_provider = fallback_provider_name()
+        provider, model = backup
+        context = agent_context(req, model, model_provider, deadline, matches, evidence)
+        run, error = await run_once(prompt, context)
+    else:
+        context = agent_context(req, model, model_provider, deadline, matches, evidence)
+        error = None
+        try:
+            run, error = await run_once(prompt, context)
+        finally:
+            # 우리 코드의 오류로 끝나도 적는다. 시험 중이던 질문이 결과를 남기지 않으면 차단기가 시험 상태에 머문다.
+            if backup is not None:
+                breaker.record(unavailable=error is not None and is_provider_unavailable(error))
+        if error is not None and backup is not None and should_switch(error, deadline):
             log_agent_run(PATH_SWITCH, context.ledger.stop or "upstream", context.ledger, started, model_provider,
                           error=error)
             model_provider = fallback_provider_name()
@@ -188,6 +208,7 @@ async def run_once(prompt: str, context: AgentContext) -> tuple[AgentRun | None,
 
 
 def should_switch(error: Exception, deadline: float) -> bool:
+    """예비 제공자로 넘길까. 예비 제공자가 있는지는 부른 쪽이 본다."""
     return deadline - time.monotonic() >= FALLBACK_PROVIDER_MIN_SECONDS and is_provider_unavailable(error)
 
 

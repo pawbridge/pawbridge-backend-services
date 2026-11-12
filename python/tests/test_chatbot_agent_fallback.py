@@ -15,6 +15,7 @@ from langchain_core.exceptions import (
 from langchain_core.messages import AIMessage, HumanMessage
 
 from app.chatbot.agent import models
+from app.chatbot.agent.breaker import ProviderBreaker, primary_breaker
 from app.chatbot.provider import ChatbotProviderConfigurationError
 from app.entrypoints.chatbot_api import app
 from app.settings import ChatbotSettings
@@ -37,6 +38,9 @@ class FallbackProviderTest(unittest.TestCase):
     def setUp(self):
         base.AgentServiceTest.setUp(self)
         self.backup = BackupProvider("예비 고정 흐름 답입니다.")
+        # 차단기는 프로세스에 하나라 시험마다 닫힌 상태로 시작한다.
+        primary_breaker().reset()
+        self.addCleanup(primary_breaker().reset)
 
     def post_with_backup(self, primary, backup_model, env=None, deadline=None):
         patches = [
@@ -151,12 +155,110 @@ class FallbackProviderTest(unittest.TestCase):
         self.assertEqual(response.json()["provider"], "backup")
         self.assertIn("path=fixed stop=empty_answer", lines[1])
 
+    def test_breaker_opens_after_three_outages_and_skips_primary(self):
+        for _ in range(3):
+            primary = ScriptedChatModel(turns=[ModelAPIError("529 overloaded")])
+            self.post_with_backup(primary, ScriptedChatModel(turns=[reply("보호소에 물어보세요.")]))
+        self.assertEqual(primary_breaker().state, "open")
+        primary = ScriptedChatModel(turns=[reply("불리면 안 됨")])
+        backup = ScriptedChatModel(turns=[reply("보호소에 물어보세요.")])
+        response, lines = self.post_with_backup(primary, backup)
+        self.assertEqual(response.json()["answer"], "보호소에 물어보세요.")
+        self.assertEqual(primary.calls, [])
+        self.assertIn("path=skip stop=breaker_open error=- model_calls=0", lines[0])
+        self.assertTrue(lines[0].endswith("provider=stub"))
+        self.assertTrue(lines[1].endswith("provider=openai"))
+
+    def test_errors_to_fix_do_not_open_breaker(self):
+        for _ in range(3):
+            self.post_with_backup(ScriptedChatModel(turns=[ModelAuthenticationError("401")]), ScriptedChatModel())
+        self.assertEqual(primary_breaker().state, "closed")
+
+    def test_our_own_bug_still_ends_a_probe(self):
+        breaker = primary_breaker()
+        for _ in range(3):
+            breaker.record(unavailable=True)
+        breaker.open_until = 0.0  # 열림 시간이 지났다고 본다
+        with self.assertRaises(ValueError):
+            self.post_with_backup(ScriptedChatModel(turns=[ValueError("bug in our code")]), ScriptedChatModel())
+        self.assertEqual(breaker.state, "closed")
+
+    def test_without_fallback_setting_breaker_is_not_used(self):
+        for _ in range(4):
+            primary = ScriptedChatModel(turns=[ModelAPIError("503")])
+            self.assertEqual(self.post(primary).status_code, 502)
+            self.assertEqual(len(primary.calls), 1)
+        self.assertEqual(primary_breaker().state, "closed")
+
     def test_without_fallback_setting_upstream_error_is_502_as_before(self):
         primary = ScriptedChatModel(turns=[ModelAPIError("503")])
         with patch("app.chatbot.agent.service.fallback_chat_model") as fallback:
             response = self.post(primary)
         self.assertEqual(response.status_code, 502)
         fallback.assert_not_called()
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+
+class ProviderBreakerTest(unittest.TestCase):
+    def setUp(self):
+        self.clock = FakeClock()
+        self.breaker = ProviderBreaker(threshold=3, window_seconds=60, open_seconds=60, clock=self.clock)
+
+    def fail(self, times=1, every=0.0):
+        for _ in range(times):
+            self.assertTrue(self.breaker.allow())
+            self.breaker.record(unavailable=True)
+            self.clock.now += every
+
+    def test_opens_after_three_failures_within_a_minute(self):
+        self.fail(2, every=10)
+        self.assertEqual(self.breaker.state, "closed")
+        self.fail(1)
+        self.assertEqual(self.breaker.state, "open")
+        self.assertFalse(self.breaker.allow())
+
+    def test_failures_spread_over_more_than_a_minute_do_not_open(self):
+        self.fail(5, every=31)
+        self.assertEqual(self.breaker.state, "closed")
+
+    def test_success_clears_failures(self):
+        self.fail(2)
+        self.breaker.record(unavailable=False)
+        self.fail(2)
+        self.assertEqual(self.breaker.state, "closed")
+
+    def test_after_open_time_one_question_probes_and_others_still_skip(self):
+        self.fail(3)
+        self.clock.now += 59
+        self.assertFalse(self.breaker.allow())
+        self.clock.now += 2
+        self.assertTrue(self.breaker.allow())
+        self.assertEqual(self.breaker.state, "probing")
+        self.assertFalse(self.breaker.allow())
+
+    def test_probe_success_closes_and_probe_failure_reopens(self):
+        self.fail(3)
+        self.clock.now += 61
+        self.assertTrue(self.breaker.allow())
+        self.breaker.record(unavailable=False)
+        self.assertEqual(self.breaker.state, "closed")
+
+        self.fail(3)
+        self.clock.now += 61
+        self.assertTrue(self.breaker.allow())
+        self.breaker.record(unavailable=True)
+        self.assertEqual(self.breaker.state, "open")
+        self.clock.now += 30
+        self.assertFalse(self.breaker.allow())
+        self.clock.now += 31
+        self.assertTrue(self.breaker.allow())
 
 
 class ProviderUnavailableTest(unittest.TestCase):
