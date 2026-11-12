@@ -1,9 +1,9 @@
 """에이전트 모드의 요청 처리.
 
-    공고와 질문으로 근거 찾기(루프 밖, 매번) → 루프(graph.py) → [일시 장애면 예비 제공자로 루프 다시] → 답 검사 → 기록 → 응답
+    공고와 질문으로 근거 찾기(루프 밖, 매번) → 루프(graph.py) → [못 쓰는 제공자면 예비 제공자로 루프 다시] → 답 검사 → 기록 → 응답
 
 고정 흐름과 응답 모양이 같아 백엔드와 화면은 모드를 모른다. 실패는 종류에 따라 나눈다.
-- 일시 장애(429, 5xx, 연결 실패, 시간 초과)이고 예비 제공자(LLM_FALLBACK_PROVIDER)가 있으며 시간이 남았으면:
+- 일시 장애(429, 5xx, 연결 실패, 시간 초과)나 크레딧 소진(402)이고 예비 제공자(LLM_FALLBACK_PROVIDER)가 있으며 시간이 남았으면:
   질문을 처음부터 예비 모델로 다시 푼다. 한 번만 넘기고, 마감 시각은 그대로다.
   도중에 모델만 바꾸지 않는다. 대화 기록에 제공자 전용 조각(Claude의 서명된 생각, OpenAI의 암호화된 생각)이 들어 있다.
 - 그 밖의 상류 장애(키 오류, 잘못된 요청 등)나 예비도 실패: 고정 흐름도 같은 제공자를 부르므로 다시 시도하지 않고 502.
@@ -31,7 +31,7 @@ from app.chatbot.agent.models import (
     fallback_chat_model,
     fallback_provider_name,
     forced_tool_call_settings,
-    is_transient_model_error,
+    is_provider_unavailable,
     model_call_settings,
     provider_name,
     reasoning_level,
@@ -83,7 +83,7 @@ PATH_AGENT = "agent"
 PATH_FIXED = "fixed"
 PATH_FALLBACK = "fallback"
 PATH_ERROR = "error"
-# 주 제공자가 일시 장애로 실패해 예비 제공자로 넘긴 시도. 예비 시도는 자기 결과로 한 줄 더 남긴다.
+# 주 제공자를 쓸 수 없어(일시 장애, 크레딧 소진) 예비 제공자로 넘긴 시도. 예비 시도는 자기 결과로 한 줄 더 남긴다.
 PATH_SWITCH = "switch"
 
 
@@ -188,7 +188,7 @@ async def run_once(prompt: str, context: AgentContext) -> tuple[AgentRun | None,
 
 
 def should_switch(error: Exception, deadline: float) -> bool:
-    return deadline - time.monotonic() >= FALLBACK_PROVIDER_MIN_SECONDS and is_transient_model_error(error)
+    return deadline - time.monotonic() >= FALLBACK_PROVIDER_MIN_SECONDS and is_provider_unavailable(error)
 
 
 def backup_provider():

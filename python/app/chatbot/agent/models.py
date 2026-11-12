@@ -277,9 +277,13 @@ def classify_model_error(exc: BaseException) -> Exception | None:
     return None
 
 
-def is_transient_model_error(exc: BaseException) -> bool:
-    """다른 제공자로 다시 풀 만한 일시 장애인가. 요청 한도(429), 서버 오류(5xx, 과부하 529), 연결 실패, 시간 초과다.
+def is_provider_unavailable(exc: BaseException) -> bool:
+    """이 제공자를 지금 쓸 수 없어 다른 제공자로 다시 풀 만한 오류인가.
 
+    - 일시 장애: 요청 한도(429, OpenAI의 크레딧 소진 insufficient_quota도 429), 서버 오류(5xx, 과부하 529),
+      연결 실패, 시간 초과
+    - 크레딧 소진: Anthropic 402 billing_error. 월 구독 크레딧은 다음 달까지 돌아오지 않는다.
+      예전 응답 모양(400 "credit balance is too low")도 같이 본다.
     키 오류(401, 403), 잘못된 요청(400), 없는 모델(404), 충돌(409)은 넘기지 않는다. 고쳐야 할 문제인데
     예비 모델이 답하면 드러나지 않는다. classify_model_error가 감싼 원래 오류까지 거슬러 본다.
     LangChain 공통 오류(ModelError)는 is_retryable로, 감싸지 않은 SDK 오류는 상태 코드로 가린다.
@@ -294,6 +298,8 @@ def is_transient_model_error(exc: BaseException) -> bool:
         seen.add(id(error))
         if isinstance(error, (ChatbotProviderTimeoutError, TimeoutError, httpx.TransportError)):
             return True
+        if _is_billing_error(error):
+            return True
         retryable = getattr(error, "is_retryable", None)
         if retryable is not None:
             return bool(retryable)
@@ -304,6 +310,13 @@ def is_transient_model_error(exc: BaseException) -> bool:
             return True
         error = error.__cause__
     return False
+
+
+def _is_billing_error(exc: BaseException) -> bool:
+    """크레딧이나 결제 문제로 거절됐는가. LangChain은 402를 따로 감싸지 않고 SDK 오류(APIStatusError)로 넘긴다."""
+    if getattr(exc, "status_code", None) == 402 or getattr(exc, "type", None) == "billing_error":
+        return True
+    return getattr(exc, "status_code", None) == 400 and "credit balance" in str(getattr(exc, "message", "")).lower()
 
 
 def _is_provider_connection_error(exc: BaseException) -> bool:

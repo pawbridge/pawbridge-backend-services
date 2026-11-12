@@ -99,6 +99,19 @@ class FallbackProviderTest(unittest.TestCase):
         response, _ = self.post_with_backup(primary, backup)
         self.assertEqual(response.status_code, 200)
 
+    def test_used_up_credit_switches_to_backup(self):
+        import anthropic
+
+        request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+        body = {"type": "error", "error": {"type": "billing_error", "message": "credit"}}
+        # LangChain은 402를 따로 감싸지 않아 SDK 오류 그대로 올라온다.
+        error = anthropic.APIStatusError("402", response=httpx.Response(402, request=request), body=body)
+        primary = ScriptedChatModel(turns=[error])
+        backup = ScriptedChatModel(turns=[reply("보호소에 물어보세요.")])
+        response, lines = self.post_with_backup(primary, backup)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("path=switch stop=upstream error=APIStatusError", lines[0])
+
     def test_errors_to_fix_are_not_hidden_by_backup(self):
         for error in (ModelAuthenticationError("401"), ModelInvalidRequestError("400")):
             with self.subTest(error=type(error).__name__):
@@ -146,8 +159,8 @@ class FallbackProviderTest(unittest.TestCase):
         fallback.assert_not_called()
 
 
-class TransientErrorTest(unittest.TestCase):
-    def test_rate_limit_server_connection_and_timeout_are_transient(self):
+class ProviderUnavailableTest(unittest.TestCase):
+    def test_outage_and_used_up_credit_mean_unavailable(self):
         import anthropic
         import openai
 
@@ -164,16 +177,24 @@ class TransientErrorTest(unittest.TestCase):
             anthropic.APITimeoutError(request=request),
             openai.InternalServerError("503", response=httpx.Response(503, request=request), body=None),
             openai.APIConnectionError(request=request),
+            # OpenAI의 크레딧 소진은 429 insufficient_quota다.
+            openai.RateLimitError("429", response=httpx.Response(429, request=request),
+                                  body={"type": "insufficient_quota", "code": "insufficient_quota"}),
+            # Anthropic의 크레딧 소진. 지금 모양(402 billing_error)과 예전 모양(400 "credit balance is too low").
+            anthropic.APIStatusError("402", response=httpx.Response(402, request=request),
+                                     body={"type": "error", "error": {"type": "billing_error", "message": "x"}}),
+            anthropic.BadRequestError("Your credit balance is too low to access the Anthropic API.",
+                                      response=httpx.Response(400, request=request), body=None),
         ]
         for error in transient:
             with self.subTest(error=type(error).__name__):
-                self.assertTrue(models.is_transient_model_error(error))
+                self.assertTrue(models.is_provider_unavailable(error))
                 # 그래프는 제공자 오류를 감싸서(raise ... from exc) 올린다. 감싼 오류에서도 원래 오류를 본다.
                 wrapped = models.classify_model_error(error)
                 wrapped.__cause__ = error
-                self.assertTrue(models.is_transient_model_error(wrapped))
+                self.assertTrue(models.is_provider_unavailable(wrapped))
 
-    def test_errors_to_fix_are_not_transient(self):
+    def test_errors_to_fix_do_not_mean_unavailable(self):
         import anthropic
 
         request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
@@ -188,11 +209,11 @@ class TransientErrorTest(unittest.TestCase):
         ]
         for error in to_fix:
             with self.subTest(error=type(error).__name__):
-                self.assertFalse(models.is_transient_model_error(error))
+                self.assertFalse(models.is_provider_unavailable(error))
                 wrapped = models.classify_model_error(error)
                 if wrapped is not None:
                     wrapped.__cause__ = error
-                    self.assertFalse(models.is_transient_model_error(wrapped))
+                    self.assertFalse(models.is_provider_unavailable(wrapped))
 
 
 class FallbackSettingsTest(unittest.TestCase):
