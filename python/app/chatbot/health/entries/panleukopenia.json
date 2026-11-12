@@ -11,9 +11,13 @@
       "고양이 파보",
       "고양이 장염",
       "panleukopenia",
-      "FPV"
+      "FPV",
+      "파보"
     ],
-    "context": "any"
+    "context": "any",
+    "exclude": [
+      "아파보"
+    ]
   },
   "summary": [
     {
