@@ -100,6 +100,24 @@ class CheckAnswerTest(unittest.TestCase):
         checked = check_answer('{"answer": "피부병은 괜찮습니다 [1].", "used": [1]}', self.evidence)
         self.assertTrue(checked.fallback)
 
+    def test_conditions_and_warnings_from_entries_are_kept(self):
+        # 승인된 해설 문장을 옮긴 답이 대체 답변이 되지 않아야 한다(11/12 실명, 심장사상충 해설).
+        for text in ("실명이 눈에만 국한되고 다른 건강 문제가 없으면 평범하게 살 수 있습니다 [1].",
+                     "다른 문제가 없다면 적응할 수 있습니다 [1].",
+                     "감염된 개에게 예방약을 먹이면 위험할 수 있습니다 [1].",
+                     "예방약을 먹이고 있는지 보호소에 물어보세요 [1].",
+                     "예방약을 먹이기 전에 검사 여부를 확인하세요 [1]."):
+            with self.subTest(text=text):
+                raw = json.dumps({"answer": text, "used": [1]}, ensure_ascii=False)
+                self.assertFalse(check_answer(raw, self.evidence).fallback)
+
+    def test_reassurance_and_medication_orders_still_fall_back(self):
+        for text in ("건강에는 문제가 없습니다 [1].", "문제없어요 [1].", "약을 먹이세요.",
+                     "약을 먹여 주세요.", "이 약을 먹이시면 됩니다."):
+            with self.subTest(text=text):
+                raw = json.dumps({"answer": text, "used": [1]}, ensure_ascii=False)
+                self.assertTrue(check_answer(raw, self.evidence).fallback)
+
     def test_reassurance_in_everyday_sentence_is_kept(self):
         raw = json.dumps({"answer": "진료가 필요합니다 [3]. 아파트에서 키워도 괜찮습니다.", "used": [3]}, ensure_ascii=False)
         checked = check_answer(raw, self.evidence)
