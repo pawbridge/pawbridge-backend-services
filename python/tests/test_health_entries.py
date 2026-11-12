@@ -70,5 +70,51 @@ class ShippedEntriesTest(unittest.TestCase):
             self.assertIn("heartworm-negative", [match.entry.id for match in retriever.search(notice, None, "DOG")], notice)
 
 
+
+class ShippedAliasRoutingTest(unittest.TestCase):
+    """배포되는 해설의 별칭이 종과 문맥에 맞는 해설로 가는지 고정한다(11/12 #457, 운영 공고 74,922건 비교로 정한 기대값)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.retriever = RuleHealthRetriever(load_entries())
+
+    def found(self, species, notice=None, question=None):
+        return {match.entry.id for match in self.retriever.search(notice, question, species)}
+
+    def test_parvo_in_a_cat_is_panleukopenia(self):
+        # 고양이의 파보는 범백이다. 공고에도 질문에도 같다.
+        for notice, question in (("파보양성, 기력 없음", None), (None, "고양이인데 파보 걸린건 아니죠?")):
+            with self.subTest(notice=notice, question=question):
+                found = self.found("CAT", notice, question)
+                self.assertIn("panleukopenia", found)
+                self.assertNotIn("parvovirus-positive", found)
+
+    def test_parvo_negative_in_a_cat_stays_a_negative_test(self):
+        found = self.found("CAT", "파보 음성")
+        self.assertIn("infection-test-negative", found)
+        self.assertNotIn("panleukopenia", found)
+
+    def test_parvo_in_a_dog_is_not_panleukopenia(self):
+        found = self.found("DOG", "파보 양성")
+        self.assertIn("parvovirus-positive", found)
+        self.assertNotIn("panleukopenia", found)
+
+    def test_looking_sick_is_not_parvo(self):
+        # "아파보임"(아파 보인다) 안의 "파보"를 병으로 읽지 않는다.
+        for notice in ("많이말라있고 아파보임", "눈이 살짝 아파보이는 아기냥이"):
+            with self.subTest(notice=notice):
+                self.assertNotIn("panleukopenia", self.found("CAT", notice))
+
+    def test_missing_leg_finds_amputation(self):
+        for notice, question in (("뒷다리 하나 없음.", None), (None, "다리가 하나 없다는데 생활 가능한가요?")):
+            with self.subTest(notice=notice, question=question):
+                self.assertIn("amputation", self.found("DOG", notice, question))
+
+    def test_cuts_that_are_not_a_leg_do_not_find_amputation(self):
+        # 그냥 "절단"은 별칭이 아니다. 운영 공고에 다리가 아닌 절단이 있다.
+        for notice in ("꼬리절단, 손 잘타고 얌전함", "병원에서 탯줄 절단", "기립불가,혀일부절단"):
+            with self.subTest(notice=notice):
+                self.assertNotIn("amputation", self.found("DOG", notice))
+
 if __name__ == "__main__":
     unittest.main()
