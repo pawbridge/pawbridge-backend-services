@@ -31,6 +31,15 @@ class ShippedEntriesTest(unittest.TestCase):
                 with self.subTest(entry=entry.id, text=text):
                     self.assertEqual(_forbidden_in(cited), [])
 
+    def test_entry_sentences_do_not_assume_the_notice_says_it(self):
+        # 해설은 공고에서도, 질문에서도 찾힌다. "공고의 범백 표기는"처럼 공고에 그 말이 있다고 단정하면
+        # 공고가 빈 동물에게도 모델이 "공고에 범백 표기가 있다"는 식으로 옮긴다(11/12 h057, 16번 중 15번).
+        # 공고를 말할 때는 "공고에 … 적혀 있다면"처럼 조건으로 쓴다.
+        for entry in load_entries():
+            for fact in entry.summary + entry.cautions:
+                with self.subTest(entry=entry.id, text=fact.text):
+                    self.assertNotIn("공고의", fact.text)
+
     def test_all_entries_load_and_are_approved(self):
         entries = load_entries()
         self.assertGreater(len(entries), 0)
