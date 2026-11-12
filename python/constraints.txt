@@ -1,4 +1,5 @@
 annotated-types==0.8.0
+anthropic==2.3.0
 anyio==4.15.1
 certifi==2026.10.23
 cffi==2.1.1
@@ -6,6 +7,7 @@ charset-normalizer==3.5.2
 click==8.5.0
 cryptography==50.0.2
 distro==1.9.0
+docstring_parser==0.18.0
 fastapi==0.115.0
 filetype==1.2.0
 google-auth==2.62.0
@@ -20,6 +22,7 @@ jiter==0.18.0
 jsonpatch==1.45
 jsonpointer==3.10
 langchain==1.4.7
+langchain-anthropic==1.7.7
 langchain-core==1.6.13
 langchain-google-genai==4.4.2
 langchain-openai==1.7.2
@@ -31,6 +34,7 @@ langgraph-sdk==0.4.14
 langsmith==0.14.17
 numpy==1.26.4
 openai==3.41.0
+opentelemetry-api==1.45.1
 orjson==3.13.0
 ormsgpack==1.13.1
 pillow==10.4.0

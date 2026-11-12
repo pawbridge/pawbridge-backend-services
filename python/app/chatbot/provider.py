@@ -45,4 +45,8 @@ def get_chatbot_provider() -> ChatbotProvider:
         from app.chatbot.openai_provider import OpenAIChatbotProvider
 
         return OpenAIChatbotProvider()
+    if provider_name == "anthropic":
+        from app.chatbot.anthropic_provider import AnthropicChatbotProvider
+
+        return AnthropicChatbotProvider()
     raise RuntimeError(f"Unsupported LLM_PROVIDER: {provider_name}")
