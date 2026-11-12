@@ -31,14 +31,6 @@ class ChatbotProviderTimeoutError(ChatbotProviderUpstreamError):
     """제공자가 시간 안에 답하지 않았다. 고정 흐름은 다른 상류 오류처럼 502, 에이전트는 대체 답변으로 끝낸다."""
 
 
-class NotImplementedChatbotProvider(ChatbotProvider):
-    def __init__(self, name: str):
-        self.name = name
-
-    async def generate_answer(self, prompt: str, json_output: bool = False, timeout: float | None = None) -> str:
-        raise NotImplementedError(f"LLM provider '{self.name}' is not implemented in Step 1")
-
-
 def get_chatbot_provider() -> ChatbotProvider:
     provider_name = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
     if provider_name == "stub":
@@ -50,5 +42,7 @@ def get_chatbot_provider() -> ChatbotProvider:
 
         return GeminiChatbotProvider()
     if provider_name == "openai":
-        return NotImplementedChatbotProvider(provider_name)
+        from app.chatbot.openai_provider import OpenAIChatbotProvider
+
+        return OpenAIChatbotProvider()
     raise RuntimeError(f"Unsupported LLM_PROVIDER: {provider_name}")

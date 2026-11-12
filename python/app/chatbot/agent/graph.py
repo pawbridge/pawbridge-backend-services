@@ -192,6 +192,24 @@ def _last_ai_message(messages) -> AIMessage | None:
     return None
 
 
+def final_answer_text(message: AIMessage) -> str:
+    """모델의 마지막 메시지에서 답 글만 꺼낸다.
+
+    Gemini 3 이상은 content가 조각 목록일 수 있어 text로 이어 붙인다.
+    OpenAI Responses API는 최종 답 앞에 중간 설명 메시지를 붙일 수 있고, 조각마다 phase를 단다
+    (final_answer, commentary). phase가 final_answer인 조각이 있으면 그것만 쓴다. 이어 붙이면 JSON이 깨진다.
+    """
+    if isinstance(message.content, list):
+        finals = [
+            block.get("text", "")
+            for block in message.content
+            if isinstance(block, dict) and block.get("type") == "text" and block.get("phase") == "final_answer"
+        ]
+        if finals:
+            return "".join(finals)
+    return str(message.text)
+
+
 def _langchain_tool(spec: ToolSpec, function) -> StructuredTool:
     """tools.py의 평범한 함수를 LangChain 도구로 감싼다. 입력 검사는 LangChain이 spec.args_schema로 한다.
 
@@ -264,8 +282,7 @@ async def run_agent(prompt: str, context: AgentContext) -> AgentRun:
     if state is not None and not ledger.stop:
         last = state["messages"][-1]
         if isinstance(last, AIMessage) and not last.tool_calls:
-            # Gemini 3 이상은 content가 조각 목록일 수 있어 text로 이어 붙인다.
-            answer = str(last.text).strip() or None
+            answer = final_answer_text(last).strip() or None
         if answer is None:
             ledger.stop = STOP_EMPTY
     tools = context.tools
