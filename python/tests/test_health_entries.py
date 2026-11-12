@@ -7,6 +7,7 @@ import json
 import re
 import unittest
 
+from app.chatbot.health.answer import _forbidden_in
 from app.chatbot.health.knowledge import DEFAULT_ENTRIES_DIR, load_entries
 from app.chatbot.health.retriever import RuleHealthRetriever
 
@@ -18,6 +19,17 @@ class ShippedEntriesTest(unittest.TestCase):
     def setUp(self):
         self.paths = sorted(DEFAULT_ENTRIES_DIR.glob("*.json"))
         self.raw = [json.loads(path.read_text(encoding="utf-8")) for path in self.paths]
+
+    def test_entry_sentences_pass_the_answer_check(self):
+        # 해설 파일 검사(knowledge.py)와 답 검사(answer.py)의 금지 표현은 따로 있다. 해설 문장을 그대로 옮긴 답이
+        # 답 검사에 걸리면 그 해설을 쓰는 질문은 모두 대체 답변이 된다(11/12 실명, 심장사상충 해설).
+        for entry in load_entries():
+            sentences = [fact.text for fact in entry.summary + entry.cautions] + entry.ask_shelter
+            for text in sentences:
+                # 모델처럼 근거 번호를 문장 끝 마침표 앞에 붙인다(마침표 뒤에 붙이면 근거 문장으로 보지 않는다).
+                cited = text[:-1] + " [1]." if text.endswith(".") else text + " [1]"
+                with self.subTest(entry=entry.id, text=text):
+                    self.assertEqual(_forbidden_in(cited), [])
 
     def test_all_entries_load_and_are_approved(self):
         entries = load_entries()
