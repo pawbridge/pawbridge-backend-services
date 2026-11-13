@@ -90,6 +90,9 @@ class PostgresSettings(_Settings):
 
 class ChatbotSettings(_Settings):
     llm_provider: str = Field("stub", alias="LLM_PROVIDER")
+    # 에이전트 모드의 예비 제공자(예: openai). 주 제공자가 일시 장애(429, 5xx, 연결 실패, 시간 초과)나 크레딧 소진(402)으로 실패하면
+    # 질문을 처음부터 이 제공자로 다시 푼다. 비우면 예비 없이 지금처럼 끝낸다. 키는 그 제공자의 키를 쓴다.
+    llm_fallback_provider: str = Field("", alias="LLM_FALLBACK_PROVIDER")
     gemini_api_key: str = Field("", alias="GEMINI_API_KEY")
     gemini_model: str = Field("gemini-3.5-flash-lite", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(15, alias="GEMINI_TIMEOUT_SECONDS")
@@ -126,4 +129,12 @@ class ChatbotSettings(_Settings):
     def agent_needs_health_rag(self):
         if self.chatbot_mode == "agent" and not self.health_rag_enabled:
             raise ValueError("CHATBOT_MODE=agent requires HEALTH_RAG_ENABLED=true")
+        return self
+
+    @model_validator(mode="after")
+    def fallback_differs_from_provider(self):
+        # 같은 제공자를 예비로 두면 같은 장애를 한 번 더 기다리기만 한다.
+        fallback = self.llm_fallback_provider.strip().lower()
+        if fallback and fallback == (self.llm_provider.strip().lower() or "stub"):
+            raise ValueError("LLM_FALLBACK_PROVIDER must differ from LLM_PROVIDER")
         return self

@@ -1,11 +1,17 @@
 """에이전트 모드의 요청 처리.
 
-    공고와 질문으로 근거 찾기(루프 밖, 매번) → 루프(graph.py) → 답 검사 → 기록 → 응답
+    공고와 질문으로 근거 찾기(루프 밖, 매번) → [차단기] → 루프(graph.py) → [못 쓰는 제공자면 예비 제공자로 루프 다시] → 답 검사 → 기록 → 응답
 
 고정 흐름과 응답 모양이 같아 백엔드와 화면은 모드를 모른다. 실패는 종류에 따라 나눈다.
-- 상류 장애(429, 5xx, 연결 실패): 고정 흐름도 같은 제공자를 부르므로 다시 시도하지 않고 고정 흐름처럼 502.
+- 일시 장애(429, 5xx, 연결 실패, 시간 초과)나 크레딧 소진(402)이고 예비 제공자(LLM_FALLBACK_PROVIDER)가 있으며 시간이 남았으면:
+  질문을 처음부터 예비 모델로 다시 푼다. 한 번만 넘기고, 마감 시각은 그대로다.
+  도중의 모델 호출 하나만 바꾸지 않는다(LangChain ModelFallbackMiddleware 방식). 질문 하나는 한 모델이 끝까지 풀어
+  모델마다 잰 품질과 운영이 같고, 넘긴 뒤에는 그 질문 안에서 주 제공자의 실패를 다시 기다리지 않는다.
+  주 제공자가 연달아 못 쓰는 오류를 내면 차단기(breaker.py, circuitbreaker 라이브러리)가 열려 한동안 처음부터 예비 제공자로 보낸다.
+- 그 밖의 상류 장애(키 오류, 잘못된 요청 등)나 예비도 실패: 고정 흐름도 같은 제공자를 부르므로 다시 시도하지 않고 502.
 - 시간 초과, 토큰 예산 초과: 더 부르지 않고 정해진 대체 답변.
 - 루프의 논리 실패(모델 호출 상한, 빈 답, 잘림, 단계 상한): 남은 시간이 있으면 고정 흐름, 없으면 대체 답변.
+  예비 모델로 넘어간 뒤라면 고정 흐름도 예비 제공자로 부른다.
 """
 
 import logging
@@ -13,6 +19,7 @@ import time
 
 from fastapi import HTTPException, status
 
+from app.chatbot.agent.breaker import CircuitBreakerError, PrimaryUnavailable, guarded
 from app.chatbot.agent.graph import (
     DEADLINE_SECONDS,
     STOP_DEADLINE,
@@ -22,7 +29,16 @@ from app.chatbot.agent.graph import (
     AgentRun,
     run_agent,
 )
-from app.chatbot.agent.models import chat_model, forced_tool_call_settings, model_call_settings, reasoning_level
+from app.chatbot.agent.models import (
+    chat_model,
+    fallback_chat_model,
+    fallback_provider_name,
+    forced_tool_call_settings,
+    is_provider_unavailable,
+    model_call_settings,
+    provider_name,
+    reasoning_level,
+)
 from app.chatbot.agent.similar import SIMILAR_FALLBACK, asks_for_similar, unknown_notice_numbers, with_similar_list
 from app.chatbot.agent.tools import FIND_SIMILAR_ANIMALS, ToolContext
 from app.chatbot.health.answer import (
@@ -43,6 +59,7 @@ from app.chatbot.provider import (
     ChatbotProviderTimeoutError,
     ChatbotProviderTruncatedError,
     ChatbotProviderUpstreamError,
+    get_chatbot_provider,
 )
 from app.chatbot.service import (
     answer_fixed,
@@ -58,6 +75,9 @@ logger = logging.getLogger("uvicorn.error")
 
 # 고정 흐름은 모델을 한 번 부른다. 남은 시간이 이보다 적으면 부르지 않고 대체 답변으로 끝낸다.
 FIXED_FLOW_MIN_SECONDS = 5.0
+# 예비 모델로 질문을 처음부터 다시 풀려면 남아 있어야 하는 시간. 11/12 GPT-6 Luna(medium) 60문항 5번 반복에서
+# 질문 하나의 시간 중앙값이 4.7초, 90%가 6.5초였다. 이보다 적게 남으면 넘기지 않는다(넘겨도 마감에 끊긴다).
+FALLBACK_PROVIDER_MIN_SECONDS = 7.0
 STOP_TRUNCATED = "truncated"
 # 고정 흐름으로 넘기지 않는 멈춤. 시간이 없거나, 이미 예산을 넘겨 더 부르면 안 된다.
 NO_FIXED_FLOW_STOPS = {STOP_DEADLINE, STOP_TOKEN_BUDGET}
@@ -66,6 +86,11 @@ PATH_AGENT = "agent"
 PATH_FIXED = "fixed"
 PATH_FALLBACK = "fallback"
 PATH_ERROR = "error"
+# 주 제공자를 쓸 수 없어(일시 장애, 크레딧 소진) 예비 제공자로 넘긴 시도. 예비 시도는 자기 결과로 한 줄 더 남긴다.
+PATH_SWITCH = "switch"
+# 차단기가 열려 주 제공자를 부르지 않고 바로 예비 제공자로 보낸 질문. 예비 시도는 자기 결과로 한 줄 더 남긴다.
+PATH_SKIP = "skip"
+STOP_BREAKER_OPEN = "breaker_open"
 
 
 async def create_agent_message(req) -> dict:
@@ -79,36 +104,41 @@ async def create_agent_message(req) -> dict:
     except ChatbotProviderConfigurationError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
     prompt = build_agent_prompt(animal, req.recentMessages, req.question, evidence, req.shelterContext)
-    tools = ToolContext(
-        agent_health_retriever(),
-        animal.specialMark,
-        animal.species,
-        matches=list(matches),
-        evidence=list(evidence),
-        animal_id=req.animalId,
-        question=req.question,
-        # 공고 id가 없으면 도구가 찾지 못하므로 강제하지 않는다.
-        first_tool=FIND_SIMILAR_ANIMALS.name if req.animalId and asks_for_similar(req.question) else None,
-    )
-    context = AgentContext(
-        model,
-        tools,
-        deadline,
-        model_settings=model_call_settings(),
-        forced_tool_settings=forced_tool_call_settings(),
-    )
-    ledger = context.ledger
 
-    run = None
-    try:
-        run = await run_agent(prompt, context)
-    except (ChatbotProviderTimeoutError, TimeoutError):
-        ledger.stop = STOP_DEADLINE
-    except ChatbotProviderTruncatedError:
-        ledger.stop = STOP_TRUNCATED
-    except ChatbotProviderUpstreamError as exc:
-        log_agent_run(PATH_ERROR, "upstream", ledger, started, error=exc)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    model_provider = provider_name()
+    # 예비 제공자가 없으면 차단기도 쓰지 않는다(건너뛸 곳이 없다).
+    backup = backup_provider()
+    context = agent_context(req, model, model_provider, deadline, matches, evidence)
+    skipped = False
+    if backup is None:
+        run, error = await run_once(prompt, context)
+    else:
+        try:
+            run, error = await guarded(run_once)(prompt, context)
+        except CircuitBreakerError:
+            skipped = True
+        except PrimaryUnavailable as exc:
+            run, error = exc.run, exc.error
+    if skipped:
+        log_agent_run(PATH_SKIP, STOP_BREAKER_OPEN, AgentLedger(), started, model_provider)
+        model_provider = fallback_provider_name()
+        provider, model = backup
+        context = agent_context(req, model, model_provider, deadline, matches, evidence)
+        run, error = await run_once(prompt, context)
+    elif error is not None and backup is not None and should_switch(error, deadline):
+        log_agent_run(PATH_SWITCH, context.ledger.stop or "upstream", context.ledger, started, model_provider,
+                      error=error)
+        model_provider = fallback_provider_name()
+        provider, model = backup
+        # 근거와 도구 상태도 새로 시작한다. 실패한 시도가 도구로 더 찾은 근거는 검사를 거치지 않았다.
+        context = agent_context(req, model, model_provider, deadline, matches, evidence)
+        run, error = await run_once(prompt, context)
+    ledger = context.ledger
+    tools = context.tools
+
+    if error is not None and not isinstance(error, (ChatbotProviderTimeoutError, TimeoutError)):
+        log_agent_run(PATH_ERROR, "upstream", ledger, started, model_provider, error=error)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
     stop = ledger.stop
 
     if stop is None:
@@ -120,7 +150,7 @@ async def create_agent_message(req) -> dict:
             tools.similar_notice_numbers,
             tools.similar_lines,
         )
-        log_agent_run(PATH_AGENT, None, ledger, started)
+        log_agent_run(PATH_AGENT, None, ledger, started, model_provider)
         return response
 
     remaining = deadline - time.monotonic()
@@ -129,17 +159,73 @@ async def create_agent_message(req) -> dict:
             response = await answer_fixed(provider, req, matches, evidence, timeout=remaining)
         except HTTPException as exc:
             if not isinstance(exc.__cause__, ChatbotProviderTimeoutError):
-                log_agent_run(PATH_ERROR, stop, ledger, started, error=exc.__cause__)
+                log_agent_run(PATH_ERROR, stop, ledger, started, model_provider, error=exc.__cause__)
                 raise
         else:
-            log_agent_run(PATH_FIXED, stop, ledger, started)
+            log_agent_run(PATH_FIXED, stop, ledger, started, model_provider)
             return response
 
     # 대체 답변. 루프가 더 찾은 근거는 검사를 거치지 않았으므로 처음 찾은 해설만 카드로 보낸다.
     log_health_answer(matches, [], True)
-    log_agent_run(PATH_FALLBACK, stop, ledger, started)
+    log_agent_run(PATH_FALLBACK, stop, ledger, started, model_provider)
     cards = health_cards(matches, animal.species) if evidence else []
     return chatbot_response(provider.name, FALLBACK_ANSWER if evidence else NO_EVIDENCE_FALLBACK, [], cards)
+
+
+def agent_context(req, model, model_provider: str, deadline: float, matches, evidence) -> AgentContext:
+    """시도 하나의 상태. 예비 모델로 다시 풀 때는 새로 만들어 호출 수, 토큰, 도구 결과를 처음부터 센다."""
+    tools = ToolContext(
+        agent_health_retriever(),
+        req.animalContext.specialMark,
+        req.animalContext.species,
+        matches=list(matches),
+        evidence=list(evidence),
+        animal_id=req.animalId,
+        question=req.question,
+        # 공고 id가 없으면 도구가 찾지 못하므로 강제하지 않는다.
+        first_tool=FIND_SIMILAR_ANIMALS.name if req.animalId and asks_for_similar(req.question) else None,
+    )
+    return AgentContext(
+        model,
+        tools,
+        deadline,
+        model_settings=model_call_settings(model_provider),
+        forced_tool_settings=forced_tool_call_settings(model_provider),
+    )
+
+
+async def run_once(prompt: str, context: AgentContext) -> tuple[AgentRun | None, Exception | None]:
+    """루프를 한 번 돌린다. 제공자 장애(상류 오류, 시간 초과)는 올리지 않고 돌려준다. 잘림은 멈춘 이유로 남긴다."""
+    try:
+        return await run_agent(prompt, context), None
+    except (ChatbotProviderTimeoutError, TimeoutError) as exc:
+        context.ledger.stop = STOP_DEADLINE
+        return None, exc
+    except ChatbotProviderTruncatedError:
+        context.ledger.stop = STOP_TRUNCATED
+        return None, None
+    except ChatbotProviderUpstreamError as exc:
+        return None, exc
+
+
+def should_switch(error: Exception, deadline: float) -> bool:
+    """예비 제공자로 넘길까. 예비 제공자가 있는지는 부른 쪽이 본다."""
+    return deadline - time.monotonic() >= FALLBACK_PROVIDER_MIN_SECONDS and is_provider_unavailable(error)
+
+
+def backup_provider():
+    """예비 제공자(고정 흐름용)와 예비 모델. 예비 설정이 없으면 None.
+
+    설정은 기동에서 검사하므로 여기서 실패할 일은 거의 없다. 실패하면 예비 없이 원래 오류로 끝낸다.
+    """
+    name = fallback_provider_name()
+    if not name:
+        return None
+    try:
+        return get_chatbot_provider(name), fallback_chat_model()
+    except ChatbotProviderConfigurationError as exc:
+        logger.warning("Chatbot agent: fallback provider unavailable provider=%s error=%s", name, type(exc).__name__)
+        return None
 
 
 def finish_agent_answer(
@@ -188,15 +274,19 @@ def finish_agent_answer(
     return chatbot_response(provider_name, answer, sources, cards)
 
 
-def log_agent_run(path: str, stop: str | None, ledger: AgentLedger, started: float, error=None) -> None:
+def log_agent_run(
+    path: str, stop: str | None, ledger: AgentLedger, started: float, model_provider: str = "-", error=None
+) -> None:
     """에이전트가 어떻게 끝났는지 숫자로 남긴다. 질문, 검색어, 답 내용은 넣지 않는다.
+
+    provider는 그 시도의 모델 제공자다. 예비로 넘기면 주 제공자 줄(path=switch)과 예비 제공자 줄이 함께 남는다.
 
     토큰은 루프 안 모델 호출의 합이다(고정 흐름으로 넘어간 호출은 Gemini 응답 로그에 따로 남는다).
     error는 상류 장애와 우리 코드 문제를 로그에서 나누려고 오류 종류 이름만 남긴다.
     """
     logger.info(
         "Chatbot agent: path=%s stop=%s error=%s model_calls=%d tool_calls=%d tool_errors=%d "
-        "input_tokens=%d output_tokens=%d reasoning_tokens=%d reasoning=%s elapsed_ms=%d",
+        "input_tokens=%d output_tokens=%d reasoning_tokens=%d reasoning=%s elapsed_ms=%d provider=%s",
         path,
         stop or "-",
         _error_name(error),
@@ -208,6 +298,7 @@ def log_agent_run(path: str, stop: str | None, ledger: AgentLedger, started: flo
         ledger.reasoning_tokens,
         reasoning_level(),
         (time.monotonic() - started) * 1000,
+        model_provider,
     )
 
 
