@@ -1,10 +1,13 @@
+import asyncio
 import io
 import json
 import os
+import time
 import unittest
 from datetime import date
 from unittest.mock import patch
 
+import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -164,10 +167,89 @@ class LostApiTest(unittest.TestCase):
                 response=self.post()
             self.assertEqual(response.status_code,expected)
 
-    def test_busy_search_is_rejected(self):
-        with patch.object(api._gate,"locked", return_value=True), patch.object(api,"search_photo") as search:
-            self.assertEqual(self.post().status_code,503)
-        search.assert_not_called()
+
+
+class LostQueueTest(unittest.TestCase):
+    """검색 중에 온 요청은 거절하지 않고 차례로 기다린다. 줄이 꽉 차거나 오래 기다릴 때만 503이다."""
+
+    def setUp(self):
+        app = FastAPI()
+        app.include_router(api.router, prefix="/internal/animals")
+        self.app = app
+        patchers = [patch.dict(os.environ, {"INTERNAL_API_KEY": "test-key"}),
+                    # 잠금은 처음 기다린 이벤트 루프에 묶이므로 시험마다 새로 만든다.
+                    patch.object(api, "_gate", asyncio.Lock()), patch.object(api, "_waiting", 0)]
+        for patcher in patchers:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.running = 0
+        self.most_running = 0
+        self.order = []
+
+    def slow_search(self, seconds):
+        def search(data, species, *args):
+            self.running += 1
+            self.most_running = max(self.most_running, self.running)
+            time.sleep(seconds)
+            self.running -= 1
+            self.order.append(species)
+            return {"candidates": []}
+        return search
+
+    def burst(self, count, gap=0.0):
+        async def send(client, number):
+            await asyncio.sleep(gap * number)
+            return await client.post("/internal/animals/lost-candidates",
+                                     files={"image": ("photo.png", photo(), "image/png")},
+                                     data={"species": "DOG" if number % 2 == 0 else "CAT"},
+                                     headers={"X-Internal-Api-Key": "test-key"})
+
+        async def run():
+            transport = httpx.ASGITransport(app=self.app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                return await asyncio.gather(*(send(client, number) for number in range(count)))
+
+        return asyncio.run(run())
+
+    def test_ten_at_once_all_wait_their_turn(self):
+        with patch.object(api, "search_photo", side_effect=self.slow_search(0.05)):
+            responses = self.burst(10)
+        self.assertEqual([response.status_code for response in responses], [200] * 10)
+        self.assertEqual(self.most_running, 1)
+        self.assertEqual(api._waiting, 0)
+        self.assertFalse(api._gate.locked())
+
+    def test_turns_follow_arrival_order(self):
+        with patch.object(api, "search_photo", side_effect=self.slow_search(0.05)):
+            self.burst(4, gap=0.01)
+        self.assertEqual(self.order, ["DOG", "CAT", "DOG", "CAT"])
+
+    def test_full_line_is_rejected_without_searching(self):
+        search = self.slow_search(0.2)
+        with patch.object(api, "MAX_WAITING", 2), patch.object(api, "search_photo", side_effect=search) as mocked:
+            responses = self.burst(4, gap=0.01)
+        self.assertEqual([response.status_code for response in responses], [200, 200, 200, 503])
+        self.assertIn("요청이 많습니다", responses[3].json()["detail"])
+        self.assertEqual(responses[3].headers["Retry-After"], "3")
+        self.assertEqual(mocked.call_count, 3)
+
+    def test_waiting_too_long_gives_up_and_leaves_the_line(self):
+        with patch.object(api, "WAIT_SECONDS", 0.05), \
+                patch.object(api, "search_photo", side_effect=self.slow_search(0.3)):
+            responses = self.burst(2, gap=0.01)
+        self.assertEqual([response.status_code for response in responses], [200, 503])
+        self.assertIn("밀려 있습니다", responses[1].json()["detail"])
+        self.assertEqual(api._waiting, 0)
+        self.assertFalse(api._gate.locked())
+        with patch.object(api, "search_photo", side_effect=self.slow_search(0)):
+            self.assertEqual(self.burst(1)[0].status_code, 200)
+
+    def test_failed_search_still_frees_the_turn(self):
+        with patch.object(api, "search_photo", side_effect=RuntimeError("upstream")):
+            responses = self.burst(3)
+        self.assertEqual([response.status_code for response in responses], [503] * 3)
+        self.assertFalse(api._gate.locked())
+        self.assertEqual(api._waiting, 0)
 
 
 def embedding(**changes):
