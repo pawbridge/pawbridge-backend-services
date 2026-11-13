@@ -31,8 +31,9 @@ class ChatbotProviderTimeoutError(ChatbotProviderUpstreamError):
     """제공자가 시간 안에 답하지 않았다. 고정 흐름은 다른 상류 오류처럼 502, 에이전트는 대체 답변으로 끝낸다."""
 
 
-def get_chatbot_provider() -> ChatbotProvider:
-    provider_name = ChatbotSettings.load().llm_provider.strip().lower() or "stub"
+def get_chatbot_provider(name: str | None = None) -> ChatbotProvider:
+    """고정 흐름의 제공자. name을 비우면 LLM_PROVIDER이고, 에이전트의 예비 제공자는 이름을 넘긴다."""
+    provider_name = (name or ChatbotSettings.load().llm_provider).strip().lower() or "stub"
     if provider_name == "stub":
         from app.chatbot.stub_provider import StubChatbotProvider
 
