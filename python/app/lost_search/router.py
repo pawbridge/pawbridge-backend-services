@@ -12,7 +12,13 @@ from app.internal_auth import require_internal_key
 from app.lost_search.service import MAX_IMAGE_BYTES, InvalidPhoto, search_photo
 
 router = APIRouter()
+# 검색은 한 번에 하나(GPU)다. 그동안 온 요청은 도착 순서대로 기다린다(asyncio.Lock은 먼저 기다린 쪽이 먼저 받는다).
+# 기다리는 요청은 MAX_WAITING개까지, 기다리는 시간은 WAIT_SECONDS까지다. 백엔드 읽기 제한 45초
+# (PythonLostSearchClient) 안에 끝나도록 검색 한 번(약 2초)과 업로드를 빼고 여유를 둔다.
 _gate = asyncio.Lock()
+MAX_WAITING = 10
+WAIT_SECONDS = 30
+_waiting = 0
 MAX_REQUEST_BYTES = MAX_IMAGE_BYTES + 64 * 1024
 
 
@@ -35,9 +41,8 @@ async def lost_candidates(request: Request):
     refresh = getattr(request.app.state, "gallery_refresh", None)
     if refresh is not None and not refresh.ready:
         raise HTTPException(503, "검색 자료를 준비하고 있습니다. 잠시 후 다시 시도해 주세요")
-    if _gate.locked():
-        raise HTTPException(503, "검색 중입니다. 잠시 후 다시 시도해 주세요", headers={"Retry-After": "3"})
-    async with _gate:
+    await _wait_for_turn()
+    try:
         # Limit total body before multipart parsing/spooling, even without Content-Length.
         body = bytearray()
         try:
@@ -78,3 +83,20 @@ async def lost_candidates(request: Request):
             raise
         except Exception as exc:
             raise HTTPException(503, "검색을 완료하지 못했습니다. 다시 시도해 주세요") from exc
+    finally:
+        _gate.release()
+
+
+async def _wait_for_turn():
+    """차례가 오면 _gate를 잡고 돌아온다. 줄이 꽉 찼거나 오래 기다리면 503이다(잡지 않은 채로)."""
+    global _waiting
+    if _waiting >= MAX_WAITING:
+        raise HTTPException(503, "검색 요청이 많습니다. 잠시 후 다시 시도해 주세요", headers={"Retry-After": "3"})
+    _waiting += 1
+    try:
+        with anyio.fail_after(WAIT_SECONDS):
+            await _gate.acquire()
+    except TimeoutError as exc:
+        raise HTTPException(503, "검색이 밀려 있습니다. 잠시 후 다시 시도해 주세요", headers={"Retry-After": "3"}) from exc
+    finally:
+        _waiting -= 1
