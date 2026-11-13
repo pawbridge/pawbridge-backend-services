@@ -427,9 +427,10 @@ class LostSearchServiceTest {
     }
 
     @Test
-    fun `다른 호출이 진행 중일 때__동시에 검색하면__두 번째 파이썬 요청 없이 503이고 완료 뒤 허가가 돌아온다`() {
+    fun `파이썬 줄 크기만큼 진행 중일 때__동시에 검색하면__모두 파이썬에 보내고 그다음 하나만 파이썬 요청 없이 503이며 완료 뒤 허가가 돌아온다`() {
         // given
-        val entered = CountDownLatch(1)
+        val inFlight = LostSearchService.MAX_IN_FLIGHT
+        val entered = CountDownLatch(inFlight)
         val release = CountDownLatch(1)
 
         every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } answers {
@@ -438,9 +439,9 @@ class LostSearchServiceTest {
             PythonLostSearchResponse(listOf())
         }
 
-        Executors.newSingleThreadExecutor().use { executor ->
+        Executors.newFixedThreadPool(inFlight).use { executor ->
             // when
-            val running = executor.submit(Callable { service.search(request()) })
+            val running = (1..inFlight).map { executor.submit(Callable { service.search(request()) }) }
             val busy: Throwable?
             try {
                 assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue()
@@ -448,15 +449,16 @@ class LostSearchServiceTest {
             } finally {
                 release.countDown()
             }
-            val completed = running.get(5, TimeUnit.SECONDS)
+            val completed = running.map { it.get(5, TimeUnit.SECONDS) }
             val next = service.search(request())
 
             // then
+            assertThat(inFlight).isEqualTo(11)
             assertStatus(busy, 503)
-            assertThat(completed.candidates).isEmpty()
+            assertThat(completed).allSatisfy { assertThat(it.candidates).isEmpty() }
             assertThat(next.candidates).isEmpty()
         }
-        verify(exactly = 2) { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) }
+        verify(exactly = inFlight + 1) { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) }
         confirmVerified(reader, animals)
     }
 
