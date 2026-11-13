@@ -22,7 +22,7 @@ class LostSearchService(
     readerTransactions: JpaTransactionManager,
 ) {
     private val reads: TransactionTemplate = TransactionTemplate(readerTransactions)
-    private val searchPermit = Semaphore(1)
+    private val searchPermit = Semaphore(MAX_IN_FLIGHT)
 
     init {
         reads.isReadOnly = true
@@ -174,6 +174,11 @@ class LostSearchService(
     }
 
     companion object {
+        // Python(lost_search/router.py)이 검색을 한 번에 하나씩 돌리고 나머지를 도착 순서대로 MAX_WAITING(10)개까지 기다리게 한다.
+        // 여기서는 그 줄 크기만큼(검색 중 1 + 대기 10)만 보내고, 넘치면 사진 바이트를 읽거나 Python을 부르기 전에 바로 503으로 돌려준다.
+        // 두 값을 함께 바꾼다. 기다림(최대 30초)과 검색은 읽기 제한 45초(PythonLostSearchClient) 안에 끝난다.
+        const val MAX_IN_FLIGHT = 11
+
         const val MAX_IMAGE_BYTES: Long = 5 * 1024 * 1024
         private const val MAX_CANDIDATES = 20
         private const val MAX_DECEASED_CANDIDATES = 10
