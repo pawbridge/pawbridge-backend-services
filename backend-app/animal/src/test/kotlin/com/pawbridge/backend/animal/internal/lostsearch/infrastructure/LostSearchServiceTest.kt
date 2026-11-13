@@ -260,7 +260,7 @@ class LostSearchServiceTest {
 
     @ParameterizedTest
     @MethodSource("invalidResponses")
-    fun `파이썬 응답이 올바르지 않을 때__검색하면__DB 접근 없이 503이고 허가를 반납한다`(response: PythonLostSearchResponse?) {
+    fun `파이썬 응답이 올바르지 않을 때__검색하면__DB 접근 없이 503이다`(response: PythonLostSearchResponse?) {
         // given
         every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } returnsMany listOf(response, PythonLostSearchResponse(listOf()))
 
@@ -276,7 +276,7 @@ class LostSearchServiceTest {
 
     @ParameterizedTest
     @ValueSource(ints = [400, 422, 413, 429, 503])
-    fun `원격 오류 상태가 주어졌을 때__검색하면__민감한 예외를 버리고 413·400·503으로 분류하며 허가를 반납한다`(remoteStatus: Int) {
+    fun `원격 오류 상태가 주어졌을 때__검색하면__민감한 예외를 버리고 413·400·503으로 분류한다`(remoteStatus: Int) {
         // given
         val request = Request.create(
             Request.HttpMethod.POST,
@@ -382,7 +382,7 @@ class LostSearchServiceTest {
     }
 
     @Test
-    fun `이미지 읽기가 실패할 때__검색하면__400이고 허가를 반납한다`() {
+    fun `이미지 읽기가 실패할 때__검색하면__400이다`() {
         // given
         val image = mockk<MultipartFile>()
         val request = request()
@@ -404,7 +404,7 @@ class LostSearchServiceTest {
     }
 
     @Test
-    fun `DB 조회가 실패할 때__검색하면__읽기 트랜잭션을 롤백하고 실패를 전파하며 허가를 반납한다`() {
+    fun `DB 조회가 실패할 때__검색하면__읽기 트랜잭션을 롤백하고 실패를 전파한다`() {
         // given
         val failure = DataAccessResourceFailureException("synthetic database failure")
 
@@ -427,10 +427,10 @@ class LostSearchServiceTest {
     }
 
     @Test
-    fun `파이썬 줄 크기만큼 진행 중일 때__동시에 검색하면__모두 파이썬에 보내고 그다음 하나만 파이썬 요청 없이 503이며 완료 뒤 허가가 돌아온다`() {
-        // given
-        val inFlight = LostSearchService.MAX_IN_FLIGHT
-        val entered = CountDownLatch(inFlight)
+    fun `여러 검색이 겹칠 때__동시에 검색하면__서비스는 막지 않고 모두 파이썬에 보낸다`() {
+        // given: 동시 입장 수는 공개 입구 LostSearchLimitsFilter가 정하므로 서비스에는 따로 문이 없다.
+        val concurrent = 12
+        val entered = CountDownLatch(concurrent)
         val release = CountDownLatch(1)
 
         every { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) } answers {
@@ -439,26 +439,22 @@ class LostSearchServiceTest {
             PythonLostSearchResponse(listOf())
         }
 
-        Executors.newFixedThreadPool(inFlight).use { executor ->
+        Executors.newFixedThreadPool(concurrent).use { executor ->
             // when
-            val running = (1..inFlight).map { executor.submit(Callable { service.search(request()) }) }
-            val busy: Throwable?
+            val running = (1..concurrent).map { executor.submit(Callable { service.search(request()) }) }
+            val allEntered: Boolean
             try {
-                assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue()
-                busy = catchThrowable { service.search(request()) }
+                allEntered = entered.await(5, TimeUnit.SECONDS)
             } finally {
                 release.countDown()
             }
             val completed = running.map { it.get(5, TimeUnit.SECONDS) }
-            val next = service.search(request())
 
             // then
-            assertThat(inFlight).isEqualTo(11)
-            assertStatus(busy, 503)
+            assertThat(allEntered).isTrue()
             assertThat(completed).allSatisfy { assertThat(it.candidates).isEmpty() }
-            assertThat(next.candidates).isEmpty()
         }
-        verify(exactly = inFlight + 1) { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) }
+        verify(exactly = concurrent) { client.search(any(), any<FormData>(), any(), any(), any(), any(), any(), any()) }
         confirmVerified(reader, animals)
     }
 
