@@ -7,7 +7,7 @@
   질문을 처음부터 예비 모델로 다시 푼다. 한 번만 넘기고, 마감 시각은 그대로다.
   도중의 모델 호출 하나만 바꾸지 않는다(LangChain ModelFallbackMiddleware 방식). 질문 하나는 한 모델이 끝까지 풀어
   모델마다 잰 품질과 운영이 같고, 넘긴 뒤에는 그 질문 안에서 주 제공자의 실패를 다시 기다리지 않는다.
-  주 제공자가 연달아 못 쓰는 오류를 내면 차단기(breaker.py)가 열려 한동안 처음부터 예비 제공자로 보낸다.
+  주 제공자가 연달아 못 쓰는 오류를 내면 차단기(breaker.py, circuitbreaker 라이브러리)가 열려 한동안 처음부터 예비 제공자로 보낸다.
 - 그 밖의 상류 장애(키 오류, 잘못된 요청 등)나 예비도 실패: 고정 흐름도 같은 제공자를 부르므로 다시 시도하지 않고 502.
 - 시간 초과, 토큰 예산 초과: 더 부르지 않고 정해진 대체 답변.
 - 루프의 논리 실패(모델 호출 상한, 빈 답, 잘림, 단계 상한): 남은 시간이 있으면 고정 흐름, 없으면 대체 답변.
@@ -19,7 +19,7 @@ import time
 
 from fastapi import HTTPException, status
 
-from app.chatbot.agent.breaker import primary_breaker
+from app.chatbot.agent.breaker import CircuitBreakerError, PrimaryUnavailable, guarded
 from app.chatbot.agent.graph import (
     DEADLINE_SECONDS,
     STOP_DEADLINE,
@@ -108,30 +108,31 @@ async def create_agent_message(req) -> dict:
     model_provider = provider_name()
     # 예비 제공자가 없으면 차단기도 쓰지 않는다(건너뛸 곳이 없다).
     backup = backup_provider()
-    breaker = primary_breaker()
-    if backup is not None and not breaker.allow():
+    context = agent_context(req, model, model_provider, deadline, matches, evidence)
+    skipped = False
+    if backup is None:
+        run, error = await run_once(prompt, context)
+    else:
+        try:
+            run, error = await guarded(run_once)(prompt, context)
+        except CircuitBreakerError:
+            skipped = True
+        except PrimaryUnavailable as exc:
+            run, error = exc.run, exc.error
+    if skipped:
         log_agent_run(PATH_SKIP, STOP_BREAKER_OPEN, AgentLedger(), started, model_provider)
         model_provider = fallback_provider_name()
         provider, model = backup
         context = agent_context(req, model, model_provider, deadline, matches, evidence)
         run, error = await run_once(prompt, context)
-    else:
+    elif error is not None and backup is not None and should_switch(error, deadline):
+        log_agent_run(PATH_SWITCH, context.ledger.stop or "upstream", context.ledger, started, model_provider,
+                      error=error)
+        model_provider = fallback_provider_name()
+        provider, model = backup
+        # 근거와 도구 상태도 새로 시작한다. 실패한 시도가 도구로 더 찾은 근거는 검사를 거치지 않았다.
         context = agent_context(req, model, model_provider, deadline, matches, evidence)
-        error = None
-        try:
-            run, error = await run_once(prompt, context)
-        finally:
-            # 우리 코드의 오류로 끝나도 적는다. 시험 중이던 질문이 결과를 남기지 않으면 차단기가 시험 상태에 머문다.
-            if backup is not None:
-                breaker.record(unavailable=error is not None and is_provider_unavailable(error))
-        if error is not None and backup is not None and should_switch(error, deadline):
-            log_agent_run(PATH_SWITCH, context.ledger.stop or "upstream", context.ledger, started, model_provider,
-                          error=error)
-            model_provider = fallback_provider_name()
-            provider, model = backup
-            # 근거와 도구 상태도 새로 시작한다. 실패한 시도가 도구로 더 찾은 근거는 검사를 거치지 않았다.
-            context = agent_context(req, model, model_provider, deadline, matches, evidence)
-            run, error = await run_once(prompt, context)
+        run, error = await run_once(prompt, context)
     ledger = context.ledger
     tools = context.tools
 

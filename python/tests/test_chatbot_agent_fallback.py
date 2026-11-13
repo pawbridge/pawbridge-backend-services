@@ -1,5 +1,6 @@
 """주 제공자가 일시 장애일 때 예비 제공자(LLM_FALLBACK_PROVIDER)로 질문을 처음부터 다시 푸는지 본다."""
 
+import asyncio
 import os
 import unittest
 from unittest.mock import patch
@@ -15,7 +16,7 @@ from langchain_core.exceptions import (
 from langchain_core.messages import AIMessage, HumanMessage
 
 from app.chatbot.agent import models
-from app.chatbot.agent.breaker import ProviderBreaker, primary_breaker
+from app.chatbot.agent.breaker import CircuitBreakerError, PrimaryUnavailable, guarded, primary_breaker
 from app.chatbot.provider import ChatbotProviderConfigurationError
 from app.entrypoints.chatbot_api import app
 from app.settings import ChatbotSettings
@@ -175,13 +176,14 @@ class FallbackProviderTest(unittest.TestCase):
         self.assertEqual(primary_breaker().state, "closed")
 
     def test_our_own_bug_still_ends_a_probe(self):
-        breaker = primary_breaker()
-        for _ in range(3):
-            breaker.record(unavailable=True)
-        breaker.open_until = 0.0  # 열림 시간이 지났다고 본다
-        with self.assertRaises(ValueError):
-            self.post_with_backup(ScriptedChatModel(turns=[ValueError("bug in our code")]), ScriptedChatModel())
-        self.assertEqual(breaker.state, "closed")
+        clock = FakeClock()
+        with patch("circuitbreaker.monotonic", clock):
+            open_breaker()
+            clock.now += 61  # 열림 시간이 지났다
+            self.assertEqual(primary_breaker().state, "half_open")
+            with self.assertRaises(ValueError):
+                self.post_with_backup(ScriptedChatModel(turns=[ValueError("bug in our code")]), ScriptedChatModel())
+            self.assertEqual(primary_breaker().state, "closed")
 
     def test_without_fallback_setting_breaker_is_not_used(self):
         for _ in range(4):
@@ -199,6 +201,8 @@ class FallbackProviderTest(unittest.TestCase):
 
 
 class FakeClock:
+    """circuitbreaker가 열림 시간을 재는 time.monotonic 자리에 넣는다."""
+
     def __init__(self):
         self.now = 1000.0
 
@@ -206,59 +210,95 @@ class FakeClock:
         return self.now
 
 
+async def outage(prompt, context):
+    return None, ModelAPIError("529 overloaded")
+
+
+async def answered_error(prompt, context):
+    return None, ModelAuthenticationError("401")
+
+
+async def answered(prompt, context):
+    return "run", None
+
+
+def ask(run_once):
+    return asyncio.run(guarded(run_once)(None, None))
+
+
+def open_breaker():
+    for _ in range(3):
+        try:
+            ask(outage)
+        except Exception:
+            pass
+
+
 class ProviderBreakerTest(unittest.TestCase):
+    """우리 설정(연달아 3번, 60초)과 주 제공자 시도를 감싸는 방식이 라이브러리와 맞는지 본다."""
+
     def setUp(self):
         self.clock = FakeClock()
-        self.breaker = ProviderBreaker(threshold=3, window_seconds=60, open_seconds=60, clock=self.clock)
+        patcher = patch("circuitbreaker.monotonic", self.clock)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        primary_breaker().reset()
+        self.addCleanup(primary_breaker().reset)
 
-    def fail(self, times=1, every=0.0):
-        for _ in range(times):
-            self.assertTrue(self.breaker.allow())
-            self.breaker.record(unavailable=True)
-            self.clock.now += every
+    def test_opens_after_three_outages_in_a_row_and_stops_calling(self):
+        for _ in range(2):
+            with self.assertRaises(PrimaryUnavailable):
+                ask(outage)
+        self.assertEqual(primary_breaker().state, "closed")
+        with self.assertRaises(PrimaryUnavailable):
+            ask(outage)
+        self.assertEqual(primary_breaker().state, "open")
+        calls = []
 
-    def test_opens_after_three_failures_within_a_minute(self):
-        self.fail(2, every=10)
-        self.assertEqual(self.breaker.state, "closed")
-        self.fail(1)
-        self.assertEqual(self.breaker.state, "open")
-        self.assertFalse(self.breaker.allow())
+        async def must_not_run(prompt, context):
+            calls.append(1)
+            return "run", None
 
-    def test_failures_spread_over_more_than_a_minute_do_not_open(self):
-        self.fail(5, every=31)
-        self.assertEqual(self.breaker.state, "closed")
+        with self.assertRaises(CircuitBreakerError):
+            ask(must_not_run)
+        self.assertEqual(calls, [])
 
-    def test_success_clears_failures(self):
-        self.fail(2)
-        self.breaker.record(unavailable=False)
-        self.fail(2)
-        self.assertEqual(self.breaker.state, "closed")
+    def test_unavailable_attempt_keeps_its_result_for_the_switch(self):
+        with self.assertRaises(PrimaryUnavailable) as caught:
+            ask(outage)
+        self.assertIsInstance(caught.exception.error, ModelAPIError)
+        self.assertEqual(primary_breaker().failure_count, 1)
 
-    def test_after_open_time_one_question_probes_and_others_still_skip(self):
-        self.fail(3)
+    def test_answered_errors_count_as_success_and_reset_the_streak(self):
+        for run_once in (outage, outage, answered_error, outage, outage):
+            try:
+                ask(run_once)
+            except Exception:
+                pass
+        self.assertEqual(primary_breaker().state, "closed")
+        self.assertEqual(ask(answered_error)[1].__class__, ModelAuthenticationError)
+
+    def test_after_open_time_next_question_probes(self):
+        open_breaker()
         self.clock.now += 59
-        self.assertFalse(self.breaker.allow())
+        with self.assertRaises(CircuitBreakerError):
+            ask(answered)
         self.clock.now += 2
-        self.assertTrue(self.breaker.allow())
-        self.assertEqual(self.breaker.state, "probing")
-        self.assertFalse(self.breaker.allow())
+        self.assertEqual(primary_breaker().state, "half_open")
+        self.assertEqual(ask(answered), ("run", None))
+        self.assertEqual(primary_breaker().state, "closed")
 
-    def test_probe_success_closes_and_probe_failure_reopens(self):
-        self.fail(3)
+    def test_probe_failure_reopens_for_another_minute(self):
+        open_breaker()
         self.clock.now += 61
-        self.assertTrue(self.breaker.allow())
-        self.breaker.record(unavailable=False)
-        self.assertEqual(self.breaker.state, "closed")
-
-        self.fail(3)
-        self.clock.now += 61
-        self.assertTrue(self.breaker.allow())
-        self.breaker.record(unavailable=True)
-        self.assertEqual(self.breaker.state, "open")
-        self.clock.now += 30
-        self.assertFalse(self.breaker.allow())
-        self.clock.now += 31
-        self.assertTrue(self.breaker.allow())
+        with self.assertRaises(PrimaryUnavailable):
+            ask(outage)
+        self.assertEqual(primary_breaker().state, "open")
+        self.clock.now += 59
+        with self.assertRaises(CircuitBreakerError):
+            ask(answered)
+        self.clock.now += 2
+        self.assertEqual(ask(answered), ("run", None))
 
 
 class ProviderUnavailableTest(unittest.TestCase):
