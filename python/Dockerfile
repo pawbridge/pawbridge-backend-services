@@ -17,4 +17,7 @@ COPY app /app/app
 RUN python -c "from app.chatbot.health.knowledge import load_entries; print('health entries:', len(load_entries()))"
 USER 10001:10001
 EXPOSE 8000
-CMD ["uvicorn", "app.entrypoints.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "4", "--backlog", "8", "--no-access-log"]
+# --limit-concurrency는 처리 중인 요청이 아니라 열린 연결 수로 센다(백엔드가 재사용하려고 열어 둔 연결 포함).
+# 넘으면 기다리지 않고 바로 503이다. 4일 때 실제 동시 처리는 3개였다(동시 5개면 5개 모두 503).
+# 챗봇은 모델 응답을 기다리는 시간이 대부분이라 16으로 둔다. 비용은 백엔드의 사용자별 횟수 제한이 막는다.
+CMD ["uvicorn", "app.entrypoints.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "16", "--backlog", "8", "--no-access-log"]
