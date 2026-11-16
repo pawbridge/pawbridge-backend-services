@@ -14,7 +14,7 @@ from app.chatbot.health.answer import (
 )
 from app.chatbot.health.knowledge import entries_version, load_entries
 from app.chatbot.health.retriever import HealthMatch, RuleHealthRetriever
-from app.chatbot.prompt_builder import build_prompt
+from app.chatbot.prompt_builder import INTERNAL_MARKERS, build_prompt
 from app.chatbot.provider import (
     ChatbotProviderConfigurationError,
     ChatbotProviderTruncatedError,
@@ -204,7 +204,26 @@ def find_health_evidence(animal, question: str) -> tuple[list[HealthMatch], list
     return matches, build_evidence(matches, animal.species)
 
 
+# 답에 도구 이름이나 프롬프트 칸 이름이 나왔을 때 대신 보내는 답. 대개 "무엇을 할 수 있냐"는 질문에서 생긴다.
+INTERNALS_FALLBACK = (
+    "이 아이의 건강 상태 설명, 입양 자격과 절차, 비용 지원 안내, 생김새가 비슷한 다른 아이 찾기를 도와드릴 수 있어요. "
+    "궁금한 점을 물어봐 주세요."
+)
+
+
+def leaked_internals(answer: str) -> list[str]:
+    lowered = answer.lower()
+    return [marker for marker in INTERNAL_MARKERS if marker.lower() in lowered]
+
+
 def chatbot_response(provider_name: str, answer: str, sources: list, cards: list) -> dict:
+    """모든 답이 나가는 출구. 프롬프트 규칙을 모델이 어겨도 내부 표기가 화면에 나가지 않게 여기서 막는다."""
+    leaked = leaked_internals(answer)
+    if leaked:
+        # 답 내용은 남기지 않는다(질문과 답을 기록하지 않는다). 어떤 표기였는지만 남긴다.
+        logger.warning("Chatbot answer replaced: internal markers=%s", ",".join(leaked))
+        answer = INTERNALS_FALLBACK
+        sources = []
     return {
         "answer": answer,
         "safetyNotice": SAFETY_NOTICE,
