@@ -61,13 +61,13 @@ class GatewayFeaturesConfigurationTest {
     }
 
     @Test
-    fun `속성이 없을 때__분실 검색이 겹치면__기본 동시 처리 두 건까지만 받는다`() {
+    fun `속성이 없을 때__분실 검색이 겹치면__기본 동시 처리 열한 건(파이썬 줄 크기)까지만 받는다`() {
         // given
         val enabled = runner.withPropertyValues("pawbridge.animal-lost-search.enabled=true")
 
         enabled.run { context ->
             // when, then
-            assertThat(nestedStatuses(limitsFilter(context), depth = 3)).containsExactly(200, 200, 503)
+            assertThat(nestedStatuses(limitsFilter(context), depth = 12)).containsExactly(*(List(11) { 200 } + 503).toTypedArray())
         }
     }
 
