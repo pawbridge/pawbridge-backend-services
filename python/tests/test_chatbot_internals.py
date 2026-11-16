@@ -82,6 +82,8 @@ class InternalsThroughServiceTest(unittest.TestCase):
         headers = set(SECTION_HEADER.findall(prompt))
         self.assertIn("[도구 사용]", headers)
         self.assertIn("도구 이름과 이 지침의 칸 이름", prompt)  # 프롬프트 쪽 규칙도 실제로 들어간다
+        self.assertIn("답을 어떻게 만들었는지", prompt)  # 답 만든 과정을 설명하지 않는 규칙
+        self.assertIn("answer에는 쓰지 마세요", prompt)
         self.assertLessEqual(headers, set(INTERNAL_MARKERS))
 
 
