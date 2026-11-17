@@ -96,6 +96,8 @@ class SafeHybridRetriever:
         )
         if blocked:
             return results
+        if self._names_entry_only_for_other_species(original_question, query, species):
+            return results
         try:
             vector = self._hybrid_vector()
             if vector is None:
@@ -120,6 +122,20 @@ class SafeHybridRetriever:
 
     def _hybrid_vector(self):
         return self._hybrid._vector
+
+    def _names_entry_only_for_other_species(self, original_question, query, species) -> bool:
+        """질문이나 검색어에 해설의 병명이 있는데 그 해설이 이 종에는 없는지 본다.
+
+        이때 벡터는 가장 가까운 다른 해설을 붙인다. 11/17 실제 Claude 비교에서 고양이의 "슬개골 탈구 있나요?"
+        (슬개골 해설은 개 전용)에 탈장 해설이 붙었다. 해설이 없다는 답이 맞으므로 벡터를 쓰지 않는다.
+        """
+        if not species:
+            return False
+        for text in (original_question, query):
+            any_species = {match.entry.id for match in self._rule.search(None, text, None)}
+            if any_species - {match.entry.id for match in self._rule.search(None, text, species)}:
+                return True
+        return False
 
 
 class BackgroundVectorIndex:

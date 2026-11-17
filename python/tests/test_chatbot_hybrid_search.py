@@ -84,6 +84,18 @@ class HybridToolSearchTest(unittest.TestCase):
         found = retriever(FakeRule(found=["lameness"]), vector).search_tool(None, "파행", QUESTION, "DOG")
         self.assertEqual([match.entry.id for match in found], ["lameness"])
 
+    def test_entry_named_only_for_other_species_skips_vector(self):
+        # 고양이의 "슬개골 탈구 있나요?": 슬개골 해설은 개 전용이라 규칙은 못 찾고, 벡터는 탈장을 붙였다(11/17).
+        class SpeciesRule(FakeRule):
+            def search(self, notice_text, question, species):
+                if species is None and "슬개골" in (question or ""):
+                    return [HealthMatch(entry("patellar-luxation"), 1.0, "rule")]
+                return []
+
+        question = "슬개골 탈구 있나요?"
+        vector = FakeVector({question: [("patellar-luxation", 0.7), ("hernia", 0.55)], "탈구": [("hernia", 0.6)]})
+        self.assertEqual(retriever(SpeciesRule(), vector).search_tool(None, "탈구", question, "CAT"), [])
+
     def test_embedding_failure_falls_back_to_rule_results(self):
         found = retriever(FakeRule(found=["cough"]), FakeVector({}, fail=True)).search_tool(None, "기침", "콜록거려요", "DOG")
         self.assertEqual([match.entry.id for match in found], ["cough"])
