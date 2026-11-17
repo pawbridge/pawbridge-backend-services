@@ -1,0 +1,9 @@
+# 건강 해설 하이브리드 검색의 임베딩 서비스(app.entrypoints.embedding_api). Mac 네이티브(MPS) 전용 가상환경에 설치한다.
+# python-api 이미지에는 넣지 않는다(메모리 한도 512MiB, bge-m3 가중치 2.1GB).
+# 판은 11/06~11 평가(bge-m3 기준값과 관문 선택)에 쓴 평가용 가상환경과 같다. 전체 고정은 deploy/macos/embedding.constraints.txt.
+torch==2.10.0
+sentence-transformers==6.2.0
+transformers==5.22.1
+fastapi==0.115.0
+uvicorn==0.32.0
+numpy==1.26.4

@@ -1,4 +1,5 @@
 import logging
+import threading
 from functools import lru_cache
 
 from fastapi import HTTPException, status
@@ -97,6 +98,8 @@ class SafeHybridRetriever:
             return results
         try:
             vector = self._hybrid_vector()
+            if vector is None:
+                return results
             if vector.is_off_topic(original_question):
                 return results
             if not query:
@@ -119,6 +122,42 @@ class SafeHybridRetriever:
         return self._hybrid._vector
 
 
+class BackgroundVectorIndex:
+    """기동 때 임베딩 서비스에 닿지 못했을 때 쓰는 하이브리드 자리. 뒤에서 색인을 다시 만들고, 그 전까지는 규칙만 쓴다.
+
+    Mac을 다시 켜면 Docker의 python-api가 launchd 임베딩 서비스보다 먼저 뜰 수 있다. 예전에는 그때 규칙 검색으로
+    시작한 뒤 python-api를 다시 만들 때까지 벡터를 쓰지 않았다.
+    """
+
+    def __init__(self, rule: RuleHealthRetriever, build_vector, retry_seconds: float):
+        self._rule = rule
+        self._build_vector = build_vector
+        self._retry_seconds = retry_seconds
+        self._vector = None
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._retry, name="health-vector-index", daemon=True)
+        self._thread.start()
+
+    def _retry(self):
+        while not self._stop.wait(self._retry_seconds):
+            try:
+                vector = self._build_vector()
+            except Exception as exc:  # noqa: BLE001 - 다음 주기에 다시 시도한다
+                logger.warning("Health hybrid search still unavailable: error=%s", type(exc).__name__)
+                continue
+            self._vector = vector
+            logger.info("Health hybrid search ready after retry: threshold=%s margin=%s", VECTOR_THRESHOLD, OFF_TOPIC_MARGIN)
+            return
+
+    def search(self, notice_text, question, species):
+        vector = self._vector
+        if vector is None:
+            return self._rule.search(notice_text, question, species)
+        from app.chatbot.health.vector import HybridHealthRetriever
+
+        return HybridHealthRetriever(self._rule, vector).search(notice_text, question, species)
+
+
 @lru_cache(maxsize=1)
 def agent_health_retriever():
     """에이전트 검색 도구가 쓰는 검색기. EMBEDDING_SERVICE_URL이 있으면 규칙 + 벡터 하이브리드, 없으면 규칙만.
@@ -137,8 +176,9 @@ def agent_health_retriever():
 
     examples_path = Path(__file__).parent / "health" / "off_topic_examples.txt"
     examples = [line.strip() for line in examples_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    try:
-        vector = VectorHealthRetriever(
+
+    def build_vector():
+        return VectorHealthRetriever(
             approved_entries(),
             RemoteEmbedder(settings.embedding_service_url),
             mode="split",
@@ -146,9 +186,12 @@ def agent_health_retriever():
             off_topic_examples=examples,
             off_topic_margin=OFF_TOPIC_MARGIN,
         )
-    except Exception as exc:  # noqa: BLE001 - 임베딩 서비스가 없으면 규칙 검색으로 시작한다
+
+    try:
+        vector = build_vector()
+    except Exception as exc:  # noqa: BLE001 - 임베딩 서비스가 없으면 규칙 검색으로 시작하고 뒤에서 다시 붙인다
         logger.warning("Health hybrid search unavailable at startup: error=%s", type(exc).__name__)
-        return rule
+        return SafeHybridRetriever(rule, BackgroundVectorIndex(rule, build_vector, VECTOR_INDEX_RETRY_SECONDS))
     logger.info("Health hybrid search ready: threshold=%s margin=%s", VECTOR_THRESHOLD, OFF_TOPIC_MARGIN)
     return SafeHybridRetriever(rule, HybridHealthRetriever(rule, vector))
 
@@ -157,6 +200,8 @@ VECTOR_THRESHOLD = 0.475
 # 두 질의(원래 질문, 모델이 바꾼 검색어)의 벡터 상위 몇 개끼리 겹쳐 보는지.
 VECTOR_TOP_K = 3
 OFF_TOPIC_MARGIN = 0.10
+# 기동 때 임베딩 서비스에 닿지 못하면 이 간격으로 색인을 다시 만든다(서비스 기동은 가중치 읽기 포함 약 10초).
+VECTOR_INDEX_RETRY_SECONDS = 30.0
 
 
 @lru_cache(maxsize=1)
