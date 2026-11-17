@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>EMBEDDING_MODEL_PATH</key>
+		<string>@@BGE_M3_DIR@@</string>
+		<key>EMBEDDING_DEVICE</key>
+		<string>mps</string>
+		<key>PYTORCH_ENABLE_MPS_FALLBACK</key>
+		<string>0</string>
+		<key>HF_HUB_OFFLINE</key>
+		<string>1</string>
+		<key>TRANSFORMERS_OFFLINE</key>
+		<string>1</string>
+		<key>PYTHONDONTWRITEBYTECODE</key>
+		<string>1</string>
+	</dict>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>Label</key>
+	<string>kr.pawbridge.embedding</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>@@PYTHON@@</string>
+		<string>-m</string>
+		<string>uvicorn</string>
+		<string>app.entrypoints.embedding_api:app</string>
+		<string>--host</string>
+		<string>127.0.0.1</string>
+		<string>--port</string>
+		<string>18900</string>
+		<string>--workers</string>
+		<string>1</string>
+		<string>--no-access-log</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>@@RUNTIME@@/logs/embedding.stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>@@RUNTIME@@/logs/embedding.stdout.log</string>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>Umask</key>
+	<integer>63</integer>
+	<key>WorkingDirectory</key>
+	<string>@@SOURCE@@/python</string>
+</dict>
+</plist>

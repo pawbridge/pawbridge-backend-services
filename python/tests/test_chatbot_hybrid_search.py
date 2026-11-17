@@ -1,10 +1,11 @@
 """에이전트 검색 도구의 하이브리드 판정 규칙. 임베딩 서비스 없이 가짜 벡터 점수로 본다."""
 
+import threading
 import unittest
 from types import SimpleNamespace
 
 from app.chatbot.health.retriever import HealthMatch
-from app.chatbot.service import SafeHybridRetriever
+from app.chatbot.service import BackgroundVectorIndex, SafeHybridRetriever
 
 
 def entry(entry_id):
@@ -83,9 +84,53 @@ class HybridToolSearchTest(unittest.TestCase):
         found = retriever(FakeRule(found=["lameness"]), vector).search_tool(None, "파행", QUESTION, "DOG")
         self.assertEqual([match.entry.id for match in found], ["lameness"])
 
+    def test_entry_named_only_for_other_species_skips_vector(self):
+        # 고양이의 "슬개골 탈구 있나요?": 슬개골 해설은 개 전용이라 규칙은 못 찾고, 벡터는 탈장을 붙였다(11/17).
+        class SpeciesRule(FakeRule):
+            def search(self, notice_text, question, species):
+                if species is None and "슬개골" in (question or ""):
+                    return [HealthMatch(entry("patellar-luxation"), 1.0, "rule")]
+                return []
+
+        question = "슬개골 탈구 있나요?"
+        vector = FakeVector({question: [("patellar-luxation", 0.7), ("hernia", 0.55)], "탈구": [("hernia", 0.6)]})
+        self.assertEqual(retriever(SpeciesRule(), vector).search_tool(None, "탈구", question, "CAT"), [])
+
     def test_embedding_failure_falls_back_to_rule_results(self):
         found = retriever(FakeRule(found=["cough"]), FakeVector({}, fail=True)).search_tool(None, "기침", "콜록거려요", "DOG")
         self.assertEqual([match.entry.id for match in found], ["cough"])
+
+
+class BackgroundVectorIndexTest(unittest.TestCase):
+    """기동 때 임베딩 서비스가 없으면 규칙만 쓰다가, 서비스가 뜨면 뒤에서 색인을 만들어 벡터를 붙인다."""
+
+    def test_uses_rule_until_index_is_built_then_vector(self):
+        vector = FakeVector({
+            QUESTION: [("lameness", 0.495)],
+            "파행": [("lameness", 0.547)],
+        })
+        attempts = []
+        built = threading.Event()
+
+        def build_vector():
+            attempts.append(1)
+            if len(attempts) < 2:
+                raise ConnectionError("embedding service not up yet")
+            built.set()
+            return vector
+
+        rule = FakeRule()
+        index = BackgroundVectorIndex(rule, build_vector, retry_seconds=0.05)
+        hybrid = SafeHybridRetriever(rule, index)
+        # 색인 전에는 규칙 결과만(여기서는 없음).
+        before = hybrid.search_tool(None, "파행", QUESTION, "DOG")
+        self.assertTrue(built.wait(timeout=5))
+        index._thread.join(timeout=5)
+        after = hybrid.search_tool(None, "파행", QUESTION, "DOG")
+        self.assertEqual(before, [])
+        self.assertEqual([match.entry.id for match in after], ["lameness"])
+        self.assertEqual(len(attempts), 2)
+        self.assertFalse(index._thread.is_alive())
 
 
 if __name__ == "__main__":

@@ -11,9 +11,10 @@ PawBridge 백엔드(`backend-app`)가 내부 API로 부르는 Python 서비스 �
 | `app.entrypoints.vision_api:app` | 실종동물 사진 검색(`POST /internal/animals/lost-candidates`), 유사 동물 추천(`GET /internal/animals/{id}/similar`), 갤러리 자동 갱신 | Mac 네이티브 프로세스(launchd `kr.pawbridge.native`, MPS GPU). 백엔드는 `native-relay`로 보낸다 |
 | `app.entrypoints.chatbot_api:app` | 동물 상담 챗봇(`POST /internal/chatbot/messages`, Gemini) | 컨테이너 `pawbridge-prod-python-api` |
 | `app.entrypoints.photo_api:app` | APMS 사진 압축(`POST /internal/photos/optimize`), [계약](PHOTO_SERVICE.md) | 컨테이너 `pawbridge-prod-photo` |
+| `app.entrypoints.embedding_api:app` | 건강 해설 하이브리드 검색의 질문, 해설 벡터(`POST /embed`, bge-m3). 챗봇의 `EMBEDDING_SERVICE_URL`이 가리킨다 | Mac 네이티브 프로세스(launchd `kr.pawbridge.embedding`, MPS, 루프백 18900). [런북](deploy/macos/EMBEDDING.md) |
 | `app.entrypoints.gallery_cli` | 스냅샷과 로컬 사진으로 갤러리를 수동 생성하는 명령줄 도구 | 필요할 때만 수동 실행 |
 
-모든 내부 API는 `X-Internal-Api-Key`를 확인한다.
+모든 내부 API는 `X-Internal-Api-Key`를 확인한다. 임베딩 서비스만 예외로, 루프백에서만 받고 키를 확인하지 않는다(공개된 해설 문장과 질문의 벡터만 계산하고 저장하지 않는다).
 
 ```
 app/
