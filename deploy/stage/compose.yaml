@@ -1,0 +1,152 @@
+# 시험 환경(`pawbridge-stage`). 운영과 같은 이미지에 빈 DB를 붙여 이 Mac 안(127.0.0.1)에서만 연다.
+# 비밀값은 Git 밖 STAGE_SECRETS 폴더(make-secrets.sh가 새로 만듦)에 두고, 이미지는 stage.env로 준다.
+# 외부 수집, 결제, 소셜 로그인, AI 서비스 연동은 끈다. 순서와 명령은 README.md 참고.
+name: pawbridge-stage
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?pinned image}
+    container_name: pawbridge-stage-postgres
+    platform: linux/arm64
+    pull_policy: never
+    restart: unless-stopped
+    # 자원과 설정은 운영 compose와 같게 둔다(부하 시험 수치를 비교하려고).
+    mem_limit: 2g
+    memswap_limit: 2g
+    cpus: 2.0
+    environment:
+      POSTGRES_DB: pawbridge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/stage/postgres-password
+    networks: [private]
+    logging: *logging
+    volumes:
+      - {type: volume, source: postgres-data, target: /var/lib/postgresql/data}
+      # init-db.sh가 앱 역할 비밀번호를 컨테이너 안에서 읽는다(명령줄에 값이 남지 않게).
+      - {type: bind, source: "${STAGE_SECRETS:?private secrets dir}/postgres-password", target: /run/stage/postgres-password, read_only: true}
+      - {type: bind, source: "${STAGE_SECRETS}/app-password", target: /run/stage/app-password, read_only: true}
+      - {type: bind, source: "${STAGE_SECRETS}/member-password", target: /run/stage/member-password, read_only: true}
+    command: [postgres, -c, shared_buffers=512MB, -c, max_connections=80, -c, work_mem=4MB, -c, temp_file_limit=256MB]
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres, -d, pawbridge]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  redis:
+    image: ${REDIS_IMAGE:?pinned image}
+    container_name: pawbridge-stage-redis
+    platform: linux/arm64
+    pull_policy: never
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    networks: [private]
+    logging: *logging
+    volumes:
+      # requirepass가 들어 있어 비밀 폴더에 둔다.
+      - {type: bind, source: "${STAGE_SECRETS}/redis.conf", target: /redis.conf, read_only: true}
+    command: [redis-server, /redis.conf]
+
+  monolith:
+    image: ${MONOLITH_IMAGE:?pawbridge-monolith:prod-<sha12>}
+    container_name: pawbridge-stage-monolith
+    restart: unless-stopped
+    cpus: 4
+    mem_limit: 2g
+    pids_limit: 512
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    # PAWBRIDGE_DB_PASSWORD, SPRING_DATA_REDIS_PASSWORD, PAWBRIDGE_JWT_SECRET, PAWBRIDGE_VISITS_SIGNING_KEY
+    env_file: [{path: "${STAGE_SECRETS}/monolith.env", format: raw, required: true}]
+    environment:
+      MALLOC_ARENA_MAX: "2"
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_SHUTDOWN: graceful
+      PAWBRIDGE_SERVER_PORT: "8080"
+      PAWBRIDGE_MANAGEMENT_ADDRESS: 0.0.0.0
+      PAWBRIDGE_MANAGEMENT_PORT: "9464"
+      PAWBRIDGE_DB_URL: jdbc:postgresql://postgres:5432/pawbridge
+      PAWBRIDGE_DB_USER: pawbridge_app
+      PAWBRIDGE_DB_POOL_MAX_SIZE: "16"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      JWT_ACCESS_TOKEN_EXPIRATION: "1800000"
+      JWT_REFRESH_TOKEN_EXPIRATION: "1209600000"
+      # 화면 개발 서버(vite)에서 붙는 경우만 연다.
+      PAWBRIDGE_CORS_ALLOWED_ORIGIN_PATTERNS: http://localhost:5173,http://127.0.0.1:5173
+      # 로그인: 시험 계정 비밀번호 로그인만. 소셜 로그인은 업체에 시험 주소를 따로 등록해야 해서 끈다.
+      PAWBRIDGE_AUTH_LOCAL_ENABLED: "true"
+      PAWBRIDGE_AUTH_SESSIONS_ENABLED: "true"
+      PAWBRIDGE_AUTH_GOOGLE_ENABLED: "false"
+      PAWBRIDGE_AUTH_NAVER_ENABLED: "false"
+      # 회원 채팅. 네임스페이스로 Redis 키를 운영과 나눈다(Redis도 따로지만 실수로 붙어도 섞이지 않게).
+      MEMBER_CHAT_ENABLED: "true"
+      MEMBER_CHAT_NAMESPACE: stage
+      MEMBER_CHAT_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # 조회 기능
+      PAWBRIDGE_ANIMAL_QUERY_BACKEND: postgresql
+      PAWBRIDGE_ANIMAL_QUERY_ANALYZED_TEXT: "true"
+      PAWBRIDGE_ANIMAL_DISCOVERY_ENABLED: "true"
+      PAWBRIDGE_ANIMAL_SHELTERS_ENABLED: "true"
+      PAWBRIDGE_ANIMAL_STATISTICS_ENABLED: "true"
+      PAWBRIDGE_ANIMAL_RECOMMENDATIONS_ENABLED: "true"
+      PAWBRIDGE_COMMUNITY_MAINTENANCE_ENABLED: "true"
+      PAWBRIDGE_USER_ANIMAL_ACTIVITIES_ENABLED: "true"
+      PAWBRIDGE_VISITS_COLLECTION_ENABLED: "true"
+      PAWBRIDGE_VISITS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      DAILY_VISITORS_ENABLED: "true"
+      # 외부로 나가는 일은 모두 끈다: 공공 데이터 수집, 사진 보관, 실종 검색과 챗봇(AI 서비스), 결제, 영상 큐레이션.
+      APMS_BATCH_SCHEDULE_ENABLED: "false"
+      PAWBRIDGE_APMS_MANUAL_ENABLED: "false"
+      APMS_PHOTO_ARCHIVE_ENABLED: "false"
+      SHELTER_DIRECTORY_SCHEDULE_ENABLED: "false"
+      PAWBRIDGE_SHELTER_OBSERVATIONS_SCHEDULE_ENABLED: "false"
+      TOURAPI_ENABLED: "false"
+      TOURAPI_SCHEDULE_ENABLED: "false"
+      LOST_GALLERY_FEED_ENABLED: "false"
+      PAWBRIDGE_ANIMAL_LOST_SEARCH_ENABLED: "false"
+      PAWBRIDGE_ANIMAL_CHATBOT_ENABLED: "false"
+      PAWBRIDGE_PAYMENTS_ENABLED: "false"
+      PAWBRIDGE_HOME_VIDEOS_CURATION_ENABLED: "false"
+      # 게시글 이미지 저장소. 시작할 때 값이 꼭 있어야 해서 닿지 않는 가짜 주소와 가짜 키를 둔다(업로드는 실패한다).
+      PAWBRIDGE_STORAGE_ENDPOINT: http://storage.stage.invalid
+      PAWBRIDGE_STORAGE_BUCKET: pawbridge-stage
+      PAWBRIDGE_STORAGE_PUBLIC_BASE_URL: http://storage.stage.invalid/pawbridge-stage
+      PAWBRIDGE_STORAGE_OBJECT_PREFIX: stage/
+      PAWBRIDGE_STORAGE_REGION: auto
+      PAWBRIDGE_STORAGE_ACCESS_KEY_ID: stage-not-a-key
+      PAWBRIDGE_STORAGE_SECRET_ACCESS_KEY: stage-not-a-key
+      # AI 서비스. 유사 동물 설정이 시작할 때 주소를 읽어서 닿지 않는 가짜 주소를 둔다(유사 동물은 실패한다).
+      PYTHON_AI_SERVICE_URL: http://python-ai.stage.invalid:8000
+      PYTHON_AI_SERVICE_INTERNAL_API_KEY: stage-not-a-key
+    networks:
+      private: {aliases: [monolith]}
+      edge: {}
+    ports:
+      - {host_ip: 127.0.0.1, published: "38500", target: 8080, protocol: tcp}
+      # 부하 시험 중 /actuator/prometheus를 직접 읽으려고 연다.
+      - {host_ip: 127.0.0.1, published: "38501", target: 9464, protocol: tcp}
+    tmpfs: ["/tmp/pawbridge:uid=10001,gid=10001,mode=0700,size=512m"]
+    healthcheck:
+      test: [CMD, bash, -c, "exec 3<>/dev/tcp/127.0.0.1/9464 && printf 'GET /actuator/health/liveness HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+    logging: *logging
+
+networks:
+  # DB와 Redis는 바깥으로 나가는 길이 없는 망에만 둔다.
+  private: {internal: true, name: pawbridge-stage-private}
+  # 포트 공개용. internal 망만 붙은 컨테이너는 포트를 열 수 없다.
+  edge: {name: pawbridge-stage-edge}
+
+volumes:
+  postgres-data: {name: pawbridge-stage-postgres-data}
