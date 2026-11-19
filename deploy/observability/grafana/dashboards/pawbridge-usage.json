@@ -1104,6 +1104,462 @@
     },
     {
       "id": 15,
+      "type": "stat",
+      "title": "채팅 연결표 요청",
+      "description": "POST /api/v1/chats/connection-ticket",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "채팅 연결표 429",
+      "description": "POST /api/v1/chats/connection-ticket 중 회원당 연결 한도나 발급 간격에 걸려 거절된 수",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=\"429\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "채팅 연결표 성공률",
+      "description": "POST /api/v1/chats/connection-ticket 중 2xx 비율",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=~\"2..\"}[$__range]))) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\"}[$__range]))) * 100",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "쪽지 실시간 연결 요청",
+      "description": "GET /api/v1/notes/stream",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "쪽지 실시간 연결 429",
+      "description": "GET /api/v1/notes/stream 중 회원당 연결 한도나 발급 간격에 걸려 거절된 수",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=\"429\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "쪽지 실시간 연결 성공률",
+      "description": "GET /api/v1/notes/stream 중 2xx 비율",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=~\"2..\"}[$__range]))) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\"}[$__range]))) * 100",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "interval": "15m",
+      "id": 21,
+      "type": "timeseries",
+      "title": "실시간 연결 429 추이",
+      "description": "점 하나가 15분 동안 거절된 수. 사용자가 적은데 계속 쌓이면 어느 탭이 끝없이 다시 연결하는 것이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=\"429\"}[$__interval])))",
+          "refId": "A",
+          "legendFormat": "채팅 연결표"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=\"429\"}[$__interval])))",
+          "refId": "B",
+          "legendFormat": "쪽지 실시간 연결"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 22,
       "type": "table",
       "title": "연결과 백그라운드 요청 (선택 기간)",
       "description": "화면이 스스로 보내는 요청과 내부 호출. 실시간 연결(notes/stream, chats/socket, connection-ticket), 주기 확인(chats/notifications, notes/notifications, favorite-animal-notifications), 방문 집계(visits), 토큰 갱신(auth/refresh), 실종 검색 내부 호출(/internal), 매핑 안 된 요청(UNKNOWN 등). 429 가 많으면 재연결 반복을 의심한다. 오래 여는 연결이라 지연 값은 연결 유지 시간이다.",
@@ -1113,7 +1569,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 50,
         "w": 24,
         "h": 9
       },
@@ -1357,7 +1813,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 23,
       "type": "table",
       "title": "오류 응답 (4xx, 5xx) 상태 코드별",
       "description": "401(로그인 필요), 404, 429(한도) 같은 4xx 는 대부분 정상 흐름이다. 5xx 가 서버 쪽 문제.",
@@ -1367,7 +1823,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 59,
         "w": 24,
         "h": 8
       },
@@ -1490,20 +1946,20 @@
       }
     },
     {
-      "id": 17,
+      "id": 24,
       "type": "row",
       "title": "배치 작업 (Spring Batch)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 67,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 18,
+      "id": 25,
       "type": "stat",
       "title": "배치 실패 (선택 기간)",
       "description": "",
@@ -1513,7 +1969,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 57,
+        "y": 68,
         "w": 4,
         "h": 8
       },
@@ -1569,7 +2025,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 26,
       "type": "table",
       "title": "배치 작업 실행 (선택 기간)",
       "description": "최대 시간은 Micrometer 의 최근 구간 최댓값이라 기간이 길면 정확하지 않을 수 있다.",
@@ -1579,7 +2035,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 57,
+        "y": 68,
         "w": 20,
         "h": 8
       },
@@ -1738,7 +2194,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 27,
       "type": "table",
       "title": "배치 단계 실패 (선택 기간)",
       "description": "비어 있으면 실패 없음.",
@@ -1748,7 +2204,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 65,
+        "y": 76,
         "w": 24,
         "h": 5
       },
@@ -1810,20 +2266,20 @@
       }
     },
     {
-      "id": 21,
+      "id": 28,
       "type": "row",
       "title": "예약 작업 (@Scheduled)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 81,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 22,
+      "id": 29,
       "type": "stat",
       "title": "예약 작업 실패 (선택 기간)",
       "description": "",
@@ -1833,7 +2289,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 82,
         "w": 4,
         "h": 10
       },
@@ -1889,7 +2345,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 30,
       "type": "table",
       "title": "예약 작업 실행 (선택 기간)",
       "description": "",
@@ -1899,7 +2355,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 71,
+        "y": 82,
         "w": 20,
         "h": 10
       },
@@ -2094,7 +2550,7 @@
     },
     {
       "interval": "5m",
-      "id": 24,
+      "id": 31,
       "type": "timeseries",
       "title": "예약 작업 실행 시간 (평균, 작업별)",
       "description": "",
@@ -2104,7 +2560,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 81,
+        "y": 92,
         "w": 24,
         "h": 8
       },
