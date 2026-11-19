@@ -733,8 +733,8 @@
     {
       "id": 12,
       "type": "table",
-      "title": "엔드포인트별 요청 수 (선택 기간)",
-      "description": "고른 기간의 합계. increase 기반 근사값. 헤더를 누르면 정렬, 깔때기로 거르기. p95 는 히스토그램 칸(0.05, 0.1, 0.25, 0.5, 1, 2, 5초)으로 추정해서 50ms 보다 빠르면 47.5ms 근처로 보인다. notes/stream, chats/socket 은 오래 열어 두는 연결이라 지연이 길게 나온다.",
+      "title": "기능 요청 (선택 기간)",
+      "description": "사람이 화면에서 기능을 써서 생긴 요청만 센다. 긴 연결, 주기 확인, 방문 집계, 토큰 갱신, 내부 호출은 아래 '연결과 백그라운드' 표에 있다. 요청 횟수이며 사람 수가 아니고, 검색 엔진 크롤러 같은 봇 요청도 섞인다. increase 기반 근사값. 헤더를 누르면 정렬, 깔때기로 거르기. p95 는 히스토그램 칸(0.05, 0.1, 0.25, 0.5, 1, 2, 5초)으로 추정해서 50ms 보다 빠르면 47.5ms 근처로 보인다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -751,7 +751,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range]))) > 0",
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))) > 0",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -762,7 +762,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\",status=~\"4..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range]))))",
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"4..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
           "refId": "B",
           "instant": true,
           "range": false,
@@ -773,7 +773,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\",status=~\"5..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range]))))",
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"5..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
           "refId": "C",
           "instant": true,
           "range": false,
@@ -784,7 +784,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range])))",
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])))",
           "refId": "D",
           "instant": true,
           "range": false,
@@ -795,7 +795,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_sum{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range])) / sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range]))",
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_sum{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])) / sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))",
           "refId": "E",
           "instant": true,
           "range": false,
@@ -988,8 +988,8 @@
       "interval": "15m",
       "id": 13,
       "type": "timeseries",
-      "title": "엔드포인트별 요청 수 추이 (상위 10)",
-      "description": "고른 기간 합계가 많은 10개. 점 하나가 15분 동안의 요청 수.",
+      "title": "기능 요청 수 추이 (상위 10)",
+      "description": "기능 요청 중 고른 기간 합계가 많은 10개. 점 하나가 15분 동안의 요청 수.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1006,7 +1006,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (method, uri) (round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__interval]))) and on (method, uri) topk(10, sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*\"}[$__range])))",
+          "expr": "sum by (method, uri) (round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__interval]))) and on (method, uri) topk(10, sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])))",
           "refId": "A",
           "legendFormat": "{{method}} {{uri}}"
         }
@@ -1047,8 +1047,8 @@
       "interval": "5m",
       "id": 14,
       "type": "timeseries",
-      "title": "엔드포인트별 p95 지연 (요청 많은 순 10, 오래 여는 연결 제외)",
-      "description": "notes/stream, chats/socket 처럼 오래 열어 두는 연결은 뺐다. 50ms 보다 빠르면 47.5ms 근처로 보인다(히스토그램 칸).",
+      "title": "기능 요청 p95 지연 (요청 많은 순 10)",
+      "description": "기능 요청만. 오래 열어 두는 연결(notes/stream, chats/socket)은 빠져 있다. 50ms 보다 빠르면 47.5ms 근처로 보인다(히스토그램 칸).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1065,7 +1065,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*|.*/(stream|socket)\"}[$__rate_interval]))) and on (method, uri) topk(10, sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",uri!~\"/actuator.*|.*/(stream|socket)\"}[$__range])))",
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__rate_interval]))) and on (method, uri) topk(10, sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])))",
           "refId": "A",
           "legendFormat": "{{method}} {{uri}}"
         }
@@ -1105,6 +1105,260 @@
     {
       "id": 15,
       "type": "table",
+      "title": "연결과 백그라운드 요청 (선택 기간)",
+      "description": "화면이 스스로 보내는 요청과 내부 호출. 실시간 연결(notes/stream, chats/socket, connection-ticket), 주기 확인(chats/notifications, notes/notifications, favorite-animal-notifications), 방문 집계(visits), 토큰 갱신(auth/refresh), 실종 검색 내부 호출(/internal), 매핑 안 된 요청(UNKNOWN 등). 429 가 많으면 재연결 반복을 의심한다. 오래 여는 연결이라 지연 값은 연결 유지 시간이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"4..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"5..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])))",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_sum{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])) / sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))",
+          "refId": "E",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #A",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6
+            },
+            "renameByName": {
+              "Value #A": "요청 수",
+              "Value #B": "4xx",
+              "Value #C": "5xx",
+              "Value #D": "p95",
+              "Value #E": "평균"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "요청 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "p95|평균"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "요청 수",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "type": "table",
       "title": "오류 응답 (4xx, 5xx) 상태 코드별",
       "description": "401(로그인 필요), 404, 429(한도) 같은 4xx 는 대부분 정상 흐름이다. 5xx 가 서버 쪽 문제.",
       "datasource": {
@@ -1113,7 +1367,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 48,
         "w": 24,
         "h": 8
       },
@@ -1236,20 +1490,20 @@
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "type": "row",
       "title": "배치 작업 (Spring Batch)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 47,
+        "y": 56,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 17,
+      "id": 18,
       "type": "stat",
       "title": "배치 실패 (선택 기간)",
       "description": "",
@@ -1259,7 +1513,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 57,
         "w": 4,
         "h": 8
       },
@@ -1315,7 +1569,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "type": "table",
       "title": "배치 작업 실행 (선택 기간)",
       "description": "최대 시간은 Micrometer 의 최근 구간 최댓값이라 기간이 길면 정확하지 않을 수 있다.",
@@ -1325,7 +1579,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 48,
+        "y": 57,
         "w": 20,
         "h": 8
       },
@@ -1484,7 +1738,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "type": "table",
       "title": "배치 단계 실패 (선택 기간)",
       "description": "비어 있으면 실패 없음.",
@@ -1494,7 +1748,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 65,
         "w": 24,
         "h": 5
       },
@@ -1556,20 +1810,20 @@
       }
     },
     {
-      "id": 20,
+      "id": 21,
       "type": "row",
       "title": "예약 작업 (@Scheduled)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 61,
+        "y": 70,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 21,
+      "id": 22,
       "type": "stat",
       "title": "예약 작업 실패 (선택 기간)",
       "description": "",
@@ -1579,7 +1833,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 62,
+        "y": 71,
         "w": 4,
         "h": 10
       },
@@ -1635,7 +1889,7 @@
       }
     },
     {
-      "id": 22,
+      "id": 23,
       "type": "table",
       "title": "예약 작업 실행 (선택 기간)",
       "description": "",
@@ -1645,7 +1899,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 62,
+        "y": 71,
         "w": 20,
         "h": 10
       },
@@ -1840,7 +2094,7 @@
     },
     {
       "interval": "5m",
-      "id": 23,
+      "id": 24,
       "type": "timeseries",
       "title": "예약 작업 실행 시간 (평균, 작업별)",
       "description": "",
@@ -1850,7 +2104,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 81,
         "w": 24,
         "h": 8
       },
