@@ -3,6 +3,7 @@ package com.pawbridge.backend.community.internal.chat.infrastructure
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.community.internal.chat.application.MemberChatHints
 import com.pawbridge.backend.community.internal.chat.application.MemberChatModels.Signal
+import com.pawbridge.backend.community.internal.chat.application.MemberChatStreamHints
 import com.pawbridge.backend.community.internal.chat.web.MemberChatSessions
 import java.nio.charset.StandardCharsets
 import org.slf4j.LoggerFactory
@@ -21,6 +22,7 @@ open class MemberChatSignals(
     private val sessions: MemberChatSessions,
     private val mapper: ObjectMapper,
     private val registry: SimpUserRegistry,
+    private val streams: MemberChatStreamHints,
     @Value("\${pawbridge.chat.namespace}") namespace: String,
 ) : MessageListener, MemberChatHints {
 
@@ -53,6 +55,14 @@ open class MemberChatSignals(
                 signal.roomId != null &&
                 signal.sequence >= 0
             ) {
+                // 채팅 화면 밖의 탭은 웹소켓 없이 알림 스트림으로 같은 신호를 받는다.
+                // 소켓 연결이 없는 회원에게도 보내야 하므로 아래 조회보다 먼저 보낸다.
+                try {
+                    streams.deliver(signal)
+                } catch (unavailable: RuntimeException) {
+                    // 스트림 전달 실패가 소켓 전달을 막으면 안 된다.
+                    log.warn("Chat stream signal delivery unavailable; REST reconciliation required")
+                }
                 val member = registry.getUser(signal.memberId.toString())
                 if (member == null) {
                     return

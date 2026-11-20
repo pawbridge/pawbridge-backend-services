@@ -156,6 +156,58 @@ class PrivateNoteStreamRegistryTest {
         }
     }
 
+    @Test
+    fun `수신자의 탭들과 다른 회원이 있을 때__채팅 신호를 발행하면__수신자 탭에만 chat 이벤트로 같은 페이로드를 보낸다`() {
+        // given
+        val heartbeat = mockk<ScheduledExecutorService>()
+
+        every { heartbeat.scheduleAtFixedRate(any(), any(), any(), any()) } returns null
+        every { heartbeat.shutdownNow() } returns mutableListOf()
+        every { heartbeat.awaitTermination(any(), any()) } returns true
+        Fixture(heartbeat).use { f ->
+            f.streams.open(7, f.expiry())
+            f.streams.open(7, f.expiry())
+            f.streams.open(8, f.expiry())
+            val signal = mapOf("memberId" to 7L, "kind" to "MESSAGE", "roomId" to TestFaker.uuid(), "sequence" to 3L)
+
+            // when
+            f.streams.publishChat(7, signal)
+            f.writes.runAll()
+
+            // then
+            for (index in intArrayOf(0, 1)) {
+                val frames = f.emitters[index].frames
+                assertThat(frames).hasSize(2)
+                assertThat(frames.last()).contains(signal)
+                assertThat(frames.last().filter { it is String }.map { it.toString() })
+                    .anySatisfy({ part -> assertThat(part).contains("event:chat\n") })
+            }
+            assertThat(f.emitters[2].frames).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `쓰기 큐가 가득 찼을 때__채팅 신호를 발행하면__신호만 버리고 예외를 던지지 않는다`() {
+        // given
+        val heartbeat = mockk<ScheduledExecutorService>()
+
+        every { heartbeat.scheduleAtFixedRate(any(), any(), any(), any()) } returns null
+        every { heartbeat.shutdownNow() } returns mutableListOf()
+        every { heartbeat.awaitTermination(any(), any()) } returns true
+        Fixture(heartbeat).use { f ->
+            f.streams.open(7, f.expiry())
+            f.writes.runAll()
+            f.writes.capacity = 0
+
+            // when
+            assertThatCode { f.streams.publishChat(7, mapOf("kind" to "MESSAGE")) }.doesNotThrowAnyException()
+            f.writes.runAll()
+
+            // then
+            assertThat(f.emitters[0].frames).hasSize(1)
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(strings = ["expired", "full"])
     fun `만료된 연결이거나 쓰기 큐가 가득 찼을 때__쪽지를 발행하면__기존의 제한된 최선 전달을 유지하고 늦은 전달은 없다`(
