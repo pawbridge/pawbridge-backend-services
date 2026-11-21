@@ -149,17 +149,17 @@ class AliasRemovalTest(unittest.TestCase):
 
 
 class IgnoreListTest(unittest.TestCase):
-    NOTICES = [notice("1", "장모종 믹스 추정"), notice("2", "장모종"), notice("3", "믹스 추정"), notice("4", "자궁축농증")]
+    NOTICES = [notice("1", "곰돌이상 믹스 추정"), notice("2", "곰돌이상"), notice("3", "믹스 추정"), notice("4", "자궁축농증")]
 
     def test_ignored_word_is_hidden(self):
         report = find_gaps(
             self.NOTICES,
             ENTRIES,
-            decisions(ignore=[{"word": "장모종", "decided_at": "2026-11-21"}, {"word": "믹스", "decided_at": "2026-11-21"}]),
+            decisions(ignore=[{"word": "곰돌이상", "decided_at": "2026-11-21"}, {"word": "믹스", "decided_at": "2026-11-21"}]),
             min_count=1,
         )
 
-        self.assertNotIn("장모종", candidates(report))
+        self.assertNotIn("곰돌이상", candidates(report))
         self.assertIn("자궁축농증", candidates(report))
         self.assertEqual(report.ignored_candidate_count, 1)
         self.assertNotIn("믹스", [word.word for word in report.frequent_words])
@@ -167,13 +167,13 @@ class IgnoreListTest(unittest.TestCase):
     def test_without_ignore_list_the_word_is_shown(self):
         report = find_gaps(self.NOTICES, ENTRIES, min_count=1)
 
-        self.assertIn("장모종", candidates(report))
+        self.assertIn("곰돌이상", candidates(report))
         self.assertIn("믹스", [word.word for word in report.frequent_words])
 
     def test_min_count_hides_rare_words_and_reports_how_many(self):
         report = find_gaps(self.NOTICES, ENTRIES, min_count=2)
 
-        self.assertIn("장모종", candidates(report))
+        self.assertIn("곰돌이상", candidates(report))
         self.assertNotIn("자궁축농증", candidates(report))
         self.assertEqual(report.below_min_count, 1)
 
@@ -245,10 +245,74 @@ class WordShapeTest(unittest.TestCase):
         self.assertNotIn("구내염증상", found)
         self.assertIn("방광염", found)
 
-    def test_symptom_word_without_disease_stem_stays_whole(self):
-        found = self.found_words("축농증상 보임")
+    def test_symptom_word_sharing_a_letter_with_the_disease_name(self):
+        found = self.found_words("자궁축농증", "자궁축농증상 보임")["자궁축농증"]
 
-        self.assertIn("축농증상", found)
+        self.assertEqual(found.notice_count, 2)
+        self.assertEqual(dict(found.surfaces), {"자궁축농증": 1, "자궁축농증상": 1})
+
+    def test_symptom_word_without_known_disease_name_gives_the_word_before_it(self):
+        found = self.found_words("구토증상 보임")
+
+        self.assertEqual(found["구토"].found_by, "cue")
+        self.assertNotIn("구토증", found)
+
+    def test_breed_words_are_not_candidates(self):
+        found = self.found_words("장모종", "발바리종 추정", "시고르자브르종", "혼혈종", "기타축종")
+
+        self.assertEqual(found, {})
+
+    def test_swelling_and_tumor_words_are_candidates(self):
+        found = self.found_words("지방종", "이개혈종 있음", "유선종")
+
+        self.assertEqual(set(found), {"지방종", "이개혈종", "유선종"})
+
+    def test_coat_looks_and_adoption_words_are_not_candidates(self):
+        found = self.found_words("털오염 심함", "콧수염", "귀염귀염", "기증", "신고인기증", "궁금증", "내외부구충 완료", "중증", "경증")
+
+        self.assertEqual(found, {})
+
+    def test_symptom_endings_are_candidates(self):
+        found = self.found_words("보행이상", "각막혼탁", "호흡곤란", "혈뇨", "타박상", "녹내장", "식욕저하", "피부발적")
+
+        self.assertEqual(set(found), {"보행이상", "각막혼탁", "호흡곤란", "혈뇨", "타박상", "녹내장", "식욕저하", "피부발적"})
+
+    def test_abnormal_needs_a_word_before_it(self):
+        found = self.found_words("7세이상", "이상 없음", "눈이상")
+
+        self.assertEqual(set(found), {"눈이상"})
+
+    def test_generic_word_after_alias_belongs_to_the_alias(self):
+        report = find_gaps([notice("1", "심장사상충 감염"), notice("2", "피부병(질환)"), notice("3", "피부염감염")], ENTRIES, min_count=1)
+
+        self.assertEqual(candidates(report), {})
+        self.assertEqual(report.frequent_words, ())
+
+    def test_generic_word_takes_the_word_before_it(self):
+        found = self.found_words("근육 손상", "근육손상 있음", "눈 염증", "외부 기생충")
+
+        self.assertEqual(found["근육손상"].notice_count, 2)
+        self.assertEqual(dict(found["근육손상"].surfaces), {"근육 손상": 1, "근육손상": 1})
+        self.assertIn("눈염증", found)
+        self.assertIn("외부기생충", found)
+        self.assertNotIn("손상", found)
+
+    def test_generic_word_stays_alone_after_modifier_or_joining_word(self):
+        found = self.found_words("심한 염증", "눈에 염증", "상처 및 염증", "눈꼽및 염증", "우측 염증", "불량(염증)")
+
+        self.assertEqual(set(found), {"염증"})
+        self.assertEqual(found["염증"].notice_count, 6)
+
+    def test_degree_word_written_together_is_stripped(self):
+        found = self.found_words("심한황달", "아주쇠약")
+
+        self.assertEqual(set(found), {"황달", "쇠약"})
+
+    def test_generic_word_after_candidate_belongs_to_the_candidate(self):
+        found = self.found_words("구더기증 감염", "방광염 질환")
+
+        self.assertEqual(set(found), {"구더기증", "방광염"})
+        self.assertEqual(dict(found["구더기증"].surfaces), {"구더기증 감염": 1})
 
     def test_word_before_cue_word_is_candidate(self):
         found = self.found_words("악액질 소견", "악액질소견", "악액질로 진단")["악액질"]
@@ -260,6 +324,27 @@ class WordShapeTest(unittest.TestCase):
         found = self.found_words("심장사상충 양성 치료중", "음성 판정", "수술치료 필요", "양성판정")
 
         self.assertEqual(found, {})
+
+    def test_places_treatments_and_verbs_before_cue_word_are_not_candidates(self):
+        found = self.found_words(
+            "병원 치료",
+            "외부병원 치료",
+            "항균제주사 치료",
+            "집중치료중",
+            "발견되어 수술",
+            "다쳐서 수술",
+            "검사 결과 양성",
+            "뒷다리 수술",
+            "현재 치료중",
+        )
+
+        self.assertEqual(found, {})
+
+    def test_particle_and_state_word_before_cue_word_are_stripped(self):
+        found = self.found_words("뇌진탕으로 의심", "혈전치료 및 혈전용해제 투여")
+
+        self.assertEqual(set(found), {"뇌진탕", "혈전"})
+        self.assertEqual(found["혈전"].found_by, "cue")
 
     def test_numbers_and_vaccination_are_not_candidates(self):
         found = self.found_words("5종 접종 완료", "예방접종 완료", "3종백신")
@@ -278,14 +363,14 @@ class WordShapeTest(unittest.TestCase):
         self.assertEqual(found["만성신부전"].related_words, ("신부전",))
 
     def test_frequent_words_keep_what_shape_rules_miss(self):
-        notices = [notice("1", "녹내장 있음"), notice("2", "녹내장"), notice("3", "녹내장", protected=False)]
+        notices = [notice("1", "교상 있음"), notice("2", "교상"), notice("3", "교상", protected=False)]
 
         report = find_gaps(notices, ENTRIES)
 
-        self.assertNotIn("녹내장", candidates(report))
+        self.assertNotIn("교상", candidates(report))
         frequent = {word.word: word for word in report.frequent_words}
-        self.assertEqual(frequent["녹내장"].notice_count, 3)
-        self.assertEqual(frequent["녹내장"].protected_count, 2)
+        self.assertEqual(frequent["교상"].notice_count, 3)
+        self.assertEqual(frequent["교상"].protected_count, 2)
 
 
 class OrderTest(unittest.TestCase):

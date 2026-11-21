@@ -85,7 +85,7 @@ python -m app.entrypoints.health_gap_cli --notices /path/to/notices.csv --output
 
 ```json
 {
-  "ignore": [{"word": "장모종", "decided_at": "2026-11-21"}],
+  "ignore": [{"word": "곰돌이상", "decided_at": "2026-11-21"}],
   "alias_candidates": [{"word": "피부질병", "decided_at": "2026-11-21", "entry": "skin-disease"}],
   "new_entry_candidates": [{"word": "자궁축농증", "decided_at": "2026-11-21", "note": "메모"}]
 }

@@ -26,9 +26,11 @@ from app.chatbot.health.retriever import (
 
 DEFAULT_DECISIONS_PATH = Path(__file__).resolve().parent / "gap_decisions.json"
 
-# 병명, 상태 낱말이 흔히 끝나는 꼴. 품종('장모종') 같은 낱말도 걸리므로 사람이 무시 목록으로 걸러 낸다.
+# 병명, 상태 낱말이 흔히 끝나는 꼴. 병명이 아닌 낱말도 걸리므로 사람이 무시 목록으로 걸러 낸다.
+# 운영 공고 전체(2026-11-22, 특이사항 있는 76,939건)에서 걸리는 낱말을 보고 고른 것이다.
 DISEASE_ENDINGS = (
-    "증상",
+    "타박상",
+    "녹내장",
     "결석",
     "농양",
     "궤양",
@@ -46,24 +48,193 @@ DISEASE_ENDINGS = (
     "탈출",
     "빈혈",
     "황달",
+    "혈뇨",
+    "폐렴",
+    "고름",
+    "쇼크",
+    "중독",
+    "협착",
+    "천공",
+    "저하",
+    "불능",
+    "곤란",
+    "쇠약",
+    "위축",
+    "혼탁",
+    "백탁",
+    "발적",
+    "이상",
+    # '종'으로 끝나는 낱말은 품종('장모종', '발바리종')이 훨씬 많아서 붓기와 혹을 뜻하는 꼴만 본다.
+    "부종",
+    "혈종",
+    "육종",
+    "선종",
+    "수종",
+    "기종",
+    "용종",
+    "낭종",
+    "유종",
+    "지방종",
+    "림프종",
+    "흑색종",
+    "세포종",
+    "유두종",
+    "치은종",
     "염",
     "증",
-    "종",
     "병",
     "암",
     "충",
 )
-# 끝 꼴은 맞지만 병명이 아닌 것. 접종 표기는 접종 해설이 따로 다룬다.
-NOT_DISEASE_ENDINGS = ("접종",)
+# 앞에 다른 글자가 있어야 하는 끝 꼴. 한 글자 끝 꼴도 같다('7세 이상'의 '이상'은 병명이 아니다).
+STEM_REQUIRED_ENDINGS = frozenset({"이상"})
+# 끝 꼴은 맞지만 병명이 아닌 것. 접종과 구충 표기는 예방 처치이고, 나머지는 털 상태, 외모, 입양 문구다.
+NOT_DISEASE_ENDINGS = ("접종", "구충", "보충", "오염", "수염", "귀염", "뿌염", "인기증", "궁금증", "혼혈종")
+# 끝 꼴은 맞지만 병명이 아닌 낱말(정도, 짐작, 입양 문구). '기증'을 끝 꼴로 막으면 '구더기증'까지 빠진다.
+NOT_DISEASE_WORDS = frozenset({"중증", "경증", "의증", "기증"})
+# 무엇의 병인지 앞말이 있어야 뜻이 정해지는 낱말('안구 손상'의 '손상').
+# 앞말이 별칭이면 그 별칭에 딸린 말로 보고, 앞말이 있으면 붙여서 한 후보로 센다.
+GENERIC_TAILS = frozenset(
+    {
+        "감염",
+        "감염증",
+        "질환",
+        "질병",
+        "염증",
+        "손상",
+        "장애",
+        "부종",
+        "파열",
+        "탈구",
+        "기형",
+        "궤양",
+        "통증",
+        "탈출",
+        "농양",
+        "결석",
+        "골절",
+        "종양",
+        "마비",
+        "부전",
+        "기생충",
+        "저하",
+        "불능",
+        "곤란",
+        "쇠약",
+        "위축",
+        "혼탁",
+        "백탁",
+        "발적",
+        "중독",
+        "협착",
+        "천공",
+    }
+)
+# 뜻이 정해지지 않는 낱말 앞에 와도 붙여 세지 않는 말(이음말, 정도, 방향, 때)
+NOT_QUALIFIERS = frozenset(
+    {
+        "및",
+        "또는",
+        "혹은",
+        "부위",
+        "주위",
+        "주변",
+        "약간",
+        "조금",
+        "살짝",
+        "매우",
+        "전체",
+        "일부",
+        "양쪽",
+        "안쪽",
+        "아래",
+        "아래쪽",
+        "위쪽",
+        "불량",
+        "오른쪽",
+        "왼쪽",
+        "우측",
+        "좌측",
+        "추정",
+        "의심",
+        "상태",
+        "현재",
+        "당시",
+        "입소",
+        "입소당시",
+        "구조당시",
+        "발견당시",
+    }
+)
+# 꾸미는 말이나 조사로 끝나는 앞말('심한 염증', '눈에 염증', '교통사고로 손상')은 붙여 세지 않는다.
+NOT_QUALIFIER_ENDINGS = ("한", "된", "인", "는", "은", "을", "를", "에", "의", "로", "서", "고", "며", "게", "및", "과", "와", "후", "시", "중")
+# 한 글자지만 앞말로 받는 몸 부위('눈 염증')
+ONE_LETTER_BODY_PARTS = frozenset({"눈", "귀", "코", "입", "발", "목", "배", "턱", "혀", "폐", "간"})
 # 병명 뒤에 붙여 쓰는 조사
 PARTICLES = ("으로", "에서", "이며", "이고", "이나", "이", "가", "은", "는", "을", "를", "과", "와", "도", "의", "에", "로", "등")
 # 병명 가까이에 오는 말. '악액질 소견'처럼 끝 꼴 규칙에 안 걸리는 병명을 이 말의 앞 낱말로 잡는다.
-CUE_WORDS = ("의심됨", "치료중", "진단", "의심", "소견", "증상", "치료", "수술", "양성", "확진", "판정")
+CUE_WORDS = ("의심됨", "치료중", "진단", "의심", "의증", "소견", "증상", "치료", "수술", "양성", "확진", "판정")
 # 병명 뒤에 붙여 쓰는 상태 표현. 떼어 내기만 하고 병명의 단서로 쓰지는 않는다.
 STATE_WORDS = ("있으며", "있음", "있슴", "있는", "있고", "있어", "심함", "추정", "보임", "같음", "발견", "관찰", "환자")
 TRAILING_WORDS = tuple(sorted(set(PARTICLES + CUE_WORDS + STATE_WORDS), key=len, reverse=True))
-# 단서 말 앞에 와도 병명이 아닌 것. 단서 말끼리 이어 쓴 것('양성 치료중', '수술 소견')과 검사 결과 말이다.
-NOT_CUE_NAMES = frozenset(TRAILING_WORDS) | {"음성"}
+# 단서 말 앞에 와도 병명이 아닌 것. 단서 말끼리 이어 쓴 것('양성 판정', '수술 소견'), 검사 결과 말,
+# 그리고 운영 공고에서 단서 말 앞에 자주 왔지만 병명이 아니었던 말(곳, 때, 사람, 몸 부위, 처치, 뜻이 넓은 말)이다.
+NOT_CUE_NAMES = frozenset(TRAILING_WORDS) | {
+    "음성",
+    "집중",
+    "약물",
+    "안약",
+    "항균제",
+    "열심히",
+    "입원후",
+    "검사",
+    "결과",
+    "키트",
+    "병원",
+    "수의사",
+    "신고자",
+    "신고자분",
+    "상태",
+    "증세",
+    "이상",
+    "현재",
+    "즉시",
+    "응급",
+    "긴급",
+    "입소",
+    "입원",
+    "이송",
+    "인해",
+    "인한",
+    "심해",
+    "고양",
+    "바이러스",
+    "피부",
+    "다리",
+    "앞다리",
+    "뒷다리",
+    "복부",
+    "안구",
+    "고관절",
+}
+# 풀이말, 처치, 곳으로 끝나는 낱말('발견되어 수술', '항균제주사 치료', '외부병원 치료')은 병명이 아니다.
+NOT_CUE_NAME_ENDINGS = (
+    "되어",
+    "하여",
+    "해서",
+    "쳐서",
+    "다쳐",
+    "어서",
+    "으며",
+    "으나",
+    "는걸",
+    "보임",
+    "이송",
+    "구조",
+    "주사",
+    "병원",
+    "주위",
+)
 MAX_STRIPS = 3
 MIN_WORD_LENGTH = 2
 
@@ -74,7 +245,12 @@ HANGUL_WORD = re.compile(r"[가-힣]+")
 CUE_NAME = re.compile(r"[a-z가-힣]+")
 HAS_HANGUL = re.compile(r"[가-힣]")
 # '자궁 축농증', '자궁(축농증'처럼 한 낱말을 띄거나 괄호로 나눠 쓴 사이
-JOIN_GAP = re.compile(r"[ \t(\[]{1,3}")
+JOIN_GAP_CHARACTERS = " \t(["
+MAX_JOIN_GAP = 3
+JOIN_GAP = re.compile(f"[{re.escape(JOIN_GAP_CHARACTERS)}]{{1,{MAX_JOIN_GAP}}}")
+# 낱말 앞에 붙여 쓴 이음말과 정도 표현('및염증', '심한황달')
+LEADING_WORDS = ("및", "심한", "아주")
+SYMPTOM_WORD = "증상"
 
 SIMILAR_ALIAS_CUTOFF = 0.7
 MAX_SIMILAR_ALIASES = 3
@@ -201,6 +377,8 @@ class _Token:
     word: str
     # 다음 낱말과 띄어쓰기나 괄호로만 떨어져 있는지
     joins_next: bool
+    # 바로 앞이 별칭을 지운 자리인지('허피스 감염'의 '감염')
+    follows_alias: bool
 
 
 @dataclass
@@ -315,19 +493,34 @@ def find_gaps(
         while index < len(tokens):
             token = tokens[index]
             following = tokens[index + 1] if token.joins_next and index + 1 < len(tokens) else None
-            found = _reduce(token.word)
+            found = _reduce(token.word, known_names)
+            is_generic = found is not None and found[0] in GENERIC_TAILS
+            if is_generic and token.follows_alias:
+                # '허피스 감염'의 '감염'은 앞 별칭에 딸린 말이다. 후보로도 나머지 낱말로도 세지 않는다.
+                index += 1
+                continue
+            following_generic = _generic_tail(following.word) if following else None
             end = token.end
             consumed = 1
             if not found and following:
-                joined = _reduce(token.word + following.word)
+                joined = _reduce(token.word + following.word, known_names)
                 if joined and joined[0] in known_names:
                     found = joined
                     end = following.end
                     consumed = 2
+            if (not found or is_generic) and following_generic and _is_qualifier(token.word):
+                # '근육 손상', '기생충 감염'은 붙여서 한 후보로 센다.
+                found = (token.word + following_generic, "shape")
+                end = following.end
+                consumed = 2
             if not found and following and following.word.startswith(CUE_WORDS):
-                name = _strip_particles(token.word)
+                name = _strip_trailing_words(token.word)
                 if _is_cue_name(name):
                     found = (name, "cue")
+            if found and consumed == 1 and not is_generic and following_generic:
+                # '구더기증 감염'의 '감염'은 앞 후보에 딸린 말이다.
+                end = following.end
+                consumed = 2
             if found:
                 name, found_by = found
                 if name not in counted_names:
@@ -538,11 +731,24 @@ def _tokenize(masked: str) -> list[_Token]:
         if index + 1 < len(found):
             gap = masked[current.end():found[index + 1].start()]
             joins_next = JOIN_GAP.fullmatch(gap) is not None
-        tokens.append(_Token(current.start(), current.end(), current.group(), joins_next))
+        start = current.start()
+        word = current.group()
+        for leading in LEADING_WORDS:
+            if word.startswith(leading) and len(word) - len(leading) >= MIN_WORD_LENGTH:
+                start += len(leading)
+                word = word[len(leading):]
+                break
+        tokens.append(_Token(start, current.end(), word, joins_next, _follows_alias(masked, current.start())))
     return tokens
 
 
-def _reduce(word: str) -> tuple[str, str] | None:
+def _follows_alias(masked: str, start: int) -> bool:
+    """낱말 바로 앞(붙여 썼거나 띄어쓰기, 괄호만 사이에 둠)이 별칭을 지운 자리인지."""
+    before = masked[max(0, start - MAX_JOIN_GAP - 1):start]
+    return before.rstrip(JOIN_GAP_CHARACTERS).endswith(MASK)
+
+
+def _reduce(word: str, known_names: frozenset[str] | set[str] = frozenset()) -> tuple[str, str] | None:
     """낱말에서 조사와 상태 표현을 떼어 후보 이름을 만든다. 후보가 아니면 None.
 
     '자궁축농증의심' → 자궁축농증(끝 꼴), '악액질소견' → 악액질(단서 말 앞).
@@ -562,16 +768,49 @@ def _reduce(word: str) -> tuple[str, str] | None:
     for form in reversed(forms):
         if _is_disease_shaped(form):
             return form, "shape"
+    for form in forms:
+        # '자궁축농증상'은 '증'을 한 번만 쓴 '자궁축농증 증상'이다. 다른 곳에 '자궁축농증'이 한 낱말로 나올 때만 그렇게 읽는다.
+        if form.endswith(SYMPTOM_WORD) and form[:-1] in known_names:
+            return form[:-1], "shape"
     if stripped_cue and _is_cue_name(forms[-1]):
         return forms[-1], "cue"
     return None
+
+
+def _generic_tail(word: str) -> str | None:
+    """낱말이 '손상', '감염'처럼 앞말이 있어야 뜻이 정해지는 낱말이면 그 낱말."""
+    reduced = _reduce(word)
+    if reduced and reduced[0] in GENERIC_TAILS:
+        return reduced[0]
+    return None
+
+
+def _is_qualifier(word: str) -> bool:
+    """뜻이 정해지지 않는 낱말 앞에 붙여 한 후보로 셀 수 있는 앞말인지('근육' + '손상')."""
+    if not HANGUL_WORD.fullmatch(word) or word in NOT_QUALIFIERS:
+        return False
+    if len(word) < MIN_WORD_LENGTH:
+        return word in ONE_LETTER_BODY_PARTS
+    return not word.endswith(NOT_QUALIFIER_ENDINGS)
 
 
 def _is_cue_name(name: str) -> bool:
     """단서 말 앞 낱말을 후보 이름으로 쓸 수 있는지."""
     if len(name) < MIN_WORD_LENGTH or not CUE_NAME.fullmatch(name):
         return False
+    if name.endswith(NOT_CUE_NAME_ENDINGS):
+        return False
     return name not in NOT_CUE_NAMES
+
+
+def _strip_trailing_words(word: str) -> str:
+    """낱말 끝의 조사와 상태 표현을 뗄 수 있는 만큼 뗀다('교통사고로보임' → 교통사고)."""
+    for _ in range(MAX_STRIPS):
+        ending = _trailing_word(word)
+        if ending is None:
+            break
+        word = word[:-len(ending)]
+    return word
 
 
 def _trailing_word(word: str) -> str | None:
@@ -593,11 +832,10 @@ def _is_disease_shaped(word: str) -> bool:
     # '3종 접종' 같은 숫자 낱말은 병명이 아니다.
     if len(word) < MIN_WORD_LENGTH or not HANGUL_WORD.fullmatch(word):
         return False
-    if word.endswith(NOT_DISEASE_ENDINGS):
+    if word in NOT_DISEASE_WORDS or word.endswith(NOT_DISEASE_ENDINGS):
         return False
     for ending in DISEASE_ENDINGS:
-        # 한 글자 끝 꼴과 '증상'은 앞에 다른 글자가 있어야 한다.
-        needs_stem = len(ending) == 1 or ending == "증상"
+        needs_stem = len(ending) == 1 or ending in STEM_REQUIRED_ENDINGS
         if word.endswith(ending) and (len(word) > len(ending) or not needs_stem):
             return True
     return False
