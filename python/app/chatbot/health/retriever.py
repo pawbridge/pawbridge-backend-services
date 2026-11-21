@@ -43,6 +43,20 @@ class _Hit:
 
 
 @dataclass(frozen=True)
+class NoticeAliasMatch:
+    """공고 글에서 별칭을 찾은 한 자리와 그 자리에 붙는 해설. 자리는 normalize_text를 거친 글 기준이다."""
+
+    start: int
+    end: int
+    alias: str
+    context: str | None
+    # 이 동물의 종에 붙는 해설 id
+    entry_ids: tuple[str, ...]
+    # 종을 가리지 않으면 붙는 해설 id. entry_ids가 비었는데 여기에 있으면 그 종의 해설만 없는 자리다.
+    any_species_entry_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class HealthMatch:
     entry: HealthEntry
     score: float
@@ -228,8 +242,35 @@ class RuleHealthRetriever:
                         blocked.add(entry.id)
         return blocked
 
+    def notice_alias_matches(self, notice_text: str | None, species: str | None) -> list[NoticeAliasMatch]:
+        """공고 글에서 별칭을 찾은 자리마다, search가 공고를 근거로 붙이는 해설을 돌려준다.
+
+        search는 해설을 최대 3개만 돌려주고 어느 자리에서 찾았는지 알려 주지 않는다.
+        해설 빈틈 찾기 도구가 해설이 붙지 않는 자리를 보려고 쓴다. 조회만 하고 검색 결과에는 영향을 주지 않는다.
+        """
+        wanted_species = normalize_species(species)
+        matches = []
+        for hit in self._locate(normalize_text(notice_text)):
+            chosen = self._choose_entries(hit.alias, hit.context, wanted_species, allow_positive_fallback=False)
+            chosen_any_species = self._choose_entries(hit.alias, hit.context, None, allow_positive_fallback=False)
+            matches.append(
+                NoticeAliasMatch(
+                    start=hit.start,
+                    end=hit.end,
+                    alias=hit.alias,
+                    context=hit.context,
+                    entry_ids=tuple(entry.id for entry in chosen),
+                    any_species_entry_ids=tuple(entry.id for entry in chosen_any_species),
+                )
+            )
+        return matches
+
     def _find(self, text: str) -> list[tuple[str, str | None]]:
-        """글 속의 별칭과 그 자리의 문맥을 앞에서부터 순서대로 돌려준다. 이미 찾은 자리는 다시 쓰지 않는다."""
+        """글 속의 별칭과 그 자리의 문맥을 앞에서부터 순서대로 돌려준다."""
+        return [(hit.alias, hit.context) for hit in self._locate(text)]
+
+    def _locate(self, text: str) -> list[_Hit]:
+        """글 속의 별칭 자리와 문맥을 앞에서부터 순서대로 돌려준다. 이미 찾은 자리는 다시 쓰지 않는다."""
         hits: list[_Hit] = []
         taken = [False] * len(text)
         for phrase in self._excludes:
@@ -252,7 +293,7 @@ class RuleHealthRetriever:
             limit = hits[index + 1].start if index + 1 < len(hits) else None
             hit.context = detect_context(text, hit.start, hit.end, limit)
         _inherit_list_context(text, hits, self._test_aliases)
-        return [(hit.alias, hit.context) for hit in hits]
+        return hits
 
     def _same_topic_in_notice(self, alias: str, notice_hits: list[tuple[str, str | None]]) -> tuple[bool, str | None]:
         """질문의 별칭과 같은 해설을 가리키는 공고 별칭이 있는지, 있으면 그 문맥은 무엇인지."""

@@ -13,12 +13,13 @@ PawBridge 백엔드(`backend-app`)가 내부 API로 부르는 Python 서비스 �
 | `app.entrypoints.photo_api:app` | APMS 사진 압축(`POST /internal/photos/optimize`), [계약](PHOTO_SERVICE.md) | 컨테이너 `pawbridge-prod-photo` |
 | `app.entrypoints.embedding_api:app` | 건강 해설 하이브리드 검색의 질문, 해설 벡터(`POST /embed`, bge-m3). 챗봇의 `EMBEDDING_SERVICE_URL`이 가리킨다 | Mac 네이티브 프로세스(launchd `kr.pawbridge.embedding`, MPS, 루프백 18900). [런북](deploy/macos/EMBEDDING.md) |
 | `app.entrypoints.gallery_cli` | 스냅샷과 로컬 사진으로 갤러리를 수동 생성하는 명령줄 도구 | 필요할 때만 수동 실행 |
+| `app.entrypoints.health_gap_cli` | 공고 특이사항에서 건강 해설이 없는 병명과 상태 후보를 뽑는 명령줄 도구 | 필요할 때만 수동 실행 |
 
 모든 내부 API는 `X-Internal-Api-Key`를 확인한다. 임베딩 서비스만 예외로, 루프백에서만 받고 키를 확인하지 않는다(공개된 해설 문장과 질문의 벡터만 계산하고 저장하지 않는다).
 
 ```
 app/
-├── entrypoints/        # 실행 진입점: chatbot_api, vision_api, photo_api, gallery_cli
+├── entrypoints/        # 실행 진입점: chatbot_api, vision_api, photo_api, gallery_cli, health_gap_cli
 ├── chatbot/            # 챗봇 경로(router)와 Gemini, OpenAI, Claude, stub 제공자, 프롬프트
 ├── lost_search/        # 실종 사진 검색 경로(router)와 순위(service)
 ├── recommendation/     # 유사 동물 추천 경로(router)와 순위(service)
@@ -68,6 +69,26 @@ export LOST_SEARCH_INDEX=animals-lost-dinov3-sam3-gallery-v1
 python -m app.entrypoints.gallery_cli --manifest /path/to/snapshot.json \
   --photo-root /path/to/photos --state-dir /path/to/gallery-state
 # 결과를 확인한 뒤 실제로 작성·공개할 때만 --apply를 붙인다.
+```
+
+## 건강 해설 빈틈 찾기 (`app.entrypoints.health_gap_cli`)
+
+공고 특이사항에 적혀 있는데 해설이 붙지 않는 병명과 상태를 보호중 동물 수 순으로 뽑는다. 챗봇과 같은 규칙 검색기로 판정하고, 모델 호출, 네트워크, DB 접속이 없다. 해설과 별칭은 고치지 않는다. 결과는 사람이 보고 정하는 후보 목록이다.
+
+입력은 미리 내보낸 CSV(머리글 `id,species,status,special_mark`)다. 내보낸 파일과 결과는 저장소 밖에 둔다.
+
+```bash
+python -m app.entrypoints.health_gap_cli --notices /path/to/notices.csv --output /path/to/gaps.md
+```
+
+후보를 보고 정한 것은 `app/chatbot/health/gap_decisions.json`에 적는다. `ignore`(병명이 아닌 낱말)는 다음 실행부터 빠지고, `alias_candidates`(기존 해설의 별칭 후보)와 `new_entry_candidates`(새 해설 후보)는 "이미 정한 것"으로 따로 나온다.
+
+```json
+{
+  "ignore": [{"word": "곰돌이상", "decided_at": "2026-11-21"}],
+  "alias_candidates": [{"word": "피부질병", "decided_at": "2026-11-21", "entry": "skin-disease"}],
+  "new_entry_candidates": [{"word": "자궁축농증", "decided_at": "2026-11-21", "note": "메모"}]
+}
 ```
 
 ## 로컬 시험
