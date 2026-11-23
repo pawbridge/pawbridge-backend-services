@@ -101,7 +101,7 @@ class JdbcAnimalDiscovery : AnimalDiscovery {
                 conditions.where.add("a.birth_year>=:minBirthYear")
                 conditions.parameters.addValue("minBirthYear", year - request.maxAge)
             }
-            address(conditions, "region", request.region)
+            region(conditions, request.region)
             address(conditions, "city", request.city)
             if (breed != null) {
                 addBreed(conditions, breed)
@@ -260,6 +260,91 @@ class JdbcAnimalDiscovery : AnimalDiscovery {
         // Java String.trim(): strips every leading/trailing char <= U+0020 (Kotlin trim() uses Character.isWhitespace).
         private fun javaTrim(value: String): String = value.trim { it <= ' ' }
 
+        /**
+         * 시도 이름마다 찾을 보호소 주소.
+         * APMS 보호소 주소는 같은 시도라도 지금 이름, 옛 이름(강원도, 전라북도), 줄인 이름(충남),
+         * 2026-07-01 출범한 전남광주통합특별시 이름이 섞여 와서 시도 이름 하나로는 다 찾지 못한다.
+         */
+        private class RegionAddresses(
+            // 주소 어디에든 들어 있으면 맞다. 지역 이름 하나만 찾던 기존 방식과 같다.
+            val contained: List<String>,
+            // 주소가 이것으로 시작하면 맞다.
+            val prefixes: List<String>,
+            // 위에서 맞아도 주소가 이것으로 시작하면 뺀다.
+            val excludedPrefixes: List<String> = listOf(),
+        )
+
+        private const val UNIFIED_JEONNAM_GWANGJU = "전남광주통합특별시"
+
+        // 전남광주통합특별시 주소 가운데 옛 광주광역시에 속하는 구. 나머지 시군은 옛 전라남도다.
+        private val GWANGJU_DISTRICTS: List<String> = listOf(
+            "$UNIFIED_JEONNAM_GWANGJU 동구",
+            "$UNIFIED_JEONNAM_GWANGJU 서구",
+            "$UNIFIED_JEONNAM_GWANGJU 남구",
+            "$UNIFIED_JEONNAM_GWANGJU 북구",
+            "$UNIFIED_JEONNAM_GWANGJU 광산구",
+        )
+
+        private val REGION_ADDRESSES: Map<String, RegionAddresses> = mapOf(
+            "서울특별시" to RegionAddresses(listOf("서울특별시"), listOf("서울 ")),
+            "부산광역시" to RegionAddresses(listOf("부산광역시"), listOf("부산 ")),
+            "대구광역시" to RegionAddresses(listOf("대구광역시"), listOf("대구 ")),
+            "인천광역시" to RegionAddresses(listOf("인천광역시"), listOf("인천 ")),
+            "광주광역시" to RegionAddresses(listOf("광주광역시"), listOf("광주 ") + GWANGJU_DISTRICTS),
+            "대전광역시" to RegionAddresses(listOf("대전광역시"), listOf("대전 ")),
+            "울산광역시" to RegionAddresses(listOf("울산광역시"), listOf("울산 ")),
+            "세종특별자치시" to RegionAddresses(listOf("세종특별자치시"), listOf("세종 ", "세종시 ")),
+            "경기도" to RegionAddresses(listOf("경기도"), listOf("경기 ")),
+            "강원특별자치도" to RegionAddresses(listOf("강원특별자치도", "강원도"), listOf("강원 ")),
+            "충청북도" to RegionAddresses(listOf("충청북도"), listOf("충북 ")),
+            "충청남도" to RegionAddresses(listOf("충청남도"), listOf("충남 ")),
+            "전북특별자치도" to RegionAddresses(listOf("전북특별자치도", "전라북도"), listOf("전북 ")),
+            "전라남도" to RegionAddresses(
+                listOf("전라남도"),
+                listOf("전남 ", "$UNIFIED_JEONNAM_GWANGJU "),
+                GWANGJU_DISTRICTS,
+            ),
+            UNIFIED_JEONNAM_GWANGJU to RegionAddresses(
+                listOf(UNIFIED_JEONNAM_GWANGJU, "광주광역시", "전라남도"),
+                listOf("광주 ", "전남 "),
+            ),
+            "경상북도" to RegionAddresses(listOf("경상북도"), listOf("경북 ")),
+            "경상남도" to RegionAddresses(listOf("경상남도"), listOf("경남 ")),
+            "제주특별자치도" to RegionAddresses(listOf("제주특별자치도"), listOf("제주 ", "제주도 ")),
+        )
+
+        /** 표에 있는 시도 이름이면 그 시도의 여러 주소 표기를 모두 찾고, 아니면 예전처럼 주소에 든 글자로 찾는다. */
+        private fun region(conditions: Conditions, value: String?) {
+            val normalized = text(value) ?: return
+            val addresses = REGION_ADDRESSES[normalized]
+            if (addresses == null) {
+                address(conditions, "region", value)
+                return
+            }
+            val matches = ArrayList<String>()
+            addresses.contained.forEachIndexed { index, word ->
+                val key = "regionContained$index"
+                matches.add("lower(s.address) LIKE :$key ESCAPE '!'")
+                conditions.parameters.addValue(key, like(word))
+            }
+            addresses.prefixes.forEachIndexed { index, prefix ->
+                val key = "regionPrefix$index"
+                matches.add("lower(s.address) LIKE :$key ESCAPE '!'")
+                conditions.parameters.addValue(key, startsWith(prefix))
+            }
+            var condition = "(" + matches.joinToString(" OR ") + ")"
+            if (addresses.excludedPrefixes.isNotEmpty()) {
+                val excluded = ArrayList<String>()
+                addresses.excludedPrefixes.forEachIndexed { index, prefix ->
+                    val key = "regionExcluded$index"
+                    excluded.add("lower(s.address) LIKE :$key ESCAPE '!'")
+                    conditions.parameters.addValue(key, startsWith(prefix))
+                }
+                condition += " AND NOT (" + excluded.joinToString(" OR ") + ")"
+            }
+            conditions.where.add("($condition)")
+        }
+
         private fun address(conditions: Conditions, name: String, value: String?) {
             val normalized = text(value) ?: return
             val terms = terms(normalized)
@@ -296,7 +381,15 @@ class JdbcAnimalDiscovery : AnimalDiscovery {
         }
 
         private fun like(value: String): String {
-            return "%" + value.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+            return "%" + escapeLike(value) + "%"
+        }
+
+        private fun startsWith(value: String): String {
+            return escapeLike(value) + "%"
+        }
+
+        private fun escapeLike(value: String): String {
+            return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
         }
 
         private fun validatePage(pageable: PageRequest) {
