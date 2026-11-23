@@ -1,0 +1,2642 @@
+{
+  "uid": "pawbridge-usage",
+  "title": "PawBridge 사용량과 작업",
+  "description": "기능별, 엔드포인트별 요청 수와 배치, 예약 작업. 숫자는 요청 횟수이고 사람 수가 아니다.",
+  "tags": [
+    "pawbridge",
+    "usage"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Monolith",
+      "type": "link",
+      "url": "/d/pawbridge-monolith",
+      "icon": "dashboard",
+      "keepTime": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "uri",
+        "label": "uri",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\"}, uri)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery",
+          "qryType": 1
+        },
+        "definition": "label_values(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\"}, uri)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "sort": 1,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "method",
+        "label": "method",
+        "type": "custom",
+        "query": "OPTIONS 제외 : GET|POST|PUT|PATCH|DELETE|HEAD,모두 : .+",
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "OPTIONS 제외",
+          "value": "GET|POST|PUT|PATCH|DELETE|HEAD"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "OPTIONS 제외",
+            "value": "GET|POST|PUT|PATCH|DELETE|HEAD"
+          },
+          {
+            "selected": false,
+            "text": "모두",
+            "value": ".+"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "기능별 사용량 (선택 기간 합계, 요청 횟수이며 사람 수 아님)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "동물 목록 조회",
+      "description": "GET /api/v1/animals",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/animals\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "동물 상세 조회",
+      "description": "GET /api/v1/animals/{id}",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/animals/{id}\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "유사 동물 조회",
+      "description": "GET /api/v1/animals/{id}/similar",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/animals/{id}/similar\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "챗봇 질문",
+      "description": "POST /api/v1/animals/{animalId}/chat/messages. 한도 거절(429)과 다른 4xx 도 들어 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/animals/{animalId}/chat/messages\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "챗봇 한도 거절(429)",
+      "description": "POST /api/v1/animals/{animalId}/chat/messages status=\"429\". 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/animals/{animalId}/chat/messages\",status=\"429\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "실종 후보 검색",
+      "description": "POST /api/v1/animals/lost-candidates. 검색 한도 필터가 먼저 거절한 요청(429, 503)은 여기 안 잡히고 UNKNOWN 으로 잡힌다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/animals/lost-candidates\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "보호소 상세 조회",
+      "description": "GET /api/v1/shelters/{id}",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/shelters/{id}\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "방문 집계 호출",
+      "description": "POST /api/v1/visits/today. 봇에게 돌려준 응답(204)도 들어 있다. 사람 수는 관리자 방문 통계를 본다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/visits/today\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "interval": "15m",
+      "id": 10,
+      "type": "timeseries",
+      "title": "기능별 요청 수 추이",
+      "description": "점 하나가 15분(기간이 길면 더 넓은 구간) 동안의 요청 수.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/animals\"}[$__interval])))",
+          "refId": "A",
+          "legendFormat": "동물 목록 조회"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/animals/{id}\"}[$__interval])))",
+          "refId": "B",
+          "legendFormat": "동물 상세 조회"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/animals/{id}/similar\"}[$__interval])))",
+          "refId": "C",
+          "legendFormat": "유사 동물 조회"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/animals/{animalId}/chat/messages\"}[$__interval])))",
+          "refId": "D",
+          "legendFormat": "챗봇 질문"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/animals/{animalId}/chat/messages\",status=\"429\"}[$__interval])))",
+          "refId": "E",
+          "legendFormat": "챗봇 한도 거절(429)"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/animals/lost-candidates\"}[$__interval])))",
+          "refId": "F",
+          "legendFormat": "실종 후보 검색"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/shelters/{id}\"}[$__interval])))",
+          "refId": "G",
+          "legendFormat": "보호소 상세 조회"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/visits/today\"}[$__interval])))",
+          "refId": "H",
+          "legendFormat": "방문 집계 호출"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "엔드포인트 (위쪽 uri, method 변수로 거름)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "기능 요청 (선택 기간)",
+      "description": "화면을 열거나 기능을 써서 생긴 요청이다. 페이지를 열 때 자동으로 부르는 요청(users/me 등)도 들어 있다. 긴 연결, 주기 확인, 방문 집계, 토큰 갱신, 내부 호출은 아래 '연결과 백그라운드' 표에 있다. 요청 횟수이며 사람 수가 아니고, 검색 엔진 크롤러 같은 봇 요청도 섞인다. increase 기반 근사값. 헤더를 누르면 정렬, 깔때기로 거르기. p95 는 히스토그램 칸(0.05, 0.1, 0.25, 0.5, 1, 2, 5초)으로 추정해서 50ms 보다 빠르면 47.5ms 근처로 보인다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"4..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"5..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])))",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_sum{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])) / sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))",
+          "refId": "E",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #A",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6
+            },
+            "renameByName": {
+              "Value #A": "요청 수",
+              "Value #B": "4xx",
+              "Value #C": "5xx",
+              "Value #D": "p95",
+              "Value #E": "평균"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "요청 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "p95|평균"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "요청 수",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "interval": "15m",
+      "id": 13,
+      "type": "timeseries",
+      "title": "기능 요청 수 추이 (상위 10)",
+      "description": "기능 요청 중 고른 기간 합계가 많은 10개. 점 하나가 15분 동안의 요청 수.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri) (round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__interval]))) and on (method, uri) topk(10, sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range] @ end())))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "interval": "5m",
+      "id": 14,
+      "type": "timeseries",
+      "title": "기능 요청 p95 지연 (요청 많은 순 10)",
+      "description": "기능 요청만. 오래 열어 두는 연결(notes/stream, chats/socket)은 빠져 있다. 50ms 보다 빠르면 47.5ms 근처로 보인다(히스토그램 칸).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__rate_interval]))) and on (method, uri) topk(10, sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri!~\"/actuator.*|/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range] @ end())))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "채팅 연결표 요청",
+      "description": "POST /api/v1/chats/connection-ticket",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "채팅 연결표 429",
+      "description": "POST /api/v1/chats/connection-ticket 중 2초 발급 간격에 걸려 거절된 수. 연결 한도(회원당 3개, 전체 300개)는 웹소켓 연결 단계에서 거절되어 여기와 성공률에 보이지 않는다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=\"429\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "채팅 연결표 성공률",
+      "description": "POST /api/v1/chats/connection-ticket 중 2xx 비율. 연결표 발급 기준이라 웹소켓 연결 단계의 거절은 보이지 않는다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=~\"2..\"}[$__range]))) or vector(0)) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\"}[$__range]))) * 100) or (vector(0) / 0)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "noValue": "요청 없음",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "text": "요청 없음",
+                  "color": "text",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "쪽지 실시간 연결 요청",
+      "description": "GET /api/v1/notes/stream",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "쪽지 실시간 연결 429",
+      "description": "GET /api/v1/notes/stream 중 연결 한도(회원당 3개, 교체 대기 3개, 전체 500개)에 걸려 거절된 수. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=\"429\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "쪽지 실시간 연결 성공률",
+      "description": "GET /api/v1/notes/stream 중 2xx 비율. 성공한 연결은 최대 5분 동안 열려 있고 거절된 탭은 다시 시도할 때마다 한 건씩 쌓여서, 탭 수가 아니라 시도 수 기준 비율이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 39,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=~\"2..\"}[$__range]))) or vector(0)) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\"}[$__range]))) * 100) or (vector(0) / 0)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "noValue": "요청 없음",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "text": "요청 없음",
+                  "color": "text",
+                  "index": 0
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "interval": "15m",
+      "id": 21,
+      "type": "timeseries",
+      "title": "실시간 연결 429 추이",
+      "description": "점 하나가 15분 동안 거절된 수. 사용자가 적은데 계속 쌓이면 어느 탭이 끝없이 다시 연결하는 것이다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=\"429\"}[$__interval])))",
+          "refId": "A",
+          "legendFormat": "채팅 연결표"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=\"429\"}[$__interval])))",
+          "refId": "B",
+          "legendFormat": "쪽지 실시간 연결"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 22,
+      "type": "table",
+      "title": "연결과 백그라운드 요청 (선택 기간)",
+      "description": "화면이 스스로 보내는 요청과 내부 호출. 실시간 연결(notes/stream, chats/socket, connection-ticket), 주기 확인(chats/notifications, notes/notifications, favorite-animal-notifications), 방문 집계(visits), 토큰 갱신(auth/refresh), 실종 검색 내부 호출(/internal), 매핑 안 된 요청(UNKNOWN 등). 429 가 많으면 재연결 반복을 의심한다. notes/stream 은 p95 가 히스토그램 마지막 칸인 5초에 묶이므로 평균으로 연결 유지 시간을 본다. chats/socket 의 값은 유지 시간이 아닐 수 있다. 보안 단계에서 막힌 요청(401, 403)과 실종 검색 한도 거절은 UNKNOWN 으로 잡힌다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"4..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\",status=~\"5..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])))",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_sum{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range])) / sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",method!=\"OPTIONS\",uri=~\"/internal/.*|/api/v1/chats/(connection-ticket|socket|notifications)|/api/v1/notes/(stream|notifications)|/api/v1/visits/.*|/api/v1/users/me/favorite-animal-notifications|/api/v1/auth/refresh|UNKNOWN|REDIRECTION|/[*][*]|/error\"}[$__range]))",
+          "refId": "E",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #A",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6
+            },
+            "renameByName": {
+              "Value #A": "요청 수",
+              "Value #B": "4xx",
+              "Value #C": "5xx",
+              "Value #D": "p95",
+              "Value #E": "평균"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "요청 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "p95|평균"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "요청 수",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "type": "table",
+      "title": "오류 응답 (4xx, 5xx) 상태 코드별",
+      "description": "401(로그인 필요), 404, 429(한도) 같은 4xx 는 대부분 정상 흐름이다. 5xx 가 서버 쪽 문제. 보안 단계에서 막힌 401, 403 은 엔드포인트 대신 UNKNOWN 으로 보인다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri, status, exception) (round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri=~\"$uri\",method=~\"$method\",status=~\"[45]..\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "status": 2,
+              "exception": 3,
+              "Value": 4
+            },
+            "renameByName": {
+              "Value": "횟수",
+              "exception": "예외"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "횟수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "5..",
+                      "result": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "4..",
+                      "result": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "횟수",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "배치 작업 (Spring Batch)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 25,
+      "type": "stat",
+      "title": "배치 실패 (선택 기간)",
+      "description": "FAILED 로 끝난 실행만 센다. PARTIAL, QUOTA 같은 부분 결과는 오른쪽 표에서 본다. 실행 중 재시작으로 끊긴 작업은 지표에 남지 않는다. DB 배치 기록에서 APMS 는 다음 실행 때 FAILED 로 바뀌고, 다른 작업은 STARTED 로 남을 수 있다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 4,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(spring_batch_job_seconds_count{job=\"pawbridge-monolith\",spring_batch_job_status=\"FAILED\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 26,
+      "type": "table",
+      "title": "배치 작업 실행 (선택 기간)",
+      "description": "최대 시간은 Micrometer 의 최근 구간 최댓값이라 기간이 길면 정확하지 않을 수 있다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 68,
+        "w": 20,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (spring_batch_job_name, spring_batch_job_status) (round(increase(spring_batch_job_seconds_count{job=\"pawbridge-monolith\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (spring_batch_job_name, spring_batch_job_status) (rate(spring_batch_job_seconds_sum{job=\"pawbridge-monolith\"}[$__range])) / sum by (spring_batch_job_name, spring_batch_job_status) (rate(spring_batch_job_seconds_count{job=\"pawbridge-monolith\"}[$__range]))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (spring_batch_job_name, spring_batch_job_status) (max_over_time(spring_batch_job_seconds_max{job=\"pawbridge-monolith\"}[$__range]))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #A",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "spring_batch_job_name": "작업",
+              "spring_batch_job_status": "결과",
+              "Value #A": "실행 수",
+              "Value #B": "평균 시간",
+              "Value #C": "최대 시간"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실행 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*시간"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "결과"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "PARTIAL": {
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "QUOTA": {
+                        "color": "orange",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": []
+      }
+    },
+    {
+      "id": 27,
+      "type": "table",
+      "title": "배치 단계 실패 (선택 기간)",
+      "description": "단계 지표는 APMS 수집(apmsAnimalSyncJob)에서만 나온다. 다른 작업은 단계 지표가 없어서, 비어 있어도 실패가 없다는 뜻이 아니다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 24,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (spring_batch_step_job_name, spring_batch_step_name, error) (round(increase(spring_batch_step_seconds_count{job=\"pawbridge-monolith\",spring_batch_step_status=\"FAILED\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "spring_batch_step_job_name": "작업",
+              "spring_batch_step_name": "단계",
+              "error": "예외",
+              "Value": "실패 수"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": []
+      }
+    },
+    {
+      "id": 28,
+      "type": "row",
+      "title": "예약 작업 (@Scheduled)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 81,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 29,
+      "type": "stat",
+      "title": "예약 작업 실패 (선택 기간)",
+      "description": "@Scheduled 작업만 센다. APMS 수집은 직접 예약해서 여기 없고 위 배치 구역에서 본다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 82,
+        "w": 4,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(round(increase(tasks_scheduled_execution_seconds_count{job=\"pawbridge-monolith\",outcome!=\"SUCCESS\"}[$__range])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 30,
+      "type": "table",
+      "title": "예약 작업 실행 (선택 기간)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 82,
+        "w": 20,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (code_namespace, code_function, outcome) (round(increase(tasks_scheduled_execution_seconds_count{job=\"pawbridge-monolith\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (code_namespace, code_function, outcome) (rate(tasks_scheduled_execution_seconds_sum{job=\"pawbridge-monolith\"}[$__range])) / sum by (code_namespace, code_function, outcome) (rate(tasks_scheduled_execution_seconds_count{job=\"pawbridge-monolith\"}[$__range]))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (code_namespace, code_function, outcome) (max_over_time(tasks_scheduled_execution_seconds_max{job=\"pawbridge-monolith\"}[$__range]))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #A",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "code_namespace": "클래스",
+              "code_function": "메서드",
+              "outcome": "결과",
+              "Value #A": "실행 수",
+              "Value #B": "평균 시간",
+              "Value #C": "최대 시간"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실행 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*시간"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "클래스"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 520
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "^com\\.pawbridge\\.backend\\.(.*)$",
+                      "result": {
+                        "text": "$1",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "결과"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "SUCCESS": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "^(?!SUCCESS).*",
+                      "result": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "실행 수",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "interval": "5m",
+      "id": 31,
+      "type": "timeseries",
+      "title": "예약 작업 실행 시간 (평균, 작업별)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 92,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(sum by (code_namespace, code_function) (rate(tasks_scheduled_execution_seconds_sum{job=\"pawbridge-monolith\"}[$__rate_interval])) / sum by (code_namespace, code_function) (rate(tasks_scheduled_execution_seconds_count{job=\"pawbridge-monolith\"}[$__rate_interval])), \"cls\", \"$1\", \"code_namespace\", \".*\\\\.([^.]+\\\\.[^.]+)$\")",
+          "refId": "A",
+          "legendFormat": "{{cls}}.{{code_function}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}
