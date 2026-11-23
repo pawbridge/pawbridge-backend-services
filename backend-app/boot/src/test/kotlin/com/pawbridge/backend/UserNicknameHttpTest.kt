@@ -111,8 +111,8 @@ class UserNicknameHttpTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["가1", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcd"])
-    fun `두 글자 또는 서른 글자 닉네임이 주어졌을 때__바꾸면__원문을 그대로 전달한다`(nickname: String) {
+    @ValueSource(strings = ["가1", "굉장히사랑스러운기니피그9999"])
+    fun `두 글자 또는 열여섯 글자 닉네임이 주어졌을 때__바꾸면__원문을 그대로 전달한다`(nickname: String) {
         // given
         justRun { change.change(any(), any()) }
 
@@ -252,7 +252,7 @@ class UserNicknameHttpTest {
 
     companion object {
         private const val REQUIRED = "닉네임은 필수입니다."
-        private const val SIZE = "닉네임은 2~30자여야 합니다."
+        private const val SIZE = "닉네임은 2~16자여야 합니다."
         private const val PATTERN =
             "닉네임은 한글, 영문, 숫자를 사용할 수 있으며 띄워쓰기가 불가능합니다. 한글 또는 영문을 최소 1자 포함해야 합니다."
 
@@ -263,7 +263,7 @@ class UserNicknameHttpTest {
                 Arguments.of("{\"nickname\":null}", listOf(REQUIRED)),
                 Arguments.of("{\"nickname\":\"\"}", listOf(REQUIRED, SIZE, PATTERN)),
                 Arguments.of("{\"nickname\":\"A\"}", listOf(SIZE)),
-                Arguments.of("{\"nickname\":\"" + "A".repeat(31) + "\"}", listOf(SIZE)),
+                Arguments.of("{\"nickname\":\"" + "A".repeat(17) + "\"}", listOf(SIZE)),
                 Arguments.of("{\"nickname\":\"닉 이름\"}", listOf(PATTERN)),
                 Arguments.of("{\"nickname\":\"닉😀\"}", listOf(PATTERN)),
                 Arguments.of("{\"nickname\":42}", listOf(PATTERN)),
