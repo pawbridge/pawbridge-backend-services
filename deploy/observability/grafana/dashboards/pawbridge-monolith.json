@@ -23,7 +23,8 @@
       "title": "사용량과 작업",
       "type": "link",
       "url": "/d/pawbridge-usage",
-      "icon": "dashboard"
+      "icon": "dashboard",
+      "keepTime": true
     }
   ],
   "templating": {
@@ -745,7 +746,7 @@
       "id": 26,
       "type": "table",
       "title": "엔드포인트별 요청 수 (선택 기간)",
-      "description": "오른쪽 위에서 고른 기간 동안의 합계. 브라우저 사전 요청(OPTIONS)과 /actuator 는 뺐다. increase 기반이라 근사값이다. p95 는 히스토그램 칸으로 추정해서 50ms 보다 빠르면 47.5ms 근처로 보인다. 자세한 분석은 'PawBridge 사용량과 작업' 대시보드.",
+      "description": "오른쪽 위에서 고른 기간 동안의 합계. 브라우저 사전 요청(OPTIONS)과 /actuator 는 뺐다. increase 기반이라 근사값이다. p95 는 히스토그램 칸으로 추정해서 50ms 보다 빠르면 47.5ms 근처로 보인다. 자세한 분석은 'PawBridge 사용량과 작업' 대시보드. 오래 여는 연결(notes/stream, chats/socket)도 들어 있어서 그 줄의 p95 는 5초에 묶이고 평균이 유지 시간에 가깝다. 보안 단계에서 막힌 요청은 UNKNOWN 으로 보인다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
