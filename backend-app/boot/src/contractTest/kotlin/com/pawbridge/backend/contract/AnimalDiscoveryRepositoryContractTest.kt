@@ -91,6 +91,37 @@ class AnimalDiscoveryRepositoryContractTest : AnimalRepositoryContractBase() {
     }
 
     @Test
+    fun `보호소 주소가 옛 이름, 줄인 이름, 통합 이름으로 섞여 있을 때__시도로 검색하면__그 시도의 보호소 동물을 모두 준다`() {
+        // given
+        seedShelter(3, address = "전남광주통합특별시 북구 본촌동")
+        seedShelter(4, address = "전남광주통합특별시 여수시 소라면")
+        seedShelter(5, address = "전라남도 나주시 금천면")
+        seedShelter(6, address = "강원도 춘천시 신북읍")
+        seedShelter(7, address = "충남 청양군 청양읍")
+        seedShelter(8, address = "전라북도 전주시 덕진구")
+        seedShelter(9, address = "경기도 광주시 오포읍")
+        seedShelter(10, address = "광주광역시 남구 송하동")
+        for (shelter in 1L..10L) {
+            seedAnimal(100 + shelter, shelter)
+        }
+
+        // when
+        fun byRegion(region: String, city: String? = null) = ids(discovery.search(search(region = region, city = city), page())).sorted()
+
+        // then
+        assertThat(byRegion("광주광역시")).`as`("광주의 구로 시작하는 통합 주소와 옛 주소, 경기도 광주시는 아님").isEqualTo(listOf(103L, 110L))
+        assertThat(byRegion("전라남도")).`as`("광주의 구가 아닌 통합 주소와 옛 주소").isEqualTo(listOf(104L, 105L))
+        assertThat(byRegion("전남광주통합특별시")).isEqualTo(listOf(103L, 104L, 105L, 110L))
+        assertThat(byRegion("강원특별자치도")).isEqualTo(listOf(106L))
+        assertThat(byRegion("충청남도")).isEqualTo(listOf(107L))
+        assertThat(byRegion("전북특별자치도")).isEqualTo(listOf(108L))
+        assertThat(byRegion("경기도")).isEqualTo(listOf(109L))
+        assertThat(byRegion("광주광역시", city = "북구")).isEqualTo(listOf(103L))
+        assertThat(byRegion("서울특별시")).isEqualTo(listOf(101L))
+        assertThat(byRegion("부산광역시")).isEqualTo(listOf(102L))
+    }
+
+    @Test
     fun `공고 번호를 줄 때__검색하면__상태 제한 없이 그 번호의 동물을 준다`() {
         // given
         seedAnimal(10, 1, status = "ADOPTED", noticeNo = "NO-ADOPTED")
