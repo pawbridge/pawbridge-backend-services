@@ -290,7 +290,7 @@
       "id": 5,
       "type": "stat",
       "title": "챗봇 질문",
-      "description": "POST /api/v1/animals/{animalId}/chat/messages 한도 거절(429)과 다른 4xx 도 들어 있다.",
+      "description": "POST /api/v1/animals/{animalId}/chat/messages. 한도 거절(429)과 다른 4xx 도 들어 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -352,7 +352,7 @@
       "id": 6,
       "type": "stat",
       "title": "챗봇 한도 거절(429)",
-      "description": "POST /api/v1/animals/{animalId}/chat/messages status=\"429\"",
+      "description": "POST /api/v1/animals/{animalId}/chat/messages status=\"429\". 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -414,7 +414,7 @@
       "id": 7,
       "type": "stat",
       "title": "실종 후보 검색",
-      "description": "POST /api/v1/animals/lost-candidates 검색 한도 필터가 먼저 거절한 요청(429, 503)은 여기 안 잡히고 UNKNOWN 으로 잡힌다.",
+      "description": "POST /api/v1/animals/lost-candidates. 검색 한도 필터가 먼저 거절한 요청(429, 503)은 여기 안 잡히고 UNKNOWN 으로 잡힌다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -538,7 +538,7 @@
       "id": 9,
       "type": "stat",
       "title": "방문 집계 호출",
-      "description": "POST /api/v1/visits/today 봇에게 돌려준 응답(204)도 들어 있다. 사람 수는 관리자 방문 통계를 본다.",
+      "description": "POST /api/v1/visits/today. 봇에게 돌려준 응답(204)도 들어 있다. 사람 수는 관리자 방문 통계를 본다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1169,7 +1169,7 @@
       "id": 16,
       "type": "stat",
       "title": "채팅 연결표 429",
-      "description": "POST /api/v1/chats/connection-ticket 중 2초 발급 간격에 걸려 거절된 수. 회원당 연결 한도(3개)는 웹소켓 연결 단계에서 거절되어 여기와 성공률에 보이지 않는다.",
+      "description": "POST /api/v1/chats/connection-ticket 중 2초 발급 간격에 걸려 거절된 수. 연결 한도(회원당 3개, 전체 300개)는 웹소켓 연결 단계에서 거절되어 여기와 성공률에 보이지 않는다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1231,7 +1231,7 @@
       "id": 17,
       "type": "stat",
       "title": "채팅 연결표 성공률",
-      "description": "POST /api/v1/chats/connection-ticket 중 2xx 비율 연결표 발급 기준이라 웹소켓 연결 단계의 거절은 보이지 않는다.",
+      "description": "POST /api/v1/chats/connection-ticket 중 2xx 비율. 연결표 발급 기준이라 웹소켓 연결 단계의 거절은 보이지 않는다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1248,7 +1248,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=~\"2..\"}[$__range]))) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\"}[$__range]))) * 100) or (vector(0) / 0)",
+          "expr": "((sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\",status=~\"2..\"}[$__range]))) or vector(0)) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"POST\",uri=\"/api/v1/chats/connection-ticket\"}[$__range]))) * 100) or (vector(0) / 0)",
           "refId": "A",
           "instant": true,
           "range": false
@@ -1376,7 +1376,7 @@
       "id": 19,
       "type": "stat",
       "title": "쪽지 실시간 연결 429",
-      "description": "GET /api/v1/notes/stream 중 연결 한도(회원당 3개, 교체 대기 3개, 전체 500개)에 걸려 거절된 수",
+      "description": "GET /api/v1/notes/stream 중 연결 한도(회원당 3개, 교체 대기 3개, 전체 500개)에 걸려 거절된 수. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1438,7 +1438,7 @@
       "id": 20,
       "type": "stat",
       "title": "쪽지 실시간 연결 성공률",
-      "description": "GET /api/v1/notes/stream 중 2xx 비율 성공한 연결은 최대 5분 동안 열려 있고 거절된 탭은 다시 시도할 때마다 한 건씩 쌓여서, 탭 수가 아니라 시도 수 기준 비율이다.",
+      "description": "GET /api/v1/notes/stream 중 2xx 비율. 성공한 연결은 최대 5분 동안 열려 있고 거절된 탭은 다시 시도할 때마다 한 건씩 쌓여서, 탭 수가 아니라 시도 수 기준 비율이다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1455,7 +1455,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=~\"2..\"}[$__range]))) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\"}[$__range]))) * 100) or (vector(0) / 0)",
+          "expr": "((sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\",status=~\"2..\"}[$__range]))) or vector(0)) / sum(round(increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",method=\"GET\",uri=\"/api/v1/notes/stream\"}[$__range]))) * 100) or (vector(0) / 0)",
           "refId": "A",
           "instant": true,
           "range": false
@@ -1843,7 +1843,7 @@
       "id": 23,
       "type": "table",
       "title": "오류 응답 (4xx, 5xx) 상태 코드별",
-      "description": "401(로그인 필요), 404, 429(한도) 같은 4xx 는 대부분 정상 흐름이다. 5xx 가 서버 쪽 문제. 보안 단계에서 막힌 401, 403 은 엔드포인트 대신 UNKNOWN 으로 보인다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 한 건은 increase 계산에서 빠질 수 있다.",
+      "description": "401(로그인 필요), 404, 429(한도) 같은 4xx 는 대부분 정상 흐름이다. 5xx 가 서버 쪽 문제. 보안 단계에서 막힌 401, 403 은 엔드포인트 대신 UNKNOWN 으로 보인다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1989,7 +1989,7 @@
       "id": 25,
       "type": "stat",
       "title": "배치 실패 (선택 기간)",
-      "description": "FAILED 로 끝난 실행만 센다. PARTIAL, QUOTA 같은 부분 결과는 오른쪽 표에서 본다. 실행 중 재시작으로 끊긴 작업은 지표에 남지 않고 DB 배치 기록에만 FAILED 로 남는다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 한 건은 increase 계산에서 빠질 수 있다.",
+      "description": "FAILED 로 끝난 실행만 센다. PARTIAL, QUOTA 같은 부분 결과는 오른쪽 표에서 본다. 실행 중 재시작으로 끊긴 작업은 지표에 남지 않는다. DB 배치 기록에서 APMS 는 다음 실행 때 FAILED 로 바뀌고, 다른 작업은 STARTED 로 남을 수 있다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2055,7 +2055,7 @@
       "id": 26,
       "type": "table",
       "title": "배치 작업 실행 (선택 기간)",
-      "description": "최대 시간은 Micrometer 의 최근 구간 최댓값이라 기간이 길면 정확하지 않을 수 있다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 한 건은 increase 계산에서 빠질 수 있다.",
+      "description": "최대 시간은 Micrometer 의 최근 구간 최댓값이라 기간이 길면 정확하지 않을 수 있다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2228,7 +2228,7 @@
       "id": 27,
       "type": "table",
       "title": "배치 단계 실패 (선택 기간)",
-      "description": "단계 지표는 APMS 수집(apmsAnimalSyncJob)에서만 나온다. 다른 작업은 단계 지표가 없어서, 비어 있어도 실패가 없다는 뜻이 아니다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 한 건은 increase 계산에서 빠질 수 있다.",
+      "description": "단계 지표는 APMS 수집(apmsAnimalSyncJob)에서만 나온다. 다른 작업은 단계 지표가 없어서, 비어 있어도 실패가 없다는 뜻이 아니다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2313,7 +2313,7 @@
       "id": 29,
       "type": "stat",
       "title": "예약 작업 실패 (선택 기간)",
-      "description": "@Scheduled 작업만 센다. APMS 수집은 직접 예약해서 여기 없고 위 배치 구역에서 본다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 한 건은 increase 계산에서 빠질 수 있다.",
+      "description": "@Scheduled 작업만 센다. APMS 수집은 직접 예약해서 여기 없고 위 배치 구역에서 본다. 프로세스가 뜬 뒤 처음 생긴 조합의 첫 기록(보통 1건)은 increase 계산에서 빠질 수 있다.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
