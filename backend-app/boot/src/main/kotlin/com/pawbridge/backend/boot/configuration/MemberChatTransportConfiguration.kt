@@ -3,12 +3,14 @@ package com.pawbridge.backend.boot.configuration
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.pawbridge.backend.boot.javaIsBlank
 import com.pawbridge.backend.community.internal.chat.application.MemberChat
+import com.pawbridge.backend.community.internal.chat.application.MemberChatStreamHints
 import com.pawbridge.backend.community.internal.chat.infrastructure.MemberChatSignals
 import com.pawbridge.backend.community.internal.chat.infrastructure.MemberChatTickets
 import com.pawbridge.backend.community.internal.chat.web.MemberChatController
 import com.pawbridge.backend.community.internal.chat.web.MemberChatExceptionHandler
 import com.pawbridge.backend.community.internal.chat.web.MemberChatSessions
 import com.pawbridge.backend.community.internal.chat.web.MemberChatSocketController
+import com.pawbridge.backend.community.internal.note.web.PrivateNoteStreamRegistry
 import io.lettuce.core.ClientOptions
 import io.lettuce.core.SocketOptions
 import java.time.Clock
@@ -87,6 +89,12 @@ class MemberChatTransportConfiguration {
         return MemberChatSessions(redis, chat, clock, namespace)
     }
 
+    // 채팅은 쪽지 패키지를 직접 참조하지 않는다. 쪽지 알림 스트림과는 여기서만 잇는다.
+    @Bean
+    fun memberChatStreamHints(streams: PrivateNoteStreamRegistry): MemberChatStreamHints {
+        return MemberChatStreamHints { signal -> streams.publishChat(signal.memberId, signal) }
+    }
+
     @Bean
     fun memberChatSignals(
         @Qualifier("memberChatRedis") redis: StringRedisTemplate,
@@ -94,9 +102,10 @@ class MemberChatTransportConfiguration {
         sessions: MemberChatSessions,
         mapper: ObjectMapper,
         users: SimpUserRegistry,
+        streams: MemberChatStreamHints,
         @Value("\${pawbridge.chat.namespace}") namespace: String,
     ): MemberChatSignals {
-        return MemberChatSignals(redis, messaging, sessions, mapper, users, namespace)
+        return MemberChatSignals(redis, messaging, sessions, mapper, users, streams, namespace)
     }
 
     @Bean

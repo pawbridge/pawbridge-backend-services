@@ -259,7 +259,7 @@ User 내부 `UserProfileQuery.require(id)`가 같은 reader의 3초 read-only �
 
 ## F13 본인 닉네임 수정
 
-`PUT /api/v1/users/me/nickname`은 기존 검증된 JWT principal의 본인만 대상으로 JSON nickname을 처리한다. 실제 요청 DTO의 NotBlank·길이2~30·한글/영문을 최소 하나 포함하는 한글/영문/숫자 패턴을 유지하고 trim·대소문자 정규화·새 회원 정책은 추가하지 않는다. `ChangeUserNickname`의 실제 Spring proxy가 기존 `writeTransactionManager` 한 트랜잭션 안에서 현재 nickname 조회→원문 동일값이면 중복 조회·UPDATE·auditing 생략→DB lower 중복 조회→nickname/updated_at 두 열 갱신을 수행한다. 성공은 동일값도 HTTP/code200·`닉네임이 변경되었습니다.`·data:null이다. 회원 부재400·사전 중복409를 유지한다. 원본의 managed save 이후 UNIQUE 경합23505는 메서드 catch 밖 commit에서 실패하며, 후보도 JDBC UPDATE에서 발생한 실제 DB 경합을 일괄409로 바꾸지 않고 안전한500으로 표현한다. 구조화된 User schema·23514·rollback charset 제약 metadata만 고정400으로 표현한다. 후보의 좁은 UPDATE는 원본 전체행 flush와 달리 동시 변경된 role/비밀번호를 덮지 않는다. 새 pool·환경 설정·잠금·version·retry·Outbox·S3 호출은 없다. 로컬 시험과 JAR 빌드는 운영 배포나 실제 운영 DB 권한 변경의 근거가 아니며, 이 후보는 미배포 상태다.
+`PUT /api/v1/users/me/nickname`은 기존 검증된 JWT principal의 본인만 대상으로 JSON nickname을 처리한다. 실제 요청 DTO의 NotBlank·길이2~16·한글/영문을 최소 하나 포함하는 한글/영문/숫자 패턴을 유지하고 trim·대소문자 정규화·새 회원 정책은 추가하지 않는다. `ChangeUserNickname`의 실제 Spring proxy가 기존 `writeTransactionManager` 한 트랜잭션 안에서 현재 nickname 조회→원문 동일값이면 중복 조회·UPDATE·auditing 생략→DB lower 중복 조회→nickname/updated_at 두 열 갱신을 수행한다. 성공은 동일값도 HTTP/code200·`닉네임이 변경되었습니다.`·data:null이다. 회원 부재400·사전 중복409를 유지한다. 원본의 managed save 이후 UNIQUE 경합23505는 메서드 catch 밖 commit에서 실패하며, 후보도 JDBC UPDATE에서 발생한 실제 DB 경합을 일괄409로 바꾸지 않고 안전한500으로 표현한다. 구조화된 User schema·23514·rollback charset 제약 metadata만 고정400으로 표현한다. 후보의 좁은 UPDATE는 원본 전체행 flush와 달리 동시 변경된 role/비밀번호를 덮지 않는다. 새 pool·환경 설정·잠금·version·retry·Outbox·S3 호출은 없다. 로컬 시험과 JAR 빌드는 운영 배포나 실제 운영 DB 권한 변경의 근거가 아니며, 이 후보는 미배포 상태다.
 
 ## F14 본인 찜 여부 조회
 
@@ -441,7 +441,7 @@ ADMIN GET `/api/v1/admin/users/stats/daily-signups?startDate=YYYY-MM-DD&endDate=
 
 ## 관리자 회원 수정
 
-ADMIN PUT `/api/v1/admin/users/{userId}`는 기존 writer의 한 TX에서 회원을 `FOR UPDATE`로 읽고, 보호소 승인 필요 조건 → 닉네임 중복 → 변경 순서를 유지한다. 관리자 전용 nullable 닉네임 Pattern(2~10자 영문·숫자·한글), 세 역할과 careRegNo의 원문 제약을 보존한다. 같은 raw 닉네임은 중복 조회를 하지 않고, 실제 dirty가 있을 때만 감사시각과 UPDATE를 수행한다. 선행 중복은409, SQL unique 경합과 commit 실패는500이며 새로운 retry나 역할 승격 정책을 추가하지 않는다. 기존 writer/TM·TT15를 재사용하고 무제한 대기까지 원문과 같다고 주장하지 않는다.
+ADMIN PUT `/api/v1/admin/users/{userId}`는 기존 writer의 한 TX에서 회원을 `FOR UPDATE`로 읽고, 보호소 승인 필요 조건 → 닉네임 중복 → 변경 순서를 유지한다. 관리자 전용 nullable 닉네임 Pattern(2~16자 영문·숫자·한글), 세 역할과 careRegNo의 원문 제약을 보존한다. 같은 raw 닉네임은 중복 조회를 하지 않고, 실제 dirty가 있을 때만 감사시각과 UPDATE를 수행한다. 선행 중복은409, SQL unique 경합과 commit 실패는500이며 새로운 retry나 역할 승격 정책을 추가하지 않는다. 기존 writer/TM·TT15를 재사용하고 무제한 대기까지 원문과 같다고 주장하지 않는다.
 
 ## 방문 식별·집계와 관리자 기간 통계
 

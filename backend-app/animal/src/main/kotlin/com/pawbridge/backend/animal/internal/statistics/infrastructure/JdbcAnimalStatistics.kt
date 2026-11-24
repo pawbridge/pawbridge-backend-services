@@ -106,9 +106,11 @@ class JdbcAnimalStatistics : AnimalStatistics {
                 if (address == null || isBlank(address)) {
                     continue
                 }
-                val rawRegion = address.split(" ")[0]
+                val words = address.split(" ")
+                val rawRegion = words[0]
+                val district = words.getOrNull(1)
                 // Map.merge rejects a null value with NullPointerException; `!!` keeps that.
-                regions.merge(normalizeRegion(rawRegion), shelter.count!!) { left, right -> left + right }
+                regions.merge(normalizeRegion(rawRegion, district), shelter.count!!) { left, right -> left + right }
             }
             regions.entries
                 .sortedByDescending { entry -> entry.value }
@@ -179,9 +181,16 @@ class JdbcAnimalStatistics : AnimalStatistics {
             return MapSqlParameterSource("startDate", start).addValue("endDate", end)
         }
 
+        // 전남광주통합특별시 주소에서 옛 광주광역시에 속하는 구. 나머지 시군은 옛 전라남도로 센다.
+        private val GWANGJU_DISTRICTS: Set<String> = setOf("동구", "서구", "남구", "북구", "광산구")
+
         /** Preserve original first-token/contains mapping and its precedence, including unknown tokens. */
-        private fun normalizeRegion(rawRegion: String?): String {
+        private fun normalizeRegion(rawRegion: String?, district: String?): String {
             if (rawRegion == null) return "기타"
+            // 2026-07-01 광주광역시와 전라남도가 전남광주통합특별시로 합쳐졌다. 통계 지도는 옛 두 지역으로 나눠 보여 주므로 구 이름으로 가른다.
+            if (rawRegion == "전남광주통합특별시") {
+                return if (district in GWANGJU_DISTRICTS) "광주" else "전남"
+            }
             if (rawRegion.contains("서울")) return "서울"
             if (rawRegion.contains("부산")) return "부산"
             if (rawRegion.contains("대구")) return "대구"

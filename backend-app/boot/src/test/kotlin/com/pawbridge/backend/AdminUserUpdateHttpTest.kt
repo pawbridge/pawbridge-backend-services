@@ -103,7 +103,24 @@ class AdminUserUpdateHttpTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["", " ", "x", "12345678901", "emoji🐾"])
+    @ValueSource(strings = ["가1", "굉장히사랑스러운기니피그9999"])
+    fun `두 글자 또는 열여섯 글자 닉네임__관리자가 수정하면__원문을 그대로 전달한다`(nickname: String) {
+        // given
+        justRun { members.update(any(), any()) }
+        val json = ObjectMapper().writeValueAsString(mapOf("nickname" to nickname))
+
+        // when
+        val result = mvc.perform(put(PATH + 8).header("Authorization", admin()).contentType("application/json").content(json))
+
+        // then
+        result.andExpect(status().isOk())
+        verify(exactly = 1) { members.update(8, Changes(nickname, null, null)) }
+        confirmVerified(members)
+        cleared()
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["", " ", "x", "12345678901234567", "emoji🐾"])
     fun `관리자 전용 패턴을 벗어난 닉네임__검증하면__업무 처리 전에 원래 400을 돌려준다`(
         nickname: String,
     ) {
@@ -118,7 +135,7 @@ class AdminUserUpdateHttpTest {
             .andExpect(status().isBadRequest())
             .andExpect(
                 content().json(
-                    "{\"code\":400,\"message\":\"nickname: 닉네임은 2~10자의 영문, 숫자, 한글만 가능합니다.\",\"data\":null}",
+                    "{\"code\":400,\"message\":\"nickname: 닉네임은 2~16자의 영문, 숫자, 한글만 가능합니다.\",\"data\":null}",
                     JsonCompareMode.STRICT,
                 ),
             )

@@ -207,6 +207,16 @@ class PrivateNoteStreamRegistry internal constructor(
         }
     }
 
+    // 채팅 신호는 본문이 없다. 쪽지 알림과 같은 연결, 같은 한도, 같은 최선 전달을 쓴다.
+    fun publishChat(
+        memberId: Long,
+        signal: Any,
+    ) {
+        memberConnections(memberId).forEach { registration ->
+            enqueue { send(registration, "chat", signal) }
+        }
+    }
+
     // Public (package-private in Java) so the same-package Java test can drive it.
     fun heartbeat() {
         for (registration in allConnections()) {
