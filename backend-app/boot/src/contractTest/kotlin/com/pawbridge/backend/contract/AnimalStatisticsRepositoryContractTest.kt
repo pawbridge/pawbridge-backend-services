@@ -84,6 +84,24 @@ class AnimalStatisticsRepositoryContractTest : AnimalRepositoryContractBase() {
     }
 
     @Test
+    fun `보호소 주소가 전남광주통합특별시일 때__지역별로 읽으면__광주의 구는 광주로, 나머지 시군은 전남으로 센다`() {
+        // given
+        seedShelter(6, address = "전남광주통합특별시 북구 본촌동")
+        seedShelter(7, address = "전남광주통합특별시 여수시 소라면")
+        seedShelter(8, address = "전라남도 나주시 금천면")
+        seedAnimal(20, 6)
+        seedAnimal(21, 7)
+        seedAnimal(22, 8)
+        seedAnimal(23, 8)
+
+        // when
+        val regions = statistics.regional(null, null)
+
+        // then
+        assertThat(regions.map { it.region to it.count }).isEqualTo(listOf("전남" to 3L, "광주" to 1L))
+    }
+
+    @Test
     fun `서울 날짜 경계의 등록 시각일 때__일별 등록을 읽으면__아홉 시간을 더한 날짜로 묶는다`() {
         // given
         seedAnimal(10, 1, createdAt = "2026-03-08 14:59:59")

@@ -18,7 +18,15 @@
   "annotations": {
     "list": []
   },
-  "links": [],
+  "links": [
+    {
+      "title": "사용량과 작업",
+      "type": "link",
+      "url": "/d/pawbridge-usage",
+      "icon": "dashboard",
+      "keepTime": true
+    }
+  ],
   "templating": {
     "list": [
       {
@@ -735,13 +743,267 @@
       }
     },
     {
+      "id": 26,
+      "type": "table",
+      "title": "엔드포인트별 요청 수 (선택 기간)",
+      "description": "오른쪽 위에서 고른 기간 동안의 합계. 브라우저 사전 요청(OPTIONS)과 /actuator 는 뺐다. increase 기반이라 근사값이다. p95 는 히스토그램 칸으로 추정해서 50ms 보다 빠르면 47.5ms 근처로 보인다. 자세한 분석은 'PawBridge 사용량과 작업' 대시보드. 오래 여는 연결(notes/stream, chats/socket)도 들어 있어서 그 줄의 p95 는 5초에 묶이고 평균이 유지 시간에 가깝다. 보안 단계에서 막힌 요청은 UNKNOWN 으로 보인다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\"}[$__range]))) > 0",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\",status=~\"4..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\"}[$__range]))))",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "round(sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\",status=~\"5..\"}[$__range])) or (0 * sum by (method, uri) (increase(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\"}[$__range]))))",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\"}[$__range])))",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_sum{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\"}[$__range])) / sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pawbridge-monolith\",uri!~\"/actuator.*\",method!=\"OPTIONS\"}[$__range]))",
+          "refId": "E",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #A",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6
+            },
+            "renameByName": {
+              "Value #A": "요청 수",
+              "Value #B": "4xx",
+              "Value #C": "5xx",
+              "Value #D": "p95",
+              "Value #E": "평균"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "요청 수"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "p95|평균"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "요청 수",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
       "id": 13,
       "type": "row",
       "title": "JVM",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 32,
         "w": 24,
         "h": 1
       },
@@ -758,7 +1020,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 33,
         "w": 12,
         "h": 8
       },
@@ -835,7 +1097,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 33,
         "w": 12,
         "h": 8
       },
@@ -931,7 +1193,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -1015,7 +1277,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 31,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -1069,7 +1331,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 49,
         "w": 24,
         "h": 1
       },
@@ -1086,7 +1348,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 50,
         "w": 12,
         "h": 8
       },
@@ -1172,7 +1434,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 50,
         "w": 12,
         "h": 8
       },
@@ -1256,7 +1518,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 58,
         "w": 12,
         "h": 8
       },
@@ -1333,7 +1595,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 48,
+        "y": 58,
         "w": 12,
         "h": 8
       },
@@ -1413,7 +1675,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 66,
         "w": 24,
         "h": 1
       },
@@ -1429,7 +1691,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 57,
+        "y": 67,
         "w": 24,
         "h": 6
       },
@@ -1481,7 +1743,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 63,
+        "y": 73,
         "w": 24,
         "h": 14
       },
