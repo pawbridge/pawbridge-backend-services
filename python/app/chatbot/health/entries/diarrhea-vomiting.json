@@ -17,7 +17,10 @@
       "diarrhea",
       "vomiting"
     ],
-    "context": "any"
+    "context": "any",
+    "exclude": [
+      "건설사"
+    ]
   },
   "summary": [
     {

@@ -18,9 +18,13 @@
       "이어마이트",
       "이어 마이트",
       "귀 진드기",
-      "ear mite"
+      "ear mite",
+      "외이도염"
     ],
-    "context": "any"
+    "context": "any",
+    "exclude": [
+      "귀지마을"
+    ]
   },
   "summary": [
     {

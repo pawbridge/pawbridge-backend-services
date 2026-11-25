@@ -20,7 +20,10 @@
       "다리부상",
       "안면 부상"
     ],
-    "context": "any"
+    "context": "any",
+    "exclude": [
+      "보부상"
+    ]
   },
   "summary": [
     {
