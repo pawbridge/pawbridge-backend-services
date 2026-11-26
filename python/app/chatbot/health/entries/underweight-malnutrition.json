@@ -31,7 +31,10 @@
       "영양상태가 불량",
       "영양상태가 부족"
     ],
-    "context": "any"
+    "context": "any",
+    "exclude": [
+      "매화마름"
+    ]
   },
   "summary": [
     {
