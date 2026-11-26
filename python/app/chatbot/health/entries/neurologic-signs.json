@@ -18,9 +18,14 @@
       "선회",
       "간질",
       "ataxia",
-      "seizure"
+      "seizure",
+      "신경이상",
+      "신경 이상"
     ],
-    "context": "any"
+    "context": "any",
+    "exclude": [
+      "도선회관"
+    ]
   },
   "summary": [
     {
