@@ -68,16 +68,9 @@ groups:
           summary: "JVM heap 사용률 {{ $value | humanizePercentage }}"
           description: "heap 사용률이 85% 를 넘는 상태가 10분 지속됨. 메모리 누수/-Xmx 부족 가능성."
 
-      # logback ERROR: 최근 5분에 ERROR 로그가 1건이라도 있으면 경고.
-      # Loki ruler 대신 Micrometer 의 logback_events_total{level="error"} 카운터를 쓴다 (Loki 쪽 설정 불필요).
-      # 노이즈가 크면 임계값(> 0)을 올리거나 이 규칙을 끈다.
-      - alert: LogbackErrors
-        expr: increase(logback_events_total{job="pawbridge-monolith", level="error"}[5m]) > 0
-        labels:
-          severity: warning
-        annotations:
-          summary: "ERROR 로그 {{ $value | printf \"%.0f\" }}건 / 5분"
-          description: "monolith 가 최근 5분 동안 ERROR 레벨 로그를 남겼다. Grafana 대시보드의 로그 패널에서 확인."
+      # LogbackErrors 는 여기 없다. ERROR 로그 중 APMS 수집 실패 줄을 빼고 세야 해서 Loki 로그로 평가한다.
+      # logback_events_total 은 로그 수준만 알고 어느 코드의 로그인지 모른다.
+      # 규칙은 grafana/provisioning/alerting/rules-loki.yaml 에 직접 쓴다(이 생성 스크립트를 거치지 않는다).
 
       # monolith scrape 가 느리면(5초 초과) 앱이 과부하이거나 management 포트가 막히고 있다는 신호.
       - alert: MonolithScrapeSlow

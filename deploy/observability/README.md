@@ -97,7 +97,7 @@ Prometheus/Loki/Alloy 는 호스트로 포트를 열지 않았으므로 컨테�
 |---|---|---|
 | 전체 | `docker compose -p pawbridge-obs ps` | prometheus/loki/grafana `healthy` (alloy 는 healthcheck 없음, `running`) |
 | Prometheus targets | `docker exec pawbridge-obs-prometheus wget -qO- 'http://127.0.0.1:9090/api/v1/targets' \| grep -o '"health":"[a-z]*"' \| sort \| uniq -c` | 5개 job 모두 `up` (monolith 는 앱 준비 전이면 `down`) |
-| 규칙 로드 | `docker exec pawbridge-obs-prometheus wget -qO- http://127.0.0.1:9090/api/v1/rules \| grep -o '"name":"[A-Za-z0-9]*"'` | urgent 4개 + warning 8개 이름 |
+| 규칙 로드 | `docker exec pawbridge-obs-prometheus wget -qO- http://127.0.0.1:9090/api/v1/rules \| grep -o '"name":"[A-Za-z0-9]*"'` | urgent 4개 + warning 7개 이름. Loki 규칙 2개(`LogbackErrors`, `ApmsCollectionConsecutiveFailures`)는 Grafana 에만 있다 |
 | Alertmanager 연결 | `docker exec pawbridge-obs-prometheus wget -qO- http://127.0.0.1:9090/api/v1/alertmanagers` | `activeAlertmanagers` 에 `http://grafana:3000/api/alertmanager/grafana/api/v2/alerts` |
 | 메트릭 존재 | Grafana > Explore > Prometheus: `http_server_requests_seconds_bucket`, `hikaricp_connections_max`, `jvm_memory_max_bytes`, `logback_events_total`, `pawbridge_payment_compensation_open` | 각각 시계열이 있어야 해당 규칙/패널이 동작한다. 없는 메트릭의 규칙은 **조용히** 평가되지 않는다 |
 | Loki | `docker exec pawbridge-obs-loki wget -qO- http://127.0.0.1:3100/ready` | `ready` |
@@ -121,7 +121,8 @@ Prometheus/Loki/Alloy 는 호스트로 포트를 열지 않았으므로 컨테�
 | HighP95Latency | p95 > 1s 10m (임계값/기간은 가정치) | warning |
 | HikariPoolPending / HikariPoolSaturated | pending > 0 5m / active >= max 2m | warning |
 | JvmHeapHigh | heap 사용률 > 85% 10m | warning |
-| LogbackErrors | 5분간 ERROR 로그 1건 이상 (Loki ruler 대신 `logback_events_total`) | warning |
+| LogbackErrors | 5분간 ERROR 로그 1건 이상, APMS 수집 실패 줄은 뺀다 (Loki, `grafana/provisioning/alerting/rules-loki.yaml`) | warning |
+| ApmsCollectionConsecutiveFailures | 35분 안에 APMS 수집 실패 2번, 즉 30분 주기 연속 2회 (Loki, 같은 파일) | warning |
 | MonolithScrapeSlow / ObservabilityComponentDown | scrape 5초 초과 5m / loki·alloy·grafana up==0 5m | warning |
 
 라우팅: 전부 Slack 하나(`pawbridge-slack`). urgent 는 1시간마다, warning 은 12시간마다 재알림.
