@@ -7,6 +7,8 @@ import com.pawbridge.backend.animal.internal.apms.infrastructure.client.ApmsApiC
 import com.pawbridge.backend.animal.internal.apms.infrastructure.dto.ApmsAnimal
 import com.pawbridge.backend.animal.internal.apms.infrastructure.dto.ApmsRootResponse
 import com.pawbridge.backend.boot.javaIsBlank
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -32,12 +34,16 @@ import java.util.concurrent.TimeoutException
 /**
  * APMS transport only. Snapshot retains its existing header checks and bounded recovery.
  * The primary constructor is the explicit ownership seam for offline close regression tests.
+ *
+ * 요청마다 걸린 시간을 [REQUEST_METER] 지표로 남긴다. 성공한 요청의 시간을 알아야
+ * 제한 시간이 알맞은지 숫자로 판단할 수 있다.
  */
 internal class ApmsHttpClient(
     base: URI?,
     private val mapper: ObjectMapper,
     private val client: HttpClient,
     private val ownsClient: Boolean,
+    private val meters: MeterRegistry,
 ) : ApmsApiClient, AutoCloseable {
     private val base: URI = baseUri(base?.toString())
     private val responseType: JavaType =
@@ -46,7 +52,7 @@ internal class ApmsHttpClient(
     @Volatile
     private var closed = false
 
-    constructor(base: URI?, mapper: ObjectMapper) : this(
+    constructor(base: URI?, mapper: ObjectMapper, meters: MeterRegistry) : this(
         base,
         mapper,
         HttpClient.newBuilder()
@@ -54,10 +60,12 @@ internal class ApmsHttpClient(
             .followRedirects(HttpClient.Redirect.NEVER)
             .build(),
         true,
+        meters,
     )
 
     /** Borrowed test seam: closing this adapter never closes the caller's HttpClient. */
-    constructor(base: URI?, mapper: ObjectMapper, client: HttpClient) : this(base, mapper, client, false)
+    constructor(base: URI?, mapper: ObjectMapper, client: HttpClient, meters: MeterRegistry) :
+        this(base, mapper, client, false, meters)
 
     override fun getAbandonmentAnimals(
         serviceKey: String?,
@@ -98,12 +106,12 @@ internal class ApmsHttpClient(
             }
             val target = URI.create("$prefix/abandonmentPublic_v2?$query")
             val request = HttpRequest.newBuilder(target)
-                .timeout(Duration.ofSeconds(5))
+                .timeout(HEADER_TIMEOUT)
                 .header("Accept", "application/json")
                 .GET()
                 .build()
             pending = client.sendAsync(request, HttpResponse.BodyHandler<ByteArray> { LimitedBodySubscriber() })
-            val response = pending.get(6, TimeUnit.SECONDS)
+            val response = pending.get(RESPONSE_WAIT.toMillis(), TimeUnit.MILLISECONDS)
             status = response.statusCode()
             if (response.statusCode() != 200) {
                 throw Unavailable(HTTP_STATUS)
@@ -111,7 +119,9 @@ internal class ApmsHttpClient(
             if (response.body() == null || response.body().size > MAX_BODY_BYTES) {
                 throw Unavailable(INVALID_BODY)
             }
-            return mapper.readValue<ApmsRootResponse<ApmsAnimal>>(response.body(), responseType)
+            val page = mapper.readValue<ApmsRootResponse<ApmsAnimal>>(response.body(), responseType)
+            record(SUCCESS, started, updatedBeginDate)
+            return page
         } catch (interrupted: InterruptedException) {
             pending?.cancel(true)
             Thread.currentThread().interrupt()
@@ -153,7 +163,22 @@ internal class ApmsHttpClient(
             updatedEndDate,
             TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started),
         )
+        record(kind, started, updatedBeginDate)
         return Unavailable(kind)
+    }
+
+    /**
+     * 결과([outcome])와 조회 종류별로 걸린 시간을 남긴다.
+     * 갱신일 조건이 없는 조회는 최근 30일 접수 전체를 받는 조회다. 시간 초과가 이 조회에 몰려 있어 따로 본다.
+     */
+    private fun record(outcome: String, started: Long, updatedBeginDate: String?) {
+        Timer.builder(REQUEST_METER)
+            .description("APMS page request duration by outcome and query kind")
+            .tag("outcome", outcome)
+            .tag("query", if (updatedBeginDate == null) "recent" else "updated")
+            .serviceLevelObjectives(*DURATION_BUCKETS)
+            .register(meters)
+            .record(System.nanoTime() - started, TimeUnit.NANOSECONDS)
     }
 
     @Synchronized
@@ -222,8 +247,24 @@ internal class ApmsHttpClient(
     companion object {
         const val MAX_BODY_BYTES: Int = 2 * 1024 * 1024
 
-        // 실패 종류. 요청 제한 5초(HttpRequest.timeout)는 응답 머리가 올 때까지만 재고,
-        // 6초 대기(pending.get)는 본문을 다 받을 때까지 잰다. 둘을 나눠야 어느 쪽이 느린지 알 수 있다.
+        // 요청 제한(HttpRequest.timeout)은 응답 머리가 올 때까지만 재고, 대기(pending.get)는 본문을 다 받을 때까지 잰다.
+        // 둘을 나눠야 어느 쪽이 느린지 알 수 있다. 운영에서 실패한 요청이 모두 예전 5초, 6초 경계의 시간 초과여서
+        // 10초와 15초로 늘렸다. 30분 주기 수집이라 느린 쪽을 몇 초 더 기다리는 비용은 작다.
+        @JvmField
+        val HEADER_TIMEOUT: Duration = Duration.ofSeconds(10)
+
+        @JvmField
+        val RESPONSE_WAIT: Duration = Duration.ofSeconds(15)
+
+        const val REQUEST_METER = "pawbridge.apms.request"
+        const val SUCCESS = "SUCCESS"
+
+        // "몇 초 안에 몇 %가 끝났는지"를 바로 읽도록 제한 시간 언저리에 경계를 둔다.
+        private val DURATION_BUCKETS: Array<Duration> = arrayOf(1L, 2L, 3L, 5L, 7L, 10L, 15L)
+            .map { seconds -> Duration.ofSeconds(seconds) }
+            .toTypedArray()
+
+        // 실패 종류.
         const val UNAVAILABLE = "UNAVAILABLE"
         const val INVALID_REQUEST = "INVALID_REQUEST"
         const val HTTP_STATUS = "HTTP_STATUS"

@@ -1,0 +1,97 @@
+# Loki 로그로 평가하는 알림 규칙. rules.yaml 과 달리 생성 스크립트 없이 직접 고친다.
+#
+# 왜 Loki 인가: APMS 수집은 30분마다 돌고, 공공 API 응답이 늦어 한 번 실패해도 다음 회차가 못 받은 구간을 다시 받는다.
+# 한 번 실패하면 ERROR 가 두 줄 남는다(Spring Batch 의 검증 단계 줄, ApmsCollectionSchedule 의 "APMS collection failed" 줄).
+# Prometheus 의 logback_events_total 은 로그 수준만 세므로 이 두 줄만 뺄 수 없다.
+# 그래서 ERROR 알림은 이 두 줄을 뺀 나머지를 세고, APMS 는 연속 2회 실패할 때만 따로 알린다.
+#
+# ERROR 줄 판별은 Spring Boot 기본 형식("<시각>  ERROR <pid> --- [...]")을 쓴다. 스택 줄은 따로 들어와 걸리지 않는다.
+# 문구가 바뀌어 거르기가 안 먹히면 APMS 실패가 다시 LogbackErrors 로 바로 울린다(조용해지는 쪽으로 틀어지지 않는다).
+# 약점: 로그가 Loki 에 들어오지 않으면 ERROR 알림도 함께 멈춘다. 수집기 자체가 죽으면 ObservabilityComponentDown 이 알린다.
+apiVersion: 1
+groups:
+- orgId: 1
+  name: pawbridge-warning-logs
+  folder: PawBridge
+  interval: 1m
+  rules:
+  - uid: pb-logbackerrors
+    title: LogbackErrors
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: loki
+      model:
+        refId: A
+        queryType: instant
+        editorMode: code
+        expr: |-
+          sum(count_over_time({container="pawbridge-prod-monolith"}
+            |~ "^[^ ]+ +ERROR [0-9]+ --- "
+            !~ "APMS collection failed|error executing step apmsCollectionVerificationStep"
+            [5m]))
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+      source_group: pawbridge-warning
+    annotations:
+      summary: ERROR 로그 {{ $values.A.Value | printf "%.0f" }}건 / 5분
+      description: monolith 가 최근 5분 동안 ERROR 레벨 로그를 남겼다(APMS 수집 실패 줄은 ApmsCollectionConsecutiveFailures 가 따로 본다). Grafana 대시보드의 로그 패널에서 확인.
+    isPaused: false
+  - uid: pb-apmscollectionconsecutivefailures
+    title: ApmsCollectionConsecutiveFailures
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 2100
+        to: 0
+      datasourceUid: loki
+      model:
+        refId: A
+        queryType: instant
+        editorMode: code
+        # 수집이 30분마다 돌아서, 35분 안에 실패가 2번이면 바로 이어진 두 회차다.
+        # 사이에 성공이 한 번 끼면 두 실패가 60분 떨어져 걸리지 않는다.
+        expr: |-
+          sum(count_over_time({container="pawbridge-prod-monolith"}
+            |~ "^[^ ]+ +ERROR [0-9]+ --- "
+            |= "APMS collection failed"
+            [35m]))
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 1
+    noDataState: OK
+    execErrState: Error
+    for: 0s
+    labels:
+      severity: warning
+      source_group: pawbridge-warning
+    annotations:
+      summary: APMS 수집 연속 실패 {{ $values.A.Value | printf "%.0f" }}회 / 35분
+      description: APMS 동물 수집이 연달아 실패했다. 한 번 실패는 다음 회차가 메우지만 이어지면 새 공고가 늦어진다. monolith 로그의 "APMS request failed" WARN 으로 실패 종류를 확인.
+    isPaused: false

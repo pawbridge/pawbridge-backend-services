@@ -10,6 +10,7 @@ import com.pawbridge.backend.animal.internal.apms.web.ApmsBatchController
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.AnimalRepository
 import com.pawbridge.backend.animal.internal.command.infrastructure.search.SearchDocumentWriter
 import com.zaxxer.hikari.HikariDataSource
+import io.micrometer.core.instrument.MeterRegistry
 import java.time.Clock
 import java.time.ZoneId
 import java.util.concurrent.ThreadPoolExecutor
@@ -82,8 +83,8 @@ class AnimalApmsCollectionConfiguration {
     }
 
     @Bean(destroyMethod = "close")
-    fun apmsApiClient(settings: ApmsScheduleSettings, mapper: ObjectMapper): ApmsApiClient {
-        return ApmsHttpClient(settings.baseUri(), mapper)
+    fun apmsApiClient(settings: ApmsScheduleSettings, mapper: ObjectMapper, meters: MeterRegistry): ApmsApiClient {
+        return ApmsHttpClient(settings.baseUri(), mapper, meters)
     }
 
     @Bean
