@@ -418,55 +418,6 @@ groups:
       summary: JVM heap 사용률 {{ $values.B.Value | humanizePercentage }}
       description: heap 사용률이 85% 를 넘는 상태가 10분 지속됨. 메모리 누수/-Xmx 부족 가능성.
     isPaused: false
-  - uid: pb-logbackerrors
-    title: LogbackErrors
-    condition: C
-    data:
-    - refId: A
-      relativeTimeRange:
-        from: 600
-        to: 0
-      datasourceUid: prometheus
-      model:
-        refId: A
-        expr: group without () (increase(logback_events_total{job="pawbridge-monolith",
-          level="error"}[5m]) > 0)
-        instant: true
-        intervalMs: 1000
-        maxDataPoints: 43200
-    - refId: B
-      relativeTimeRange:
-        from: 600
-        to: 0
-      datasourceUid: prometheus
-      model:
-        refId: B
-        expr: increase(logback_events_total{job="pawbridge-monolith", level="error"}[5m])
-          > 0
-        instant: true
-        intervalMs: 1000
-        maxDataPoints: 43200
-    - refId: C
-      datasourceUid: __expr__
-      model:
-        refId: C
-        type: threshold
-        expression: A
-        conditions:
-        - evaluator:
-            type: gt
-            params:
-            - 0
-    noDataState: OK
-    execErrState: Error
-    for: 0s
-    labels:
-      severity: warning
-      source_group: pawbridge-warning
-    annotations:
-      summary: ERROR 로그 {{ $values.B.Value | printf "%.0f" }}건 / 5분
-      description: monolith 가 최근 5분 동안 ERROR 레벨 로그를 남겼다. Grafana 대시보드의 로그 패널에서 확인.
-    isPaused: false
   - uid: pb-monolithscrapeslow
     title: MonolithScrapeSlow
     condition: C
