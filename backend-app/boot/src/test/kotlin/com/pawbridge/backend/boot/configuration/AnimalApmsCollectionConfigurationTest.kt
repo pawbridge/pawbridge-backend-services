@@ -6,6 +6,8 @@ import com.pawbridge.backend.animal.internal.apms.infrastructure.client.ApmsApiC
 import com.pawbridge.backend.animal.internal.command.infrastructure.search.SearchDocumentWriter
 import com.pawbridge.backend.animal.internal.discovery.infrastructure.KoreanSearchAnalyzer
 import com.zaxxer.hikari.HikariDataSource
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
@@ -191,5 +193,8 @@ class AnimalApmsCollectionConfigurationTest {
 
         @Bean
         fun objectMapper(): ObjectMapper = ObjectMapper()
+
+        @Bean
+        fun meterRegistry(): MeterRegistry = SimpleMeterRegistry()
     }
 }

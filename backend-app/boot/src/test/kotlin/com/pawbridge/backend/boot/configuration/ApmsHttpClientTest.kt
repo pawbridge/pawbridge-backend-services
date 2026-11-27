@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.justRun
@@ -34,13 +35,14 @@ import javax.net.ssl.SSLSession
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
+import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 
 class ApmsHttpClientTest {
     @Test
     fun `명시한 제공자 기준 URL이 주어졌을 때__운영 전송을 만들면__HTTPS 제공자 URL만 받는다`() {
         // given, when
-        ApmsHttpClient(BASE, ObjectMapper()).use { transport ->
+        ApmsHttpClient(BASE, ObjectMapper(), SimpleMeterRegistry()).use { transport ->
             // then
             assertThat(transport).isNotNull()
         }
@@ -61,8 +63,8 @@ class ApmsHttpClientTest {
         // given
         val owned = mockk<HttpClient>()
         val borrowed = mockk<HttpClient>()
-        val ownedAdapter = ApmsHttpClient(BASE, ObjectMapper(), owned, true)
-        val borrowedAdapter = ApmsHttpClient(BASE, ObjectMapper(), borrowed)
+        val ownedAdapter = ApmsHttpClient(BASE, ObjectMapper(), owned, true, SimpleMeterRegistry())
+        val borrowedAdapter = ApmsHttpClient(BASE, ObjectMapper(), borrowed, SimpleMeterRegistry())
 
         justRun { owned.close() }
 
@@ -96,7 +98,7 @@ class ApmsHttpClientTest {
     fun `원본 인자가 주어졌을 때__조회하면__정확한 경로와 질의와 타임아웃과 타입 DTO를 쓰고 다시 호출하지 않는다`() {
         // given
         val client = mockk<HttpClient>()
-        val transport = ApmsHttpClient(BASE, ObjectMapper(), client)
+        val transport = ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry())
 
         every { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns
             CompletableFuture.completedFuture(response(200, EMPTY_PAGE))
@@ -112,7 +114,7 @@ class ApmsHttpClientTest {
         verify(exactly = 1) { client.sendAsync(capture(request), any<HttpResponse.BodyHandler<ByteArray>>()) }
         assertThat(result!!.response!!.body!!.totalCount).isEqualTo("0")
         assertThat(request.captured.uri().path).isEqualTo("/openapi/abandonmentPublic_v2")
-        assertThat(request.captured.timeout()).contains(Duration.ofSeconds(5))
+        assertThat(request.captured.timeout()).contains(Duration.ofSeconds(10))
         assertThat(request.captured.method()).isEqualTo("GET")
         val query = LinkedHashMap<String, String>()
         for (part in request.captured.uri().rawQuery.split("&")) {
@@ -132,7 +134,7 @@ class ApmsHttpClientTest {
     fun `공백 키나 잘못된 행 수가 주어졌을 때__조회하면__HTTP 전에 거절한다`() {
         // given
         val client = mockk<HttpClient>()
-        val transport = ApmsHttpClient(BASE, ObjectMapper(), client)
+        val transport = ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry())
 
         // when, then
         assertUnavailable { fetch(transport, " ", 1000) }
@@ -156,7 +158,7 @@ class ApmsHttpClientTest {
                 CompletableFuture.completedFuture(reply)
 
             // when, then
-            assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client), "fixture-secret", 1000) }
+            assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry()), "fixture-secret", 1000) }
             verify(exactly = 1) { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) }
         }
     }
@@ -171,7 +173,7 @@ class ApmsHttpClientTest {
         every { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns failure
 
         // when, then
-        assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client), "fixture-secret", 1000) }
+        assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry()), "fixture-secret", 1000) }
     }
 
     @Test
@@ -206,7 +208,7 @@ class ApmsHttpClientTest {
         Thread.currentThread().interrupt()
         try {
             // when, then
-            assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client), "fixture-secret", 1000) }
+            assertUnavailable { fetch(ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry()), "fixture-secret", 1000) }
             assertThat(pending.isCancelled).isTrue()
             assertThat(Thread.currentThread().isInterrupted).isTrue()
         } finally {
@@ -215,18 +217,57 @@ class ApmsHttpClientTest {
     }
 
     @Test
-    fun `응답 본문이 끝나지 않을 때__6초 경계가 지나면__요청 전체를 취소한다`() {
+    fun `응답 본문이 끝나지 않을 때__15초 경계가 지나면__요청 전체를 취소한다`() {
         // given
         val client = mockk<HttpClient>()
         val pending = CompletableFuture<HttpResponse<ByteArray>>()
 
         every { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) } returns pending
 
-        // when, then
+        // when
+        val started = System.nanoTime()
         assertUnavailable(ApmsHttpClient.RESPONSE_WAIT_TIMEOUT) {
-            fetch(ApmsHttpClient(BASE, ObjectMapper(), client), "fixture-key", 1000)
+            fetch(ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry()), "fixture-key", 1000)
         }
+        val waited = Duration.ofNanos(System.nanoTime() - started)
+
+        // then
         assertThat(pending.isCancelled).isTrue()
+        assertThat(waited).isGreaterThanOrEqualTo(Duration.ofSeconds(15))
+    }
+
+    @Test
+    fun `성공과 실패가 섞일 때__조회하면__결과와 조회 종류별로 걸린 시간을 지표에 남긴다`() {
+        // given
+        val meters = SimpleMeterRegistry()
+        val client = mockk<HttpClient>()
+
+        every { client.sendAsync(any<HttpRequest>(), any<HttpResponse.BodyHandler<ByteArray>>()) } returnsMany listOf(
+            CompletableFuture.completedFuture(response(200, EMPTY_PAGE)),
+            failed(HttpTimeoutException("request timed out")),
+        )
+        val transport = ApmsHttpClient(BASE, ObjectMapper(), client, meters)
+
+        // when: 갱신일 조회는 성공, 최근 30일 전체 조회는 시간 초과
+        transport.getAbandonmentAnimals(
+            "fixture-key", 1, 1000,
+            "20261001", "20261031", null, null, "json", "20261101", "20261127",
+        )
+        assertUnavailable(ApmsHttpClient.REQUEST_TIMEOUT) {
+            transport.getAbandonmentAnimals(
+                "fixture-key", 2, 1000,
+                "20261028", "20261127", null, null, "json", null, null,
+            )
+        }
+
+        // then
+        val success = meters.get(ApmsHttpClient.REQUEST_METER).tags("outcome", "SUCCESS", "query", "updated").timer()
+        val timeout = meters.get(ApmsHttpClient.REQUEST_METER).tags("outcome", "REQUEST_TIMEOUT", "query", "recent").timer()
+        assertThat(success.count()).isEqualTo(1)
+        assertThat(timeout.count()).isEqualTo(1)
+        assertThat(meters.get(ApmsHttpClient.REQUEST_METER).timers()).hasSize(2)
+        assertThat(success.takeSnapshot().histogramCounts().map { bucket -> bucket.bucket(TimeUnit.SECONDS) })
+            .containsExactly(1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0)
     }
 
     @Test
@@ -250,7 +291,7 @@ class ApmsHttpClientTest {
             // when
             val events = captureLogs {
                 assertUnavailable(kind) {
-                    ApmsHttpClient(BASE, ObjectMapper(), client).getAbandonmentAnimals(
+                    ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry()).getAbandonmentAnimals(
                         secret, 3, 1000, "20261007", "20261106", null, null, "json", null, null,
                     )
                 }
@@ -275,7 +316,7 @@ class ApmsHttpClientTest {
 
         // when
         val events = captureLogs {
-            assertUnavailable(ApmsHttpClient.INVALID_REQUEST) { fetch(ApmsHttpClient(BASE, ObjectMapper(), client), " ", 1000) }
+            assertUnavailable(ApmsHttpClient.INVALID_REQUEST) { fetch(ApmsHttpClient(BASE, ObjectMapper(), client, SimpleMeterRegistry()), " ", 1000) }
         }
 
         // then
