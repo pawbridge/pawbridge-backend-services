@@ -32,6 +32,6 @@ class ChatbotIpHashService(
     private fun isBlank(value: String): Boolean = value.all { Character.isWhitespace(it) }
 
     private companion object {
-        private const val HMAC_ALGORITHM = "HmacSHA256"
+        private const val HMAC_ALGORITHM = "HmacSHA512"
     }
 }
