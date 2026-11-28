@@ -5,6 +5,10 @@ name: Claude PR review
 # It does not run again on later pushes and it never changes code. Pull requests into main are
 # not reviewed: a release carries commits that were already reviewed on their way into dev.
 #
+# To review again after fixes, convert the pull request to draft and mark it ready again
+# (`gh pr ready <number> --undo`, then `gh pr ready <number>`). A label trigger is not used on
+# purpose: every other label would rerun this workflow and leave a skipped check behind.
+#
 # Needs the repository secret CLAUDE_CODE_OAUTH_TOKEN (created with `claude setup-token`), so
 # the review runs on a Claude subscription. Without the secret this job fails; it is not
 # turned into a pass. GitHub writes go through the job's own GITHUB_TOKEN, limited to the
@@ -53,5 +57,7 @@ jobs:
             /code-review:code-review --comment
             ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
           claude_args: >-
+            --model claude-opus-5-5
+            --effort medium
             --allowedTools "mcp__github_inline_comment__create_inline_comment"
-            --append-system-prompt "PR에 남기는 모든 코멘트는 한국어로 쓴다."
+            --append-system-prompt "PR에 남기는 모든 코멘트는 한국어로 쓴다. 이 PR에 이전 자동 리뷰 코멘트가 있어도 리뷰를 건너뛰지 않는다. 그때는 이전 지적이 고쳐졌는지 확인하고, 아직 남은 문제와 새 문제만 코멘트하며, 이미 달린 것과 같은 지적을 다시 달지 않는다."
