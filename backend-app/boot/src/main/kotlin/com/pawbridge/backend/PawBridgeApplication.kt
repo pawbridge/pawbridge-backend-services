@@ -20,6 +20,7 @@ import com.pawbridge.backend.boot.configuration.AnimalStatisticsConfiguration
 import com.pawbridge.backend.boot.configuration.AnimalTravelCollectionConfiguration
 import com.pawbridge.backend.boot.configuration.AnimalTravelConfiguration
 import com.pawbridge.backend.boot.configuration.AuthSessionConfiguration
+import com.pawbridge.backend.boot.configuration.ChatbotRetentionConfiguration
 import com.pawbridge.backend.boot.configuration.CommentWriteConfiguration
 import com.pawbridge.backend.boot.configuration.CommunityMaintenanceConfiguration
 import com.pawbridge.backend.boot.configuration.FavoriteStatusConfiguration
@@ -176,6 +177,7 @@ import org.springframework.context.annotation.Import
     NoteDeletionConfiguration::class,
     NoteSendConfiguration::class,
     NoteExpiryConfiguration::class,
+    ChatbotRetentionConfiguration::class,
     MemberCleanupConfiguration::class,
 )
 class PawBridgeApplication {
