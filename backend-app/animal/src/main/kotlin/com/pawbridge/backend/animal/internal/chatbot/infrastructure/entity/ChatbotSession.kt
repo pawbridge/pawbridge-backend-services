@@ -4,6 +4,8 @@ import com.pawbridge.backend.animal.internal.command.infrastructure.entity.Anima
 import com.pawbridge.backend.animal.internal.command.infrastructure.entity.BaseTimeEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
@@ -30,9 +32,26 @@ class ChatbotSession protected constructor() : BaseTimeEntity() {
     var animal: Animal? = null
         protected set
 
-    constructor(anonymousSessionId: String?, animal: Animal?) : this() {
+    /** 로그인한 상태로 대화를 시작했을 때의 회원 번호. 회원 삭제 때 NULL로 지운다. */
+    @Column(name = "member_id")
+    var memberId: Long? = null
+        protected set
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "device_type", length = 10)
+    var deviceType: ChatbotDeviceType? = null
+        protected set
+
+    constructor(
+        anonymousSessionId: String?,
+        animal: Animal?,
+        memberId: Long? = null,
+        deviceType: ChatbotDeviceType? = null,
+    ) : this() {
         this.anonymousSessionId = anonymousSessionId
         this.animal = animal
+        this.memberId = memberId
+        this.deviceType = deviceType
     }
 
     @PrePersist

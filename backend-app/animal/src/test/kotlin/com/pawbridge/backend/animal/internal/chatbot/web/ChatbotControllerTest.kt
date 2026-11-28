@@ -27,7 +27,13 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.slf4j.LoggerFactory
+import org.springframework.core.MethodParameter
 import org.springframework.dao.DataAccessResourceFailureException
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.support.WebDataBinderFactory
+import org.springframework.web.context.request.NativeWebRequest
+import org.springframework.web.method.support.HandlerMethodArgumentResolver
+import org.springframework.web.method.support.ModelAndViewContainer
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -42,6 +48,9 @@ class ChatbotControllerTest {
     private val validator = LocalValidatorFactoryBean()
     private lateinit var mvc: MockMvc
 
+    /** 보안 체인이 넘기는 인증 주체. 공개 경로라 기본은 비로그인(null)이다. */
+    private var principal: Long? = null
+
     @BeforeEach
     fun setup() {
         validator.afterPropertiesSet()
@@ -49,7 +58,43 @@ class ChatbotControllerTest {
             .setControllerAdvice(ChatbotExceptionHandler())
             .setValidator(validator)
             .setMessageConverters(MappingJackson2HttpMessageConverter(json))
+            .setCustomArgumentResolvers(
+                object : HandlerMethodArgumentResolver {
+                    override fun supportsParameter(parameter: MethodParameter): Boolean {
+                        return parameter.hasParameterAnnotation(AuthenticationPrincipal::class.java)
+                    }
+
+                    override fun resolveArgument(
+                        parameter: MethodParameter,
+                        container: ModelAndViewContainer?,
+                        request: NativeWebRequest,
+                        binders: WebDataBinderFactory?,
+                    ): Any? {
+                        return principal
+                    }
+                },
+            )
             .build()
+    }
+
+    @Test
+    fun `로그인한 요청일 때__전송하면__인증 주체의 회원 번호를 서비스에 넘기고 질의 문자열 회원 번호는 쓰지 않는다`() {
+        // given
+        principal = 7L
+        val input = ChatbotMessageRequest(null, "입양 문의")
+        every { service.createMessage(any(), any(), any(), any(), any()) } returns
+            ChatbotMessageResponse("owned-session", "답변", "주의", "fixture")
+
+        // when
+        mvc.perform(
+            post("/api/v1/animals/41/chat/messages?memberId=99")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsBytes(input)),
+        ).andExpect(status().isOk())
+
+        // then
+        verify(exactly = 1) { service.createMessage(41L, input, 7L, any(), any()) }
+        confirmVerified(service)
     }
 
     @AfterEach
@@ -63,7 +108,7 @@ class ChatbotControllerTest {
         val input = ChatbotMessageRequest("not-a-uuid", "입양 문의")
         val result = ChatbotMessageResponse("owned-session", "답변", "주의", "fixture")
 
-        every { service.createMessage(any(), any(), any(), any()) } returns result
+        every { service.createMessage(any(), any(), any(), any(), any()) } returns result
 
         // when
         val body = json.readTree(
@@ -83,7 +128,7 @@ class ChatbotControllerTest {
         assertEquals(0, body.get("healthCards").size())
         assertFalse(body.has("data"))
         assertFalse(body.has("code"))
-        verify(exactly = 1) { service.createMessage(41L, input, any(), any()) }
+        verify(exactly = 1) { service.createMessage(41L, input, null, any(), any()) }
         confirmVerified(service)
     }
 
@@ -129,7 +174,7 @@ class ChatbotControllerTest {
         message: String,
     ) {
         // given
-        every { service.createMessage(any(), any(), any(), any()) } throws failure
+        every { service.createMessage(any(), any(), any(), any(), any()) } throws failure
 
         // when
         val body = mvc.perform(
@@ -141,7 +186,7 @@ class ChatbotControllerTest {
         // then
         error(body, statusCode, message)
         assertFalse(String(body, StandardCharsets.UTF_8).contains("private"))
-        verify(exactly = 1) { service.createMessage(41L, any(), any(), any()) }
+        verify(exactly = 1) { service.createMessage(41L, any(), null, any(), any()) }
     }
 
     @Test
@@ -149,7 +194,7 @@ class ChatbotControllerTest {
         // given
         val result = ChatbotMessageResponse("owned-session", "보호동물 관련 질문을 입력해주세요.", "고정 주의문", "guard")
 
-        every { service.createMessage(any(), any(), any(), any()) } returns result
+        every { service.createMessage(any(), any(), any(), any(), any()) } returns result
 
         // when
         val body = json.readTree(
@@ -166,7 +211,7 @@ class ChatbotControllerTest {
         assertEquals(6, body.size())
         assertEquals(0, body.get("sources").size())
         assertEquals(0, body.get("healthCards").size())
-        verify(exactly = 1) { service.createMessage(41L, any(), any(), any()) }
+        verify(exactly = 1) { service.createMessage(41L, any(), null, any(), any()) }
     }
 
     @ParameterizedTest
@@ -194,7 +239,7 @@ class ChatbotControllerTest {
         expectedLog: String,
     ) {
         // given
-        every { service.createMessage(any(), any(), any(), any()) } throws failure
+        every { service.createMessage(any(), any(), any(), any(), any()) } throws failure
         val logger = LoggerFactory.getLogger(ChatbotExceptionHandler::class.java) as Logger
         val events = ListAppender<ILoggingEvent>()
         events.start()
@@ -220,7 +265,7 @@ class ChatbotControllerTest {
     @Test
     fun `업무 오류나 한도 초과일 때__전송하면__로그를 남기지 않는다`() {
         // given
-        every { service.createMessage(any(), any(), any(), any()) } throws ChatbotRateLimitExceededException()
+        every { service.createMessage(any(), any(), any(), any(), any()) } throws ChatbotRateLimitExceededException()
         val logger = LoggerFactory.getLogger(ChatbotExceptionHandler::class.java) as Logger
         val events = ListAppender<ILoggingEvent>()
         events.start()

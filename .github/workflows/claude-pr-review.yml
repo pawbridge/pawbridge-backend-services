@@ -1,9 +1,16 @@
 name: Claude PR review
 
-# Trial: Claude reviews a pull request into dev once, when it is opened or leaves draft, and
-# posts its findings as inline comments (or one summary comment when it finds nothing).
-# It does not run again on later pushes and it never changes code. Pull requests into main are
-# not reviewed: a release carries commits that were already reviewed on their way into dev.
+# Claude reviews a pull request into dev once, when it is opened or leaves draft. Besides the
+# changed lines it searches the repository for every place that uses a changed function, class,
+# setting key, SQL table or column, API field or Python DTO field, reads those places even in
+# files the pull request does not touch, and flags only what breaks there or is certainly wrong.
+# It posts findings as inline comments and always one summary comment that lists what it checked.
+# It does not run again on later pushes, never changes code and never runs tests or builds.
+# Pull requests into main are not reviewed: a release carries commits that were already reviewed
+# on their way into dev.
+#
+# The review prompt is written here instead of the code-review plugin: that plugin tells its
+# bug agents to read only the diff, so a change that breaks an untouched caller went unnoticed.
 #
 # To review again after fixes, convert the pull request to draft and mark it ready again
 # (`gh pr ready <number> --undo`, then `gh pr ready <number>`). A label trigger is not used on
@@ -63,16 +70,44 @@ jobs:
         uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
-          plugins: code-review@claude-plugins-official
-          prompt: >-
-            /code-review:code-review --comment
-            ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+          prompt: |
+            저장소 ${{ github.repository }}의 PR #${{ github.event.pull_request.number }}(대상 브랜치 dev)을 리뷰한다.
+            코드를 고치거나 push하지 않고, 시험·빌드를 실행하지 않는다. 체크아웃된 폴더는 이 PR을 dev에 병합한 결과다.
+            gh 명령에는 항상 `-R ${{ github.repository }}`를 붙인다.
+
+            1. 변경 파악: `gh pr view ${{ github.event.pull_request.number }} -R ${{ github.repository }} --json title,body,headRefOid,baseRefOid`로 제목, 본문, head·base SHA를 읽고,
+               `gh pr diff ${{ github.event.pull_request.number }} -R ${{ github.repository }}`로 diff를 읽는다.
+               저장소 루트의 CLAUDE.md와 변경 파일의 상위 폴더에 있는 CLAUDE.md를 읽는다.
+            2. 영향 대상 목록: diff에서 다음을 뽑는다. 시그니처, 반환값, null 가능 여부, 던지는 예외, 동작이 바뀐 함수와 클래스.
+               이름이나 기본값이 바뀐 설정 키(@Value, application*.properties, compose·매니페스트의 환경 변수).
+               바뀐 SQL 테이블과 칸, API 경로와 요청·응답 필드, Python 서비스와 주고받는 DTO 필드.
+            3. 쓰이는 곳 확인: 대상마다 저장소 전체를 Grep으로 검색하고, diff에 없는 파일이라도 쓰는 곳을 Read로 읽는다.
+               쓰는 쪽이 바뀐 동작을 견디는지 본다. 새로 생긴 null과 예외, 바뀐 인자 순서와 의미, 지운 칸·키·필드를 아직 쓰는 곳,
+               코드와 설정 파일의 키 이름 불일치, 마이그레이션 SQL과 엔티티의 불일치, 보안 설정과 경로의 불일치.
+               대상이 많으면 위험이 큰 것부터 보고, 다 보지 못한 대상은 요약에 적는다.
+            4. 지적 기준: 다음 세 가지만 지적한다.
+               (a) 쓰는 곳이 실제로 깨지는 경우. (b) 바뀐 줄의 확실한 버그(컴파일 실패, 입력과 상관없이 틀린 결과, 보안 구멍).
+               (c) 해당 CLAUDE.md 규칙을 그대로 인용할 수 있는 위반.
+               확인하지 못한 추측, 스타일, 일반적인 품질 의견, 시험 부족, 이 PR 이전부터 있던 문제는 지적하지 않는다.
+               지적하기 전에 해당 코드를 다시 읽어 정말 문제인지 확인한다.
+            5. 이전 리뷰: `gh pr view ${{ github.event.pull_request.number }} -R ${{ github.repository }} --comments`와
+               `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments`로 기존 코멘트를 읽는다.
+               이전 자동 리뷰가 있어도 리뷰를 건너뛰지 않는다. 이미 단 지적이 아직 남아 있으면 다시 달지 않고 요약에 남아 있다고 적고,
+               고쳐진 지적도 요약에 적는다.
+            6. 코멘트: 지적마다 mcp__github_inline_comment__create_inline_comment로 인라인 코멘트를 단다(confirmed: true).
+               바뀌지 않은 파일이 깨지는 경우에도 원인이 된 diff 줄에 달고, 깨지는 파일 경로와 줄을 적는다.
+               마지막에 `gh pr comment ${{ github.event.pull_request.number }} -R ${{ github.repository }} --body-file <파일>`로 요약 코멘트를 하나 단다.
+               요약 형식:
+               ## 코드 리뷰
+               - 지적: N건(없으면 "발견된 문제 없음")
+               - 확인한 범위: 영향 대상마다 찾은 쓰는 곳(파일 경로)과 결론을 한 줄씩. 보지 못한 대상이 있으면 그것도 적는다.
+               - 이전 지적: 고쳐진 것과 남아 있는 것(이전 리뷰가 있을 때만)
+               - 확인 기준: head SHA와 base SHA. 시험을 실행하지 않았고 운영 동작을 검증한 것이 아니라는 한 문장.
+            모든 코멘트는 한국어로 쓴다.
           claude_args: >-
             --model claude-opus-5-5
             --effort medium
-            --allowedTools "mcp__github_inline_comment__create_inline_comment"
-            --append-system-prompt "PR에 남기는 모든 코멘트는 한국어로 쓴다. 이 PR에 이전 자동 리뷰 코멘트가 있어도 리뷰를 건너뛰지 않는다. 그때는 이전 지적이 고쳐졌는지 확인하고, 아직 남은 문제와 새 문제만 코멘트하며, 이미 달린 것과 같은 지적을 다시 달지 않는다."
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Read,Grep,Glob,Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments:*)"
 
       - name: Fail when the review did not run
         env:
