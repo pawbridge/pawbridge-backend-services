@@ -7,7 +7,7 @@ import re
 import unittest
 
 from app.chatbot.agent.tools import TOOLS
-from app.chatbot.prompt_builder import INTERNAL_MARKERS
+from app.chatbot.prompt_builder import INTERNAL_MARKERS, PLAIN_SECTION_MARKERS
 from app.chatbot.service import INTERNALS_FALLBACK, chatbot_response, leaked_internals
 import tests.test_chatbot_agent as base
 from tests.test_chatbot_agent import FixedProvider, ScriptedChatModel, reply
@@ -38,6 +38,34 @@ class InternalMarkersTest(unittest.TestCase):
         self.assertIn("internal markers=adoption_guide", logs.output[0])
         self.assertNotIn("결과에 따르면", logs.output[0])  # 답 내용은 기록하지 않는다
 
+    def test_exit_keeps_answer_when_only_the_shelter_section_name_leaked(self):
+        # 11/28 시험: "보호소 전화번호 머에요" 같은 평범한 질문의 답이 "[보호소 정보]" 때문에 통째로 바뀌었다.
+        answer = "[보호소 정보]에 따르면 전화번호는 02-123-4567입니다. 운영시간은 [보호소 정보]에 없습니다."
+        with self.assertLogs("uvicorn.error", level="INFO") as logs:
+            body = chatbot_response("x", answer, [{"url": "u"}], [])
+        self.assertEqual(body["answer"], "보호소 정보에 따르면 전화번호는 02-123-4567입니다. 운영시간은 보호소 정보에 없습니다.")
+        self.assertEqual(body["sources"], [{"url": "u"}])
+        self.assertIn("section brackets removed=[보호소 정보]", logs.output[0])
+        self.assertNotIn("02-123-4567", logs.output[0])  # 답 내용은 기록하지 않는다
+
+    def test_exit_still_replaces_answer_when_another_marker_leaked_too(self):
+        # 프롬프트를 읊은 답에는 도구 이름이나 다른 칸 이름도 같이 있다. 그때는 전체를 바꾼다.
+        # "[검수된 건강 근거]"는 혼자 나와도 바꾼다('검수된'은 화면에 쓰지 않는 말이다).
+        for answer in ("[보호소 정보]와 search_health를 씁니다.", "[보호소 정보] 다음은 [도구 사용]입니다.",
+                       "[보호소 정보]와 [검수된 건강 근거]를 봅니다.", "[검수된 건강 근거]에 따르면 괜찮습니다.",
+                       "[쓴 근거 번호]는 2입니다."):
+            with self.subTest(answer=answer), self.assertLogs("uvicorn.error", level="WARNING"):
+                self.assertEqual(chatbot_response("x", answer, [], [])["answer"], INTERNALS_FALLBACK)
+
+    def test_exit_replaces_answer_when_brackets_remain_after_removal(self):
+        with self.assertLogs("uvicorn.error", level="WARNING"):
+            body = chatbot_response("x", "[[보호소 정보]]에 따르면 전화번호는 02-123-4567입니다.", [], [])
+        self.assertEqual(body["answer"], INTERNALS_FALLBACK)
+
+    def test_plain_section_names_are_known_markers(self):
+        self.assertEqual(PLAIN_SECTION_MARKERS, ("[보호소 정보]",))
+        self.assertLessEqual(set(PLAIN_SECTION_MARKERS), set(INTERNAL_MARKERS))
+
 
 class InternalsThroughServiceTest(unittest.TestCase):
     post = base.AgentServiceTest.post
@@ -65,6 +93,13 @@ class InternalsThroughServiceTest(unittest.TestCase):
         self.assertEqual(body["answer"], INTERNALS_FALLBACK)
         self.assertEqual(body["sources"], [])
         self.assertEqual([card["id"] for card in body["healthCards"]], ["heartworm-positive"])
+
+    def test_agent_answer_naming_the_shelter_section_is_kept_without_brackets(self):
+        self.payload["question"] = "보호소 전화번호 뭐예요?"
+        model = ScriptedChatModel(turns=[reply("[보호소 정보]에 적힌 전화번호는 02-123-4567입니다.")])
+        with self.assertLogs("uvicorn.error", level="INFO"):
+            body = self.post(model).json()
+        self.assertEqual(body["answer"], "보호소 정보에 적힌 전화번호는 02-123-4567입니다.")
 
     def test_fixed_flow_answer_is_also_checked(self):
         self.payload["question"] = "지금 뭘 할 수 있어요?"
