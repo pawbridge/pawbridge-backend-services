@@ -13,10 +13,13 @@ name: Claude PR review
 # the review runs on a Claude subscription. Without the secret this job fails; it is not
 # turned into a pass.
 #
-# Comments are posted as claude[bot]: the action trades this job's OIDC token for a token of
-# the Claude GitHub App, which must be installed on the repository. That exchange checks the
-# workflow file, and when the check does not pass the action skips the review and still ends
-# successfully. The last step turns such a skipped review into a failure.
+# GitHub writes go through the job's own GITHUB_TOKEN, limited to the permissions below, so
+# comments are posted as github-actions[bot]. The Claude GitHub App is not used on purpose:
+# its token is only issued when this file is identical on the default branch (main), so the
+# review would stop on every workflow change until that change reaches main.
+#
+# The action can skip a review and still end successfully. The last step turns a review that
+# did not run into a failure.
 
 on:
   pull_request:
@@ -42,9 +45,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
-      id-token: write
+      pull-requests: write
     steps:
       - name: Check out the source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,6 +58,7 @@ jobs:
         uses: anthropics/claude-code-action@4411a9e9b0283becf4b924f7bce360fd7756c78c # v1.0.290
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
           plugins: code-review@claude-plugins-official
           prompt: >-
