@@ -227,6 +227,27 @@ def forced_tool_call_settings(provider: str | None = None) -> dict:
     return {"response_mime_type": "text/plain"}
 
 
+# Claude에서 도구 강제 없이 잰 추론 단계(forces_tool_without_evidence).
+UNFORCED_CLAUDE_REASONING = {"medium", "high"}
+
+
+def forces_tool_without_evidence(provider: str | None = None) -> bool:
+    """코드의 첫 검색이 근거를 못 찾았을 때, 첫 모델 호출에서 도구 하나를 반드시 부르게 할지.
+
+    강제하지 않는 것은 잰 조합뿐이다: Claude이고 추론 단계가 medium이나 high일 때.
+    11/28 Haiku 5.5 시험(medium, 일부 high)에서 강제가 없어도 건강 질문에는 검색 도구를 스스로 불렀고
+    (기존 건강 문항 정답 114개 중 강제 108, 강제 없음과 새 프롬프트 105~107), 강제가 있으면 "네" 같은 말에도
+    도구를 하나 골라야 해서 상관없는 닮은 동물 목록이 붙었다(11/20 대화를 다시 보낸 370건 중 64건).
+    강제 없이 재지 않은 조합은 그대로 강제한다: 다른 제공자(Gemini, OpenAI)와 Claude의 minimal, low.
+    Gemini는 11/11 시범 실행에서 맡기면 첫 검색이 놓친 건강 질문 18개 중 minimal 0개,
+    low와 강화한 규칙으로도 12개만 불렀다. Claude 모델을 Haiku 5.5가 아닌 것으로 바꾸면 다시 재야 한다.
+    provider는 model_call_settings와 같다.
+    """
+    if (provider or provider_name()) != "anthropic":
+        return True
+    return reasoning_level() not in UNFORCED_CLAUDE_REASONING
+
+
 def _stub(settings: ChatbotSettings, reasoning: str):
     """키 없이 로컬에서 에이전트 모드를 돌려 볼 때 쓴다. 도구를 부르지 않고 고정 문구로 답한다."""
     import json

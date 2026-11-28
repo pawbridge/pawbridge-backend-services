@@ -200,6 +200,12 @@ class SimilarAnimalsTest(unittest.TestCase):
         self.assertEqual([made["tool_choice"] for made in model.calls[1:]], [None])
         self.assertEqual(body["answer"], "공고번호 경기-양평-2025-00429 아이가 비슷해요.\n\n" + "\n".join(LISTED))
 
+    def test_similar_question_is_forced_for_claude_too(self):
+        # Claude는 근거 없는 질문의 도구 강제만 뺐다. 닮은 아이를 묻는 질문은 그대로 이 도구를 강제한다.
+        model = ScriptedChatModel(turns=[similar_call(), reply("공고번호 경기-양평-2025-00429 아이가 비슷해요.")])
+        self.post(model, env={"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": "medium"})
+        self.assertEqual(model.calls[0]["tool_choice"], "find_similar_animals")
+
     def test_health_question_with_similar_word_is_not_forced_to_similar(self):
         self.payload["animalContext"]["specialMark"] = "심장사상충 양성"
         self.payload["question"] = "비슷한 증상이 있으면 산책해도 되나요?"

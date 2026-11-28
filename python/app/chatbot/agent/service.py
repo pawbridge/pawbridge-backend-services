@@ -34,6 +34,7 @@ from app.chatbot.agent.models import (
     fallback_chat_model,
     fallback_provider_name,
     forced_tool_call_settings,
+    forces_tool_without_evidence,
     is_provider_unavailable,
     model_call_settings,
     provider_name,
@@ -191,6 +192,7 @@ def agent_context(req, model, model_provider: str, deadline: float, matches, evi
         deadline,
         model_settings=model_call_settings(model_provider),
         forced_tool_settings=forced_tool_call_settings(model_provider),
+        force_tool_without_evidence=forces_tool_without_evidence(model_provider),
     )
 
 
