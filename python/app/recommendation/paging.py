@@ -12,3 +12,8 @@ def page_slice(items: list, page: int, size: int) -> list:
 def total_pages(total: int, size: int) -> int:
     """Number of pages needed to hold `total` items."""
     return math.ceil(total / size)
+
+
+def has_next_page(page: int, size: int, total: int) -> bool:
+    """True when there are items after the given page."""
+    return page * size > total
