@@ -66,7 +66,7 @@ class AnimalChatbotConfiguration {
             }
             return Settings(
                 url,
-                required(environment, "python-ai-service.internal-api-key"),
+                required(environment, "python-ai-service.internal-key"),
                 required(environment, "chatbot.security.ip-hash-secret"),
                 redis.toString(),
                 database,
