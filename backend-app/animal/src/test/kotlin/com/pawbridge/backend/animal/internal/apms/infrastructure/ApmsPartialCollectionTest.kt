@@ -303,14 +303,108 @@ class ApmsPartialCollectionTest {
         val lastPage = response(1002, listOf(animal("last-a", "20260910")), 2)
         stubEmptyWindows(api)
         every { intakePage(api, 1) } returns response(1002, fullPage(), 1)
-        every { intakePage(api, 2) } throws IllegalStateException("offline") andThen lastPage andThen lastPage
+        // 같은 쪽을 다시 받는 2번까지 모두 끊겨야 첫 조회가 마지막 쪽에서 끊긴 채로 끝난다.
+        val offline = IllegalStateException("offline")
+        every { intakePage(api, 2) } throws offline andThenThrows offline andThenThrows offline andThen lastPage andThen lastPage
 
         // when
         val animals = snapshot.animals()
 
         // then
         assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1001, incomplete = 0, providerGaps = 1))
-        verify(exactly = 3) { intakePage(api, 2) }
+        verify(exactly = 5) { intakePage(api, 2) }
+    }
+
+    @Test
+    fun `둘째 쪽 요청이 한 번 끊기고 다시 받으면 될 때__수집하면__첫 쪽을 다시 받지 않고 완료한다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1001, fullPage(), 1)
+        every { intakePage(api, 2) } throws IllegalStateException("timeout") andThen
+            response(1001, listOf(animal("last-a", "20260910")), 2)
+
+        // when
+        val animals = snapshot.animals()
+
+        // then
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1001, incomplete = 0, providerGaps = 0))
+        verify(exactly = 1) { intakePage(api, 1) }
+        verify(exactly = 2) { intakePage(api, 2) }
+    }
+
+    @Test
+    fun `2마리 모자란 뒤 다시 받는 동안 계속 끊길 때__수집하면__마지막 시도의 사유와 첫 사유를 함께 남긴다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        val offline = IllegalStateException("offline")
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns response(1003, fullPage(), 1)
+        // 첫 조회는 2마리 모자라고(COUNT_MISMATCH), 그 뒤로는 둘째 쪽과 나눠 받은 하위 구간이 모두 끊긴다.
+        every { intakePage(api, 2) } returns response(1003, listOf(animal("last-a", "20260910")), 2) andThenThrows offline
+        every {
+            api.getAbandonmentAnimals("test-key", any(), 1000, "20260909", "20260909", null, null, "json", null, null)
+        } throws offline
+        every {
+            api.getAbandonmentAnimals("test-key", any(), 1000, "20260910", "20260910", null, null, "json", null, null)
+        } throws offline
+
+        // when
+        val animals = snapshot.animals()
+
+        // then
+        assertThat(collected(animals, execution)).isEqualTo(Collected(animals = 1001, incomplete = 1, providerGaps = 0))
+        assertThat(execution.executionContext.getString(ApmsAnimalSnapshot.INCOMPLETE_DETAILS))
+            .contains("reason=REQUEST_FAILED;firstReason=COUNT_MISMATCH")
+        // 첫 조회 1번, 다시 받은 조회에서 처음 요청과 쪽 재시도 2번.
+        verify(exactly = 4) { intakePage(api, 2) }
+    }
+
+    @Test
+    fun `제공자가 정상 응답으로 거절할 때__수집하면__같은 쪽을 바로 다시 받지 않는다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        val refused = response(0, listOf(), 1)
+        refused.response!!.header!!.resultCode = "30"
+        stubEmptyWindows(api)
+        every { intakePage(api, 1) } returns refused
+
+        // when
+        snapshot.animals()
+
+        // then
+        // 첫 조회 1번과 조회 단위 복구의 다시 받기 1번뿐이다. 쪽 재시도를 했다면 한 번에 3번씩 보냈을 것이다.
+        verify(exactly = 2) { intakePage(api, 1) }
+    }
+
+    @Test
+    fun `작업 중단으로 요청이 끊겼을 때__수집하면__같은 쪽을 다시 보내지 않는다`() {
+        // given
+        val api = mockk<ApmsApiClient>()
+        val execution = executionFor(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 10))
+        val snapshot = ApmsAnimalSnapshot(api, "test-key", execution, 100, 50000)
+        stubEmptyWindows(api)
+        // 실제 클라이언트처럼 인터럽트 표시를 되살린 뒤 실패를 던진다.
+        every { intakePage(api, 1) } answers {
+            Thread.currentThread().interrupt()
+            throw IllegalStateException("interrupted")
+        }
+
+        // when
+        try {
+            snapshot.animals()
+        } finally {
+            Thread.interrupted()
+        }
+
+        // then
+        verify(exactly = 2) { intakePage(api, 1) }
     }
 
     @Test
