@@ -1,6 +1,7 @@
 package com.pawbridge.backend.boot.configuration
 
 import com.pawbridge.backend.boot.security.GatewayCors
+import com.pawbridge.backend.boot.security.OptionalBearerAuthenticationFilter
 import com.pawbridge.backend.boot.security.PostBearerAuthenticationFilter
 import com.pawbridge.backend.boot.security.PostTokenAuthenticator
 import jakarta.servlet.DispatcherType
@@ -427,6 +428,11 @@ class ReadSecurityConfiguration {
             .addFilterAt(GatewayCors.filter(corsOriginPatterns), CorsFilter::class.java)
             .addFilterBefore(
                 PostBearerAuthenticationFilter(tokens, postWriting, noteStream, streamContexts),
+                AnonymousAuthenticationFilter::class.java,
+            )
+            // The chatbot stays public: a valid bearer only labels the new conversation with the member id.
+            .addFilterBefore(
+                OptionalBearerAuthenticationFilter(tokens, chatbotMessages),
                 AnonymousAuthenticationFilter::class.java,
             )
             .exceptionHandling { errors ->

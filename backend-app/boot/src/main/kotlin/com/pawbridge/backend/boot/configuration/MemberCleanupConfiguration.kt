@@ -1,5 +1,6 @@
 package com.pawbridge.backend.boot.configuration
 
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.repository.JdbcChatbotMemberCleanup
 import com.pawbridge.backend.community.api.ContactMemberCleanup
 import com.pawbridge.backend.community.internal.chat.application.MemberChatHints
 import com.pawbridge.backend.community.internal.chat.application.MemberChatModels.Signal
@@ -60,7 +61,11 @@ class MemberCleanupConfiguration(
         return CleanupContactMember(members, store)
     }
 
-    /** Starting a deletion revokes the member's refresh sessions together with the pending marker. */
+    /**
+     * Starting a deletion revokes the member's refresh sessions together with the pending marker. The retryable
+     * cleanup step then withdraws notes and chats and clears the member id from chatbot conversations (the
+     * conversations stay until their retention ends, no longer linked to the member).
+     */
     @Bean
     fun userDeletion(
         @Qualifier("writeJdbc") jdbc: JdbcTemplate,
@@ -71,7 +76,16 @@ class MemberCleanupConfiguration(
         val transaction = TransactionTemplate(manager)
         transaction.timeout = 15
         val revoker: UserSessionRevoker = sessions.getIfAvailable { UserSessionRevoker.NONE }
-        return JdbcUserDeletion(jdbc, transaction, { memberId -> cleanup.remove(memberId) }, revoker)
+        val chatbotMembers = JdbcChatbotMemberCleanup(jdbc)
+        return JdbcUserDeletion(
+            jdbc,
+            transaction,
+            { memberId ->
+                cleanup.remove(memberId)
+                chatbotMembers.forget(memberId)
+            },
+            revoker,
+        )
     }
 
     @Bean

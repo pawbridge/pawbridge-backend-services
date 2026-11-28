@@ -20,7 +20,9 @@ import org.junit.jupiter.api.Test
  * - note A from the caller to the other member (both mailboxes, with a context link), note B from the other member
  *   to the caller (only the caller keeps it), three send requests, and a block in each direction;
  * - chat room 1 between both (two messages, one sent by the caller), a chat send request of the caller, and chat
- *   room 2 in which the caller is the only member.
+ *   room 2 in which the caller is the only member;
+ * - an AI adoption helper conversation each, started while logged in. Deleting the caller clears only the member id of
+ *   the caller's conversation (the retryable cleanup step); the conversation itself stays until its retention ends.
  */
 class MemberDeleteContractTest : NoteContractBase() {
     override val ids = 9_986_000L..9_986_999L
@@ -31,6 +33,9 @@ class MemberDeleteContractTest : NoteContractBase() {
      */
     private var caller = 0L
     private var peer = 0L
+
+    /** The shelter and animal the chatbot conversations hang on; one per test like the members. */
+    private var animal = 0L
 
     private val noteA = UUID.fromString("f3100000-0000-4000-8000-000000000001")
     private val noteB = UUID.fromString("f3100000-0000-4000-8000-000000000002")
@@ -47,6 +52,7 @@ class MemberDeleteContractTest : NoteContractBase() {
         val pair = PAIRS.getAndIncrement()
         caller = ids.first + 2 * pair + 1
         peer = ids.first + 2 * pair + 2
+        animal = ids.last - pair
         seedUser(caller, "F31caller$caller")
         seedUser(peer, "F31other$peer")
         seedMember(caller)
@@ -54,6 +60,7 @@ class MemberDeleteContractTest : NoteContractBase() {
         seedAccountRows()
         seedNoteRows()
         seedChatRows()
+        seedChatbotRows()
     }
 
     @AfterEach
@@ -63,6 +70,40 @@ class MemberDeleteContractTest : NoteContractBase() {
         admin.update("DELETE FROM pawbridge_community.member_chat_rooms WHERE room_id IN (?, ?)", sharedRoom, soloRoom)
         admin.update("DELETE FROM pawbridge_user.favorites WHERE user_id BETWEEN ? AND ?", ids.first, ids.last)
         admin.update("DELETE FROM pawbridge_user.shelter_applications WHERE user_id BETWEEN ? AND ?", ids.first, ids.last)
+        admin.update("DELETE FROM pawbridge_animal.chatbot_sessions WHERE animal_id = ?", animal)
+        admin.update("DELETE FROM pawbridge_animal.animals WHERE id = ?", animal)
+        admin.update("DELETE FROM pawbridge_animal.shelters WHERE id = ?", animal)
+    }
+
+    private fun seedChatbotRows() {
+        val admin = ContractPostgres.admin
+        admin.update(
+            "INSERT INTO pawbridge_animal.shelters(id, created_at, care_reg_no, name, address, phone) " +
+                "VALUES (?, '2026-01-01 00:00:00', ?, 'F31 synthetic shelter', 'F31 synthetic address', '000-0000-0000')",
+            animal, "F31-care-$animal",
+        )
+        admin.update(
+            "INSERT INTO pawbridge_animal.animals(id, created_at, api_source, apms_notice_no, favorite_count, gender, " +
+                "neuter_status, notice_end_date, notice_start_date, species, status, shelter_id) " +
+                "VALUES (?, '2026-03-01 00:00:00', 'MANUAL', ?, 0, 'MALE', 'UNKNOWN', '2026-03-20', '2026-02-01', 'DOG', 'PROTECT', ?)",
+            animal, "F31-$animal", animal,
+        )
+        for (member in listOf(caller, peer)) {
+            admin.update(
+                "INSERT INTO pawbridge_animal.chatbot_sessions(id, anonymous_session_id, animal_id, member_id, device_type, created_at) " +
+                    "VALUES (?, ?, ?, ?, 'MOBILE', '2026-11-01 00:00:00')",
+                chatbotSession(member), "f31-anonymous-$member", animal, member,
+            )
+        }
+    }
+
+    private fun chatbotSession(member: Long): String = "f31-chatbot-$member"
+
+    /** The member id stored on a member's chatbot conversation; the row itself must still exist. */
+    private fun chatbotMember(member: Long): String? {
+        assertThat(count("SELECT count(*) FROM pawbridge_animal.chatbot_sessions WHERE id = ?", chatbotSession(member)))
+            .`as`("The chatbot conversation is kept").isOne()
+        return scalar("SELECT member_id::text FROM pawbridge_animal.chatbot_sessions WHERE id = ?", chatbotSession(member))
     }
 
     private fun seedAccountRows() {
@@ -217,12 +258,14 @@ class MemberDeleteContractTest : NoteContractBase() {
             .`as`("Account, favorite, shelter application, refresh session and pending marker of the caller")
             .containsOnly(0L)
         assertCommunityWithdrawn()
+        assertThat(chatbotMember(caller)).`as`("The caller's chatbot conversation is no longer linked to the caller").isNull()
     }
 
     private fun assertOtherKept() {
         assertThat(accountComplete(peer)).`as`("The other member's account rows").isTrue()
         assertThat(sessionRevoked(peer)).`as`("The other member's session stays usable").isFalse()
         assertThat(count("SELECT count(*) FROM pawbridge_user.favorites WHERE user_id = ? AND animal_id = 2", peer)).isOne()
+        assertThat(chatbotMember(peer)).isEqualTo(peer.toString())
     }
 
     private fun withdrawnView(): Map<String, Any?> = mapOf(
@@ -378,7 +421,12 @@ class MemberDeleteContractTest : NoteContractBase() {
 
         // then
         assertSecurity(failed, 500, "서버 에러!")
-        assertThat(changed).containsExactlyInAnyOrder(*COMMUNITY_TABLES, "pawbridge_user.contact_deletions", "pawbridge_user.auth_sessions")
+        assertThat(changed).containsExactlyInAnyOrder(
+            *COMMUNITY_TABLES,
+            "pawbridge_animal.chatbot_sessions",
+            "pawbridge_user.contact_deletions",
+            "pawbridge_user.auth_sessions",
+        )
         assertThat(pendingAfterFailure).isTrue()
         assertThat(accountKept).`as`("The failed account deletion rolled back").isTrue()
         assertCommunityWithdrawn()
@@ -423,6 +471,7 @@ class MemberDeleteContractTest : NoteContractBase() {
 
         /** The pending marker is added and removed again, so `contact_deletions` is unchanged in the end. */
         val DELETION_TABLES = COMMUNITY_TABLES + arrayOf(
+            "pawbridge_animal.chatbot_sessions",
             "pawbridge_user.users",
             "pawbridge_user.favorites",
             "pawbridge_user.shelter_applications",

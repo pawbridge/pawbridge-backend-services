@@ -11,6 +11,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotR
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterPublicHours
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotBlockLog
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotDeviceType
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotSession
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.exception.ChatbotAnimalNotFoundException
@@ -23,6 +24,7 @@ import com.pawbridge.backend.animal.internal.command.infrastructure.repository.A
 import com.pawbridge.backend.animal.internal.command.infrastructure.repository.ShelterPublicInformationRepository
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.http.HttpHeaders
 import org.springframework.transaction.support.TransactionOperations
 
 class ChatbotService(
@@ -42,9 +44,14 @@ class ChatbotService(
     private val writes: TransactionOperations,
 ) {
 
+    /**
+     * [memberId]는 로그인한 요청의 회원 번호이고 비로그인이면 null이다. 새 대화를 시작할 때만 세션에 남기며,
+     * 이어지는 질문에서는 기존 세션의 값을 바꾸지 않는다.
+     */
     fun createMessage(
         animalId: Long?,
         request: ChatbotMessageRequest,
+        memberId: Long?,
         httpRequest: HttpServletRequest,
         httpResponse: HttpServletResponse,
     ): ChatbotMessageResponse {
@@ -56,7 +63,14 @@ class ChatbotService(
             animalRepository.findWithShelterById(animalId)
                 .orElseThrow { ChatbotAnimalNotFoundException() }
         }!!
-        val session = resolveSession(request.sessionId, anonymousSessionId, animal)
+        val session = resolveSession(request.sessionId, anonymousSessionId, animal) {
+            ChatbotSession(
+                anonymousSessionId,
+                animal,
+                memberId,
+                ChatbotDeviceType.fromUserAgent(httpRequest.getHeader(HttpHeaders.USER_AGENT)),
+            )
+        }
         chatbotRateLimitService.check(anonymousSessionId, ipHash)
 
         if (reads.execute { chatbotMessageRepository.countBySession(session) }!! >= MAX_SESSION_MESSAGES) {
@@ -157,7 +171,12 @@ class ChatbotService(
         return normalized.substring(0, QUESTION_PREVIEW_MAX_LENGTH)
     }
 
-    private fun resolveSession(sessionId: String?, anonymousSessionId: String, animal: Animal): ChatbotSession {
+    private fun resolveSession(
+        sessionId: String?,
+        anonymousSessionId: String,
+        animal: Animal,
+        newSession: () -> ChatbotSession,
+    ): ChatbotSession {
         if (sessionId != null && !isBlank(sessionId)) {
             return reads.execute {
                 chatbotSessionRepository.findByIdAndAnonymousSessionIdAndAnimal_Id(
@@ -167,7 +186,7 @@ class ChatbotService(
                 ).orElseThrow { IllegalArgumentException("Invalid chatbot session") }
             }!!
         }
-        return writes.execute { chatbotSessionRepository.save(ChatbotSession(anonymousSessionId, animal)) }!!
+        return writes.execute { chatbotSessionRepository.save(newSession()) }!!
     }
 
     private fun getRecentMessages(session: ChatbotSession): List<ChatbotRecentMessage> {
