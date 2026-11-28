@@ -8,6 +8,7 @@ import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotM
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ChatbotMessageResponse
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.dto.ShelterChatbotContext
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotBlockLog
+import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotDeviceType
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessage
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotMessageRole
 import com.pawbridge.backend.animal.internal.chatbot.infrastructure.entity.ChatbotSession
@@ -149,6 +150,7 @@ class ChatbotServiceTest {
         val result = service.createMessage(
             41L,
             ChatbotMessageRequest(SESSION, " 입양 문의 010-1234-5678 friend@example.com "),
+            null,
             request,
             response,
         )
@@ -232,7 +234,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), request, response)
+        service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), null, request, response)
 
         // then
         val input = slot<PythonChatbotMessageRequest>()
@@ -258,7 +260,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), request, response)
+        service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), null, request, response)
 
         // then
         val input = slot<PythonChatbotMessageRequest>()
@@ -280,7 +282,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), request, response)
+        service.createMessage(41L, ChatbotMessageRequest(SESSION, "언제 방문할 수 있나요"), null, request, response)
 
         // then
         val input = slot<PythonChatbotMessageRequest>()
@@ -317,7 +319,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        val result = service.createMessage(41L, ChatbotMessageRequest(sessionId, "입양 문의"), request, response)
+        val result = service.createMessage(41L, ChatbotMessageRequest(sessionId, "입양 문의"), null, request, response)
 
         // then
         assertEquals(SESSION, result.sessionId)
@@ -327,7 +329,73 @@ class ChatbotServiceTest {
         assertSame(saved.first().session, saved.last().session)
         assertEquals(ANON, saved.first().session!!.anonymousSessionId)
         assertSame(animal, saved.first().session!!.animal)
+        // 비로그인이고 User-Agent가 없으면 회원 번호와 기기 종류를 비워 둔다.
+        assertNull(saved.first().session!!.memberId)
+        assertNull(saved.first().session!!.deviceType)
         assertTrue(events.indexOf("session-save") < events.indexOf("quota"))
+    }
+
+    @ParameterizedTest
+    @MethodSource("newSessionContexts")
+    fun `새 대화를 시작할 때__질문하면__로그인한 회원 번호와 User-Agent로 나눈 기기 종류를 세션에 남긴다`(
+        memberId: Long?,
+        userAgent: String,
+        deviceType: ChatbotDeviceType,
+    ) {
+        // given
+        request.addHeader("User-Agent", userAgent)
+        commonAnswers()
+        every { sessions.save(any<ChatbotSession>()) } answers {
+            val entity = firstArg<ChatbotSession>()
+            ReflectionTestUtils.setField(entity, "id", SESSION)
+            inTransaction("session-save", false, entity)
+        }
+
+        // when
+        service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), memberId, request, response)
+
+        // then
+        val created = slot<ChatbotSession>()
+        verify(exactly = 1) { sessions.save(capture(created)) }
+        assertEquals(memberId, created.captured.memberId)
+        assertEquals(deviceType, created.captured.deviceType)
+        assertSame(created.captured, saved.first().session)
+    }
+
+    @Test
+    fun `비로그인으로 시작한 대화를 로그인 뒤 이어갈 때__질문하면__기존 세션을 다시 저장하지 않고 회원 번호도 붙이지 않는다`() {
+        // given
+        commonAnswers()
+        every { sessions.findByIdAndAnonymousSessionIdAndAnimal_Id(SESSION, ANON, 41L) } answers {
+            inTransaction("session-read", true, Optional.of(session))
+        }
+
+        // when
+        service.createMessage(41L, ChatbotMessageRequest(SESSION, "입양 문의"), 7L, request, response)
+
+        // then
+        verify(exactly = 0) { sessions.save(any<ChatbotSession>()) }
+        assertSame(session, saved.first().session)
+        assertNull(session.memberId)
+    }
+
+    /** 세션 조회·생성을 뺀 정상 질문 경로의 응답. */
+    private fun commonAnswers() {
+        every { cookies.resolveAnonymousSessionId(request, response) } answers { external("cookie", ANON) }
+        every { ips.resolve(request) } answers { external("ip", "127.0.0.2") }
+        every { hashes.hash("127.0.0.2") } answers { external("hash", "fixture-ip-hash") }
+        every { animals.findWithShelterById(41L) } answers { inTransaction("animal", true, Optional.of(animal)) }
+        every { quota.check(any(), any()) } answers { external("quota", Unit) }
+        every { messages.countBySession(any()) } answers { inTransaction("count", true, 0L) }
+        every { messages.findTop6BySessionOrderByCreatedAtDesc(any()) } answers {
+            inTransaction("history", true, listOf<ChatbotMessage>())
+        }
+        every { ai.createChatbotMessage(any(), any()) } answers { external("ai", answer) }
+        every { messages.saveAll(any<List<ChatbotMessage>>()) } answers {
+            val rows = firstArg<List<ChatbotMessage>>()
+            saved.addAll(rows)
+            inTransaction("messages-save", false, rows)
+        }
     }
 
     @Test
@@ -359,7 +427,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), request, response)
+        service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), null, request, response)
 
         // then
         val input = slot<PythonChatbotMessageRequest>()
@@ -391,7 +459,7 @@ class ChatbotServiceTest {
 
         // when
         val failure = assertThrows(IllegalArgumentException::class.java) {
-            service.createMessage(animalId, ChatbotMessageRequest(suppliedSession, "입양 문의"), request, response)
+            service.createMessage(animalId, ChatbotMessageRequest(suppliedSession, "입양 문의"), null, request, response)
         }
 
         // then
@@ -426,7 +494,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        val result = service.createMessage(41L, ChatbotMessageRequest(SESSION, question), request, response)
+        val result = service.createMessage(41L, ChatbotMessageRequest(SESSION, question), null, request, response)
 
         // then
         assertEquals("guard", result.provider)
@@ -473,7 +541,7 @@ class ChatbotServiceTest {
         }
 
         // when
-        val result = service.createMessage(41L, ChatbotMessageRequest(SESSION, question), request, response)
+        val result = service.createMessage(41L, ChatbotMessageRequest(SESSION, question), null, request, response)
 
         // then
         assertEquals("guard", result.provider)
@@ -509,7 +577,7 @@ class ChatbotServiceTest {
 
         // when
         assertThrows(ChatbotRateLimitExceededException::class.java) {
-            service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), request, response)
+            service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), null, request, response)
         }
 
         // then
@@ -558,7 +626,7 @@ class ChatbotServiceTest {
 
         // when
         assertThrows(RuntimeException::class.java) {
-            service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), request, response)
+            service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), null, request, response)
         }
 
         // then
@@ -585,7 +653,7 @@ class ChatbotServiceTest {
 
         // when
         assertThrows(ChatbotAnimalNotFoundException::class.java) {
-            service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), request, response)
+            service.createMessage(41L, ChatbotMessageRequest(null, "입양 문의"), null, request, response)
         }
 
         // then
@@ -683,6 +751,20 @@ class ChatbotServiceTest {
         private const val ANON = "01234567-89ab-cdef-0123-456789abcdef"
         private const val SESSION = "11111111-2222-3333-4444-555555555555"
         private const val KEY = "synthetic-chatbot-key"
+
+        @JvmStatic
+        fun newSessionContexts(): Stream<Arguments> = Stream.of(
+            Arguments.of(
+                7L,
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+                ChatbotDeviceType.MOBILE,
+            ),
+            Arguments.of(
+                null,
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36",
+                ChatbotDeviceType.DESKTOP,
+            ),
+        )
 
         @JvmStatic
         fun guardRejections(): Stream<Arguments> = Stream.of(

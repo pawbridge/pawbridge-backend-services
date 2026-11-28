@@ -49,7 +49,7 @@ class AnimalChatbotHttpTest {
     lateinit var chatbot: ChatbotService
 
     @ParameterizedTest
-    @ValueSource(strings = ["anonymous", "unrelated-invalid-bearer"])
+    @ValueSource(strings = ["anonymous", "unrelated-invalid-bearer", "not-a-bearer"])
     fun `원래 공개 경로__회원 신원 없이 게시하면__순수 챗봇 응답을 돌려준다`(
         authorization: String,
     ) {
@@ -58,11 +58,15 @@ class AnimalChatbotHttpTest {
         val command = command("POST", "/api/v1/animals/41/chat/messages")
             .header("X-User-Id", "99")
             .content(mapper.writeValueAsBytes(input))
+        // 틀린 토큰도 401로 막지 않고 비로그인으로 처리한다(만료된 토큰 때문에 도우미가 막히지 않게).
         if (authorization == "unrelated-invalid-bearer") {
             command.header("Authorization", "Bearer synthetic-invalid-token")
         }
+        if (authorization == "not-a-bearer") {
+            command.header("Authorization", "Basic c3ludGhldGljOmZpeHR1cmU=")
+        }
 
-        every { chatbot.createMessage(any(), any(), any(), any()) } returns
+        every { chatbot.createMessage(any(), any(), any(), any(), any()) } returns
             ChatbotMessageResponse("owned-session", "안내 답변", "안전 주의", "synthetic")
 
         // when
@@ -80,7 +84,27 @@ class AnimalChatbotHttpTest {
         assertThat(json.path("provider").asText()).isEqualTo("synthetic")
         assertThat(json.has("data")).isFalse()
         assertThat(json.has("code")).isFalse()
-        verify(exactly = 1) { chatbot.createMessage(41L, input, any(), any()) }
+        verify(exactly = 1) { chatbot.createMessage(41L, input, null, any(), any()) }
+        confirmVerified(chatbot)
+    }
+
+    @Test
+    fun `유효한 로그인 토큰__게시하면__공개 응답은 그대로이고 토큰의 회원 번호만 서비스에 넘긴다`() {
+        // given
+        val input = ChatbotMessageRequest(null, "입양 문의")
+        val command = command("POST", "/api/v1/animals/41/chat/messages")
+            .header("Authorization", "Bearer " + F3TestInputs.token(7, "ROLE_USER"))
+            .header("X-User-Id", "99")
+            .content(mapper.writeValueAsBytes(input))
+
+        every { chatbot.createMessage(any(), any(), any(), any(), any()) } returns
+            ChatbotMessageResponse("owned-session", "안내 답변", "안전 주의", "synthetic")
+
+        // when
+        mvc.perform(command).andExpect(status().isOk())
+
+        // then
+        verify(exactly = 1) { chatbot.createMessage(41L, input, 7L, any(), any()) }
         confirmVerified(chatbot)
     }
 

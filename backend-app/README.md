@@ -467,7 +467,7 @@ refresh는 쿠키만 읽는다(본문 무시). 한 UPDATE로 `token_hash=:old`�
 
 `./gradlew :boot:contractTest`는 JVM 시간대 UTC로 전체(`contractTestUtc`)를, 이어서 `@Tag("timezone-sensitive")` 시험만 Asia/Seoul로(`contractTestSeoul`) 실행한다. `check`에 포함되지 않으며(Docker 필요) 시험이 없거나 건너뛴 시험이 있으면 실패한다. 로컬 Docker Desktop은 `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`과 `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock`이 필요하다. Testcontainers 1.20은 Docker Engine 29가 거부하는 API 1.32를 요청하므로 시험 JVM에 `api.version=1.44`를 주며 `-PdockerApiVersion=...`으로 바꿀 수 있다.
 
-관리자 회원 삭제(`MemberDeleteContractTest`, 옛 F31 스모크)는 대기 표식·세션 폐기 → 쪽지·채팅 정리 → 계정 삭제의 세 커밋을 실제 DB에서 확인한다. 관리자 전용 접근과 인증 거부의 무부작용, 연쇄 정리와 상대 데이터 보존, 채팅 정리 권한 회수(503)·계정 삭제 권한 회수(500) 뒤 부분 커밋 상태와 복구 후 재시도, 스트림 종료·resync, S3 무접촉을 단언한다.
+관리자 회원 삭제(`MemberDeleteContractTest`, 옛 F31 스모크)는 대기 표식·세션 폐기 → 쪽지·채팅 정리와 AI 입양 도우미 대화의 회원 번호 제거 → 계정 삭제의 세 커밋을 실제 DB에서 확인한다. 관리자 전용 접근과 인증 거부의 무부작용, 연쇄 정리와 상대 데이터 보존, 채팅 정리 권한 회수(503)·계정 삭제 권한 회수(500) 뒤 부분 커밋 상태와 복구 후 재시도, 스트림 종료·resync, S3 무접촉을 단언한다.
 
 refresh 세션 계약(`AuthSessionContractTest`)은 원문과 비교하지 않는다. 회전·이력 기록·유실 응답 복구·동시 grace 요청·두 세대 전 토큰 재사용·만료·5개 제한·logout·전체 폐기·정리·권한 회수·회원 삭제 연쇄를 실제 DB에서 확인하고, 쿠키 refresh HTTP 요청 한 건으로 Tomcat 경로를 확인한다.
 
@@ -937,6 +937,8 @@ Boot는 `animal-search-projection-` 이름의 단일 daemon scheduler를 소유�
 ## Animal remaining flows
 
 `pawbridge.animal-chatbot.enabled=true` plus `pawbridge.animal-query.backend=postgresql` explicitly assembles the original anonymous POST `/api/v1/animals/{animalId}/chat/messages`. It shares the existing Animal writer, entity manager, transaction manager and analyzer. Only repository phases use short transactions; Redis and Python are outside them. Original cookie/IP hash, five quotas, guard and message ordering are preserved. This feature defaults off.
+
+The route stays public. `OptionalBearerAuthenticationFilter` reads a bearer token on this route only: a valid one becomes the principal, a missing, expired or forged one leaves the request anonymous (never 401). A new conversation records the member id of that principal and the device type (`MOBILE`/`DESKTOP` from the User-Agent, which is not stored) on `chatbot_sessions` (`V12__chatbot_session_context.sql`); later questions in the same conversation do not change them. Admin member deletion clears the member id in its retryable cleanup step and keeps the conversation. Apply V12 before deploying this code.
 
 `pawbridge.shelter-observations.schedule-enabled=true` enables the original daily 04:00 Asia/Seoul observation. One writer SQL snapshot counts PROTECT animals including zero for empty shelters, preserving the first observation of each day. The existing shelter observation GET consumes these rows. Scheduling defaults off and does not run immediately at startup.
 
