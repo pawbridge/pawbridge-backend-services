@@ -15,7 +15,7 @@ from app.chatbot.health.answer import (
 )
 from app.chatbot.health.knowledge import entries_version, load_entries
 from app.chatbot.health.retriever import HealthMatch, RuleHealthRetriever
-from app.chatbot.prompt_builder import INTERNAL_MARKERS, build_prompt
+from app.chatbot.prompt_builder import INTERNAL_MARKERS, PLAIN_SECTION_MARKERS, build_prompt
 from app.chatbot.provider import (
     ChatbotProviderConfigurationError,
     ChatbotProviderTruncatedError,
@@ -277,9 +277,27 @@ def leaked_internals(answer: str) -> list[str]:
     return [marker for marker in INTERNAL_MARKERS if marker.lower() in lowered]
 
 
+def without_section_brackets(answer: str) -> str:
+    """PLAIN_SECTION_MARKERS의 괄호만 뺀다("[보호소 정보]에 따르면" → "보호소 정보에 따르면")."""
+    for marker in PLAIN_SECTION_MARKERS:
+        answer = answer.replace(marker, marker[1:-1])
+    return answer
+
+
 def chatbot_response(provider_name: str, answer: str, sources: list, cards: list) -> dict:
-    """모든 답이 나가는 출구. 프롬프트 규칙을 모델이 어겨도 내부 표기가 화면에 나가지 않게 여기서 막는다."""
+    """모든 답이 나가는 출구. 프롬프트 규칙을 모델이 어겨도 내부 표기가 화면에 나가지 않게 여기서 막는다.
+
+    괄호만 빼면 평범한 말이 되는 칸 이름(PLAIN_SECTION_MARKERS)만 나온 답은 괄호를 빼고 그대로 보낸다.
+    도구 이름이나 다른 칸 이름이 하나라도 있으면 답 전체를 바꾼다.
+    """
     leaked = leaked_internals(answer)
+    if leaked and all(marker in PLAIN_SECTION_MARKERS for marker in leaked):
+        cleaned = without_section_brackets(answer)
+        # 괄호를 뺀 뒤에도 표기가 남으면("[[보호소 정보]]"처럼 겹친 경우) 아래에서 답 전체를 바꾼다.
+        if not leaked_internals(cleaned):
+            logger.info("Chatbot answer kept: section brackets removed=%s", ",".join(leaked))
+            answer = cleaned
+            leaked = []
     if leaked:
         # 답 내용은 남기지 않는다(질문과 답을 기록하지 않는다). 어떤 표기였는지만 남긴다.
         logger.warning("Chatbot answer replaced: internal markers=%s", ",".join(leaked))
