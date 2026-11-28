@@ -91,6 +91,27 @@ class FallbackProviderTest(unittest.TestCase):
         self.assertIn("path=agent stop=- error=- model_calls=2 tool_calls=1", lines[1])
         self.assertEqual(len(response.json()["sources"]), 1)
 
+    def test_backup_is_forced_even_when_primary_claude_is_not(self):
+        # 주 제공자가 Claude면 강제가 없지만, 예비(openai)는 강제 없이 재지 않아 그대로 강제한다.
+        primary = ScriptedChatModel(turns=[ModelAPIError("529 overloaded")])
+        backup = ScriptedChatModel(turns=[call("기침"), reply("기침이 계속되면 동물병원 진료가 필요합니다 [2].", [2])])
+        response, _ = self.post_with_backup(primary, backup, env={"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": "medium"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(primary.calls[0]["tool_choice"], None)
+        self.assertEqual(backup.calls[0]["tool_choice"], "any")
+
+    def test_backup_is_forced_when_open_breaker_skips_primary_claude(self):
+        # 차단기가 열려 주 제공자를 건너뛴 질문도 예비 제공자 기준으로 강제를 정한다.
+        for _ in range(3):
+            primary = ScriptedChatModel(turns=[ModelAPIError("529 overloaded")])
+            self.post_with_backup(primary, ScriptedChatModel(turns=[call("기침"), reply("보호소에 물어보세요.")]), env={"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": "medium"})
+        self.assertEqual(primary_breaker().state, "open")
+        primary = ScriptedChatModel(turns=[reply("불리면 안 됨")])
+        backup = ScriptedChatModel(turns=[call("기침"), reply("보호소에 물어보세요.")])
+        self.post_with_backup(primary, backup, env={"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": "medium"})
+        self.assertEqual(primary.calls, [])
+        self.assertEqual(backup.calls[0]["tool_choice"], "any")
+
     def test_timeout_with_time_left_switches_to_backup(self):
         primary = ScriptedChatModel(turns=[httpx.ReadTimeout("slow")])
         backup = ScriptedChatModel(turns=[reply("보호소에 물어보세요.")])

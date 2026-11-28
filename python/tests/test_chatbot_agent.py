@@ -411,6 +411,69 @@ class AgentServiceTest(unittest.TestCase):
         self.assertEqual([made["tool_choice"] for made in found.calls], [None])
         self.assertEqual([made["response_mime_type"] for made in found.calls], [None])
 
+    def test_claude_is_not_forced_when_first_search_found_nothing(self):
+        # Claude는 근거가 없어도 첫 호출에서 도구를 강제하지 않는다. 부를지는 모델이 고른다.
+        # 강제하면 "네" 같은 말에도 도구를 하나 골라야 해서 상관없는 닮은 동물 목록이 붙었다(11/28 시험).
+        self.payload["question"] = "네"
+        answer = "어떤 도움을 원하시는지 알기 어렵습니다."
+        model = ScriptedChatModel(turns=[reply(answer)])
+        body = self.post(model, {"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": "medium"}).json()
+        self.assertEqual(body["answer"], answer)
+        self.assertEqual([made["tool_choice"] for made in model.calls], [None])
+
+    def test_claude_can_still_call_the_search_tool_by_itself(self):
+        model = ScriptedChatModel(turns=[call("기침"), reply("기침이 계속되면 동물병원 진료가 필요합니다 [2].", [2])])
+        body = self.post(model, {"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": "medium"}).json()
+        self.assertEqual([made["tool_choice"] for made in model.calls], [None, None])
+        self.assertEqual(len(body["sources"]), 1)
+
+    def test_claude_at_unmeasured_reasoning_is_still_forced(self):
+        # 강제 없이 잰 것은 medium과 high뿐이다. 비용 때문에 low나 minimal로 내리면 강제가 다시 걸려야 한다.
+        for reasoning in ("minimal", "low"):
+            with self.subTest(reasoning=reasoning):
+                model = ScriptedChatModel(turns=[call("기침"), reply("보호소에 물어보세요.")])
+                self.post(model, {"LLM_PROVIDER": "anthropic", "CHATBOT_REASONING": reasoning})
+                self.assertEqual([made["tool_choice"] for made in model.calls], ["any", None])
+
+    def test_forced_first_tool_is_skipped_only_for_measured_settings(self):
+        cases = [("anthropic", "medium", False), ("anthropic", "high", False), ("anthropic", "low", True),
+                 ("anthropic", "minimal", True), ("openai", "medium", True), ("gemini", "high", True),
+                 ("stub", "medium", True)]
+        for provider, reasoning, forced in cases:
+            with self.subTest(provider=provider, reasoning=reasoning), \
+                    patch.dict(os.environ, {"CHATBOT_REASONING": reasoning}):
+                self.assertEqual(models.forces_tool_without_evidence(provider), forced)
+
+    def test_prompt_states_what_the_service_cannot_do_and_when_to_ask_back(self):
+        # 11/20 외부 사용자 대화에서 빠져 있던 안내. 문구가 지워지면 "보내 주세요"에 보낼 수 없다는 말을 하지 않는다.
+        model = ScriptedChatModel(turns=[reply("보호소에 직접 연락해 주세요.")])
+        self.post(model)
+        prompt = model.calls[0]["messages"][0].content
+        self.assertIn("보호소가 아닙니다", prompt)
+        self.assertIn("여기서는 그렇게 할 수 없다는 것과 그 이유를 먼저 말하고 보호소에 직접 연락하도록 안내하세요", prompt)
+        self.assertIn("개인정보는 이 대화에 적지 않아도 된다고 알려 주세요", prompt)
+        # 이름만 밝히고 질문한 사람에게 거절부터 말하던 것을 막는 문장(11/28 시험 10건 중 5건).
+        self.assertIn("함께 물은 것이 있으면 그 답을 먼저 하세요", prompt)
+        # "동물은 보호소에 있고"라고 쓰면 안락사로 끝난 공고에도 보호소에 있다고 답했다(5건 중 5건).
+        self.assertIn("동물의 보호와 입양 상담, 방문, 접수는 공고를 올린 보호소가 직접 합니다", prompt)
+        self.assertNotIn("보호소에 있고", prompt)
+        self.assertIn("동물을 보내거나 맡아 두거나 예약, 접수를 해 줄 수 없고", prompt)
+        self.assertIn("상담 기록으로 남습니다", prompt)
+        self.assertIn("뜻이 하나로 읽히면 되묻지 말고 바로 답하세요", prompt)
+        self.assertIn("가장 그럴듯한 뜻을 대고 맞는지 한 문장으로 확인하세요", prompt)
+        self.assertIn("무엇을 원하는지 분명한 말에는 되묻지 마세요", prompt)
+        self.assertIn("어떤 도움을 원하는지 알기 어렵다고 말하고", prompt)
+
+    def test_fixed_flow_prompt_does_not_get_the_service_facts(self):
+        # 고정 흐름은 새 문구로 재지 않았고 보호소 연락처 칸과 전화번호 검사가 없다. 에이전트 프롬프트에만 넣는다.
+        self.fixed = FixedProvider("보호소에 확인해 보세요.")
+        with patch.object(self.fixed, "generate_answer", wraps=self.fixed.generate_answer) as generate:
+            self.post(ScriptedChatModel(), {"CHATBOT_MODE": "rag"})
+        prompt = generate.call_args.args[0]
+        self.assertIn("당신은 PawBridge의 AI 입양 준비 도우미입니다.", prompt)
+        self.assertNotIn("보호소가 아닙니다", prompt)
+        self.assertNotIn("상담 기록으로 남습니다", prompt)
+
     def test_adoption_guide_tool_returns_official_guide_with_sources(self):
         self.payload["question"] = "입양비 지원 받을 수 있나요?"
         model = ScriptedChatModel(turns=[

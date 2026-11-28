@@ -97,6 +97,8 @@ class AgentContext:
     model_settings: dict = field(default_factory=dict)
     # 도구 호출을 강제하는 호출에만 더 붙일 제공자별 설정. models.forced_tool_call_settings()가 만든다.
     forced_tool_settings: dict = field(default_factory=dict)
+    # 첫 검색이 근거를 못 찾았을 때 첫 호출에서 도구를 강제할지. models.forces_tool_without_evidence()가 정한다.
+    force_tool_without_evidence: bool = True
 
 
 @dataclass
@@ -137,8 +139,8 @@ class AgentLimits(AgentMiddleware):
         tool_choice = "none" if blocked else None
         # 코드의 첫 검색이 근거를 하나도 못 찾았으면 첫 호출에서 도구 하나를 반드시 부르게 한다.
         # 모델은 부를지는 고르지 못하고 어느 도구와 입력을 쓸지만 고른다(건강이면 search_health,
-        # 입양 절차면 adoption_guide). 11/11 시범 실행에서 모델에게 맡기면 첫 검색이 놓친 건강 질문
-        # 18개 중 minimal 0개, low와 강화한 규칙으로도 12개만 불렀다.
+        # 입양 절차면 adoption_guide). 강제 없이도 스스로 부르는 것을 잰 제공자와 추론 단계 조합은
+        # 강제하지 않는다(context.force_tool_without_evidence, 근거는 models.forces_tool_without_evidence).
         settings = {**request.model_settings, **context.model_settings}
         # 비슷한 동물 질문은 공고 특이사항으로 건강 근거를 이미 찾았어도 그 도구를 강제한다.
         # 11/11 운영 확인(공고 106382, 특이사항에 종양, 피부병)에서 근거가 있어 강제가 걸리지 않았고,
@@ -146,7 +148,12 @@ class AgentLimits(AgentMiddleware):
         if not blocked and ledger.model_calls == 1 and context.tools.first_tool:
             tool_choice = context.tools.first_tool
             settings = {**settings, **context.forced_tool_settings}
-        elif not blocked and ledger.model_calls == 1 and not context.tools.evidence:
+        elif (
+            not blocked
+            and ledger.model_calls == 1
+            and context.force_tool_without_evidence
+            and not context.tools.evidence
+        ):
             tool_choice = "any"
             settings = {**settings, **context.forced_tool_settings}
         request = request.override(model=context.model, tool_choice=tool_choice, model_settings=settings)

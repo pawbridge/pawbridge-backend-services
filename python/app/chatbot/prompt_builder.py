@@ -124,7 +124,21 @@ AGENT_TOOL_RULES = [
     "도구를 부르지 않고 '보호소나 동물병원에 문의하세요'로만 답하지 마세요. 그 안내는 도구로도 근거를 찾지 못했을 때만 씁니다.",
     "검색어는 질문 속 표현을 병명이나 증상 낱말로 바꿔 짧게 쓰세요. 예: '콜록거려요'는 '기침'.",
     "근거가 이미 질문에 맞거나 건강과 관계없는 질문이면 도구를 부르지 말고 바로 답하세요.",
-    "질문이 모호해 답이 크게 달라질 때만 한 문장으로 되물으세요.",
+    # 되묻기 규칙 넷. 한 줄("모호할 때만 되물으세요")일 때는 여러 뜻으로 읽히는 말에 한 가지로 정해 답했고,
+    # 확인하라는 줄만 더하면 분명한 요청에도 되물었다(11/28 시험). 그래서 되묻지 않을 경우를 따로 적는다.
+    "오타나 줄임말이 있어도 뜻이 하나로 읽히면 되묻지 말고 바로 답하세요.",
+    (
+        "사용자의 말이 이 동물이나 입양에 관한 것인데 서로 다른 뜻으로 읽혀 답이 크게 달라지면, 한 가지로 정해 답을 끝내지 말고 "
+        "가장 그럴듯한 뜻을 대고 맞는지 한 문장으로 확인하세요. 공고에서 바로 알려 줄 수 있는 사실이 있으면 함께 알려 주세요."
+    ),
+    (
+        "무엇을 원하는지 분명한 말에는 되묻지 마세요. 원하는 것이 지금 공고와 맞지 않으면(다른 종류의 동물을 찾는 경우처럼) "
+        "맞지 않는 점을 알리고 바로 할 수 있는 안내를 하세요."
+    ),
+    (
+        "무슨 말인지 알 수 없거나 이 동물, 입양과 관계없는 말이면, "
+        "어떤 도움을 원하는지 알기 어렵다고 말하고 도울 수 있는 일을 짧게 알려 주세요."
+    ),
     "adoption_guide 도구는 보호소 입양 자격, 공고 기간, 입양비 지원, 입양자 준수사항, 동물등록, 예비입양제의 공식 안내를 주제 이름으로 가져옵니다. 이런 질문에는 이 도구를 부르세요.",
     "find_similar_animals 도구는 지금 공고 동물과 사진 생김새가 비슷한, 공고중이거나 보호중인 다른 동물을 찾습니다.",
     "비슷한 아이, 닮은 아이, 다른 아이를 묻는 질문에는 답을 쓰기 전에 이 도구를 부르세요.",
@@ -172,7 +186,7 @@ def build_agent_prompt(animal_context, recent_messages, question: str, health_ev
     animal_data = {key: _neutralize_brackets(value) for key, value in animal_context.model_dump().items()}
     question = _neutralize_brackets(question)
 
-    sections = _intro_sections(animal_data)
+    sections = _intro_sections(animal_data, service_facts=True)
     sections.extend(["[보호소 정보]", _format_shelter(shelter_context), "\n".join(SHELTER_RULES)])
     sections.extend(["[도구 사용]", "\n".join(AGENT_TOOL_RULES), "\n".join(AGENT_EVIDENCE_RULES)])
     sections.append("[검수된 건강 근거]")
@@ -196,8 +210,30 @@ def _format_shelter(shelter_context) -> str:
     return "\n".join(lines) if lines else "제공된 보호소 정보가 없습니다."
 
 
-def _intro_sections(animal_data: dict) -> list[str]:
-    """역할, 답변 가이드, 공고 정보. 고정 흐름과 에이전트가 같이 쓴다."""
+# 서비스가 무엇을 하고 무엇을 못 하는지. 에이전트 프롬프트에만 넣는다(_intro_sections의 service_facts).
+# 이 설명이 없을 때는 "주소로 보내 주세요" 같은 말에 보낼 수 없다고 답한 것이 120건 중 17건뿐이었다(11/28 시험,
+# 11/20 외부 사용자 대화를 다시 보낸 것). 대화가 기록으로 남는다는 문장이 없으면 모델이 "주소를 저장하지 않는다"고
+# 지어내는 답이 나왔다. 고정 흐름은 이 문구로 재지 않았고, 보호소 연락처 칸과 전화번호 검사가 없어 넣지 않는다.
+# 동물이 지금 보호소에 있다고는 쓰지 않는다. 그렇게 쓰면 입양이나 안락사로 끝난 공고에도 보호소에 있다고 답했다.
+# 개인정보를 적은 경우를 보내 달라는 요청과 한 문장으로 묶으면, 이름만 밝히고 질문한 사람에게 거절부터 말했다.
+SERVICE_FACTS = [
+    (
+        "PawBridge는 보호소가 올린 유기동물 공고를 보여 주는 서비스이고, 보호소가 아닙니다. "
+        "동물의 보호와 입양 상담, 방문, 접수는 공고를 올린 보호소가 직접 합니다. "
+        "그래서 이 대화에서는 동물을 보내거나 맡아 두거나 예약, 접수를 해 줄 수 없고, "
+        "사용자의 주소, 이름, 연락처도 필요하지 않습니다. 이 대화에 적은 내용은 상담 기록으로 남습니다."
+    ),
+    (
+        "사용자가 동물을 달라거나 보내 달라고 하면, "
+        "여기서는 그렇게 할 수 없다는 것과 그 이유를 먼저 말하고 보호소에 직접 연락하도록 안내하세요. "
+        "사용자가 자기 주소, 이름, 연락처를 적으면 개인정보는 이 대화에 적지 않아도 된다고 알려 주세요. "
+        "함께 물은 것이 있으면 그 답을 먼저 하세요."
+    ),
+]
+
+
+def _intro_sections(animal_data: dict, service_facts: bool = False) -> list[str]:
+    """역할, 답변 가이드, 공고 정보. 고정 흐름과 에이전트가 같이 쓴다. 서비스 설명(SERVICE_FACTS)은 에이전트만 넣는다."""
     context_lines = [
         f"{key}: {value}"
         for key, value in animal_data.items()
@@ -205,6 +241,7 @@ def _intro_sections(animal_data: dict) -> list[str]:
     ]
     return [
         "당신은 PawBridge의 AI 입양 준비 도우미입니다.",
+        *(SERVICE_FACTS if service_facts else []),
         "반드시 한국어로 답변하세요.",
         "인사말이나 서비스 이름으로 답변을 시작하지 마세요.",
         "보호동물 공고 정보는 참고 자료로만 사용하세요.",
